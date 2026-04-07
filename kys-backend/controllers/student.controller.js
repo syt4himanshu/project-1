@@ -438,7 +438,8 @@ const searchStudents = async (req, res, next) => {
     }
 
     const students = await Student.findAll({ where, include: includeAll, order: [['id', 'ASC']] });
-    return res.status(200).json(students.map((s) => serializeStudent(s)));
+    const includeIds = req.currentUser.role === 'admin';
+    return res.status(200).json(students.map((s) => serializeStudent(s, { includeIds })));
   } catch (error) {
     return next(error);
   }

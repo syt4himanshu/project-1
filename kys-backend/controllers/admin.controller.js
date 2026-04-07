@@ -54,7 +54,12 @@ const statistics = async (_req, res, next) => {
       User.count(),
     ]);
 
-    return res.status(200).json({ totalUsers, totalStudents, totalTeachers, activeUsers });
+    return res.status(200).json({
+      total_users: totalUsers,
+      total_students: totalStudents,
+      total_faculty: totalTeachers,
+      active_users: activeUsers,
+    });
   } catch (error) {
     return next(error);
   }
@@ -91,14 +96,22 @@ const createUser = async (req, res, next) => {
     }
 
     if (data.role === 'student') {
-      for (const field of ['uid', 'first_name', 'semester', 'section', 'year_of_admission']) {
+      const required = ['uid', 'semester', 'section', 'year_of_admission'];
+      for (const field of required) {
         if (!(field in data)) return res.status(400).json({ error: `Missing student field: ${field}` });
+      }
+      if (!data.first_name && !data.name) {
+        return res.status(400).json({ error: 'Missing student name (first_name or name)' });
       }
     }
 
     if (data.role === 'faculty') {
-      for (const field of ['email', 'first_name', 'last_name', 'contact_number']) {
+      const required = ['email', 'contact_number'];
+      for (const field of required) {
         if (!(field in data)) return res.status(400).json({ error: `Missing faculty field: ${field}` });
+      }
+      if (!data.first_name && !data.name) {
+        return res.status(400).json({ error: 'Missing faculty name (first_name or name)' });
       }
     }
 
@@ -127,12 +140,16 @@ const createUser = async (req, res, next) => {
       };
 
       if (data.role === 'student') {
+        const studentNames = data.first_name
+          ? { first: data.first_name, middle: data.middle_name || '', last: data.last_name || '' }
+          : splitFullName(data.name || '');
+
         const student = await Student.create(
           {
             uid: data.uid,
-            first_name: data.first_name,
-            middle_name: data.middle_name || '',
-            last_name: data.last_name || '',
+            first_name: studentNames.first_name || studentNames.first || '',
+            middle_name: studentNames.middle_name || studentNames.middle || '',
+            last_name: studentNames.last_name || studentNames.last || '',
             semester: data.semester,
             section: data.section,
             year_of_admission: data.year_of_admission,
@@ -157,11 +174,15 @@ const createUser = async (req, res, next) => {
       }
 
       if (data.role === 'faculty') {
+        const facultyNames = data.first_name
+          ? { first: data.first_name, last: data.last_name || '' }
+          : splitFullName(data.name || '');
+
         const faculty = await Faculty.create(
           {
             email: data.email,
-            first_name: data.first_name,
-            last_name: data.last_name,
+            first_name: facultyNames.first_name || facultyNames.first || '',
+            last_name: facultyNames.last_name || facultyNames.last || '',
             contact_number: data.contact_number,
             user_id: user.id,
           },
@@ -494,13 +515,18 @@ const removeMentees = async (req, res, next) => {
     if (!('student_ids' in data)) return res.status(400).json({ error: 'Missing student_ids list' });
     if (!Array.isArray(data.student_ids)) return res.status(400).json({ error: 'student_ids must be a list' });
 
-    const students = await Student.findAll({ where: { uid: { [Op.in]: data.student_ids }, mentor_id: facultyId } });
+    const idsAreNumeric = data.student_ids.every((x) => Number.isFinite(Number(x)));
+    const whereClause = idsAreNumeric
+      ? { id: { [Op.in]: data.student_ids.map(Number) }, mentor_id: facultyId }
+      : { uid: { [Op.in]: data.student_ids }, mentor_id: facultyId };
+
+    const students = await Student.findAll({ where: whereClause });
     if (students.length !== data.student_ids.length) {
       return res.status(404).json({ error: 'One or more student IDs not found' });
     }
 
     try {
-      await Student.update({ mentor_id: null }, { where: { uid: { [Op.in]: data.student_ids }, mentor_id: facultyId } });
+      await Student.update({ mentor_id: null }, { where: whereClause });
       return res.status(200).json({
         message: `Removed ${students.length} mentee assignments from faculty ${facultyId} successfully.`,
         removed_student_ids: data.student_ids,

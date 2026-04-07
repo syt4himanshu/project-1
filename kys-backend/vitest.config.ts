@@ -5,6 +5,6 @@ export default defineConfig({
     testTimeout: 15000,
     globalSetup: './src/__tests__/helpers/setup.ts',
     environment: 'node',
-    setupFiles: ['./src/__tests__/helpers/seed.ts'],
+    setupFiles: ['./src/__tests__/helpers/testSetup.ts'],
   },
 });

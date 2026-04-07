@@ -145,7 +145,7 @@ const register = async (req, res, next) => {
       const first_name = data.first_name;
       const last_name = data.last_name;
       const contact_number = data.contact_number;
-      const password = data.password || 'default_password';
+      const password = data.password || crypto.randomBytes(8).toString('hex');
 
       if (!email || !first_name || !last_name) {
         return res.status(400).json({ error: 'Missing email, first_name, or last_name' });
@@ -168,6 +168,7 @@ const register = async (req, res, next) => {
       return res.status(201).json({
         message: 'Faculty created successfully',
         faculty_profile: 'created',
+        temp_password: data.password ? undefined : password,
         user: { email, first_name, last_name, contact_number },
       });
     }
@@ -247,7 +248,7 @@ const registerBulkFaculty = async (req, res, next) => {
     try {
       for (const entry of faculties) {
         const email = entry.email;
-        const password = entry.password || 'default_password';
+        const password = entry.password || crypto.randomBytes(8).toString('hex');
         const first_name = entry.first_name || '';
         const last_name = entry.last_name || '';
         const contact_number = entry.contact_number || '';
@@ -268,7 +269,11 @@ const registerBulkFaculty = async (req, res, next) => {
         );
 
         await Faculty.create({ email, first_name, last_name, contact_number, user_id: user.id }, { transaction: tx });
-        results.push({ email, status: 'success' });
+        results.push({
+          email,
+          status: 'success',
+          temp_password: entry.password ? undefined : password,
+        });
       }
 
       await tx.commit();
