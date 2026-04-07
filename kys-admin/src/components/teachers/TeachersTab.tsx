@@ -20,7 +20,7 @@ export default function TeachersTab() {
             return (
                 name.includes(q) ||
                 f.email.toLowerCase().includes(q) ||
-                f.contact_number.toLowerCase().includes(q)
+                (f.contact_number ?? '').toLowerCase().includes(q)
             )
         })
     }, [faculty, query])

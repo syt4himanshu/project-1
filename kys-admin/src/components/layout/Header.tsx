@@ -35,7 +35,7 @@ export default function Header() {
 
     const onSubmit = async (data: FormData) => {
         try {
-            await authApi.changePassword({ current_password: data.current_password, new_password: data.new_password })
+            await authApi.changePassword({ old_password: data.current_password, new_password: data.new_password })
             toast.success('Password changed successfully')
             reset()
             setOpen(false)

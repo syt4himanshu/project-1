@@ -13,8 +13,13 @@ export function useStudentDetail(id: number) {
 export function useDeleteStudent() {
     const qc = useQueryClient()
     return useMutation({
-        mutationFn: studentsApi.delete,
-        onSuccess: () => { qc.invalidateQueries({ queryKey: ['students'] }); qc.invalidateQueries({ queryKey: ['stats'] }); toast.success('Student deleted') },
+        // Backend DELETE /api/admin/student/:uid — requires uid not id
+        mutationFn: (uid: string) => studentsApi.deleteByUid(uid),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['students'] })
+            qc.invalidateQueries({ queryKey: ['stats'] })
+            toast.success('Student deleted')
+        },
         onError: (e: Error) => toast.error(e.message),
     })
 }

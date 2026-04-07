@@ -1,81 +1,74 @@
-import { useQuery } from '@tanstack/react-query'
-import { Download } from 'lucide-react'
+import { BarChart3, Construction, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import ToppersCard from './ToppersCard'
-import DistributionCard from './DistributionCard'
-import BacklogList from './BacklogList'
-import GeneralReportTable from './GeneralReportTable'
-import IncompleteProfilesTable from './IncompleteProfilesTable'
-import { reportsApi } from '@/lib/api'
-import { toast } from 'sonner'
 
-async function downloadBlob(res: Response, filename: string) {
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = filename; a.click()
-    URL.revokeObjectURL(url)
-}
+// ── Feature flag ──────────────────────────────────────────────────────────────
+// Reports backend endpoints (/api/admin/reports/*) do not exist yet.
+// Set REPORTS_ENABLED = true once backend routes are implemented.
+const REPORTS_ENABLED = false
 
 export default function ReportsTab() {
-    const { data: stats, isLoading } = useQuery({ queryKey: ['report-stats'], queryFn: reportsApi.stats })
-
-    const metricCards = [
-        { label: 'Total Students', value: stats?.total_students, color: 'text-sky-600' },
-        { label: 'Avg SGPA', value: stats?.avg_sgpa?.toFixed(2), color: 'text-emerald-600' },
-        { label: 'With Backlogs', value: stats?.with_backlogs, color: 'text-red-600' },
-        { label: 'Active Semesters', value: stats?.active_semesters, color: 'text-violet-600' },
-    ]
-
-    return (
-        <div>
-            {/* Metric cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {metricCards.map((m) => (
-                    <div key={m.label} className="bg-white rounded-xl p-4 shadow-sm text-center border border-slate-100">
-                        {isLoading ? (
-                            <><Skeleton className="h-9 w-16 mx-auto mb-1" /><Skeleton className="h-4 w-24 mx-auto" /></>
-                        ) : (
-                            <>
-                                <div className={`text-3xl font-bold ${m.color}`}>{m.value ?? 0}</div>
-                                <div className="text-sm text-slate-500 mt-1">{m.label}</div>
-                            </>
-                        )}
+    if (!REPORTS_ENABLED) {
+        return (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
+                <div className="flex flex-col items-center gap-4 max-w-md mx-auto">
+                    <div className="w-20 h-20 rounded-2xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center">
+                        <Construction className="w-10 h-10 text-amber-500" />
                     </div>
-                ))}
+                    <div>
+                        <h2 className="text-xl font-semibold text-slate-800 mb-2">Reports Coming Soon</h2>
+                        <p className="text-slate-500 text-sm leading-relaxed">
+                            The analytics and reporting backend endpoints are under development.
+                            This tab will be enabled once the following backend routes are available:
+                        </p>
+                    </div>
+                    <div className="w-full text-left bg-slate-50 rounded-lg p-4 border border-slate-200 text-xs font-mono text-slate-600 space-y-1">
+                        <div>GET /api/admin/reports/stats</div>
+                        <div>GET /api/admin/reports/toppers</div>
+                        <div>GET /api/admin/reports/semester-distribution</div>
+                        <div>GET /api/admin/reports/backlogs</div>
+                        <div>GET /api/admin/reports/general</div>
+                        <div>GET /api/admin/reports/incomplete</div>
+                        <div>GET /api/admin/reports/export/*</div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap justify-center">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-slate-200 text-slate-400 cursor-not-allowed"
+                            disabled
+                            title="Backend endpoint not yet available"
+                        >
+                            <Download className="w-3 h-3 mr-1" /> Export All
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-slate-200 text-slate-400 cursor-not-allowed"
+                            disabled
+                            title="Backend endpoint not yet available"
+                        >
+                            <Download className="w-3 h-3 mr-1" /> Export Backlog
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-slate-200 text-slate-400 cursor-not-allowed"
+                            disabled
+                            title="Backend endpoint not yet available"
+                        >
+                            <BarChart3 className="w-3 h-3 mr-1" /> View Analytics
+                        </Button>
+                    </div>
+                </div>
             </div>
+        )
+    }
 
-            {/* Export buttons */}
-            <div className="flex gap-2 mb-5 flex-wrap">
-                <Button size="sm" variant="outline" className="border-sky-300 text-sky-600 hover:bg-sky-50">
-                    <Download className="w-3 h-3 mr-1" /> Export Filtered
-                </Button>
-                <Button size="sm" variant="outline" className="border-emerald-300 text-emerald-600 hover:bg-emerald-50"
-                    onClick={async () => { try { await downloadBlob(await reportsApi.exportAll(), 'all-students.xlsx') } catch { toast.error('Export failed') } }}>
-                    <Download className="w-3 h-3 mr-1" /> Export All Batched
-                </Button>
-                <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50"
-                    onClick={async () => { try { await downloadBlob(await reportsApi.exportBacklog(), 'backlog-report.xlsx') } catch { toast.error('Export failed') } }}>
-                    <Download className="w-3 h-3 mr-1" /> Export Backlog Report
-                </Button>
-                <Button size="sm" variant="outline" className="border-amber-300 text-amber-600 hover:bg-amber-50">
-                    <Download className="w-3 h-3 mr-1" /> Export Incomplete Profiles → Excel
-                </Button>
-            </div>
-
-            {/* Charts row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-                <ToppersCard />
-                <DistributionCard />
-            </div>
-
-            {/* Full-width cards */}
-            <div className="space-y-5">
-                <BacklogList />
-                <GeneralReportTable />
-                <IncompleteProfilesTable />
-            </div>
+    // ── Live reports UI (enabled when REPORTS_ENABLED = true) ──────────────────
+    // Import and render the real report components here once backend is ready.
+    return (
+        <div className="text-slate-500 text-center py-12">
+            Reports are enabled. Add report components here.
         </div>
     )
 }

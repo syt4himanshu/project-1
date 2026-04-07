@@ -69,7 +69,7 @@ export default function StudentsTab() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteStudent(s.id)}>Delete</AlertDialogAction>
+                                <AlertDialogAction onClick={() => deleteStudent(s.uid)}>Delete</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>

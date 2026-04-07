@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002'
 
 function getHeaders(): HeadersInit {
     return {
@@ -19,7 +19,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     }
     if (!res.ok) {
         const err = await res.json().catch(() => ({ message: res.statusText }))
-        throw new Error(err.message || 'Request failed')
+        throw new Error(err.message || err.error || 'Request failed')
     }
     return res.json()
 }
@@ -49,11 +49,13 @@ export const authApi = {
             role: raw.role ?? raw.user?.role ?? '',
         }
     },
-    changePassword: (body: { current_password: string; new_password: string }) =>
+    changePassword: (body: { old_password: string; new_password: string }) =>
         request('/api/auth/change-password', { method: 'POST', body: JSON.stringify(body) }),
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
+// Backend route: GET /api/admin/statistics
+// Response: { totalUsers, totalStudents, totalTeachers, activeUsers }
 export interface Stats {
     total_users: number
     total_students: number
@@ -62,7 +64,7 @@ export interface Stats {
 }
 export const statsApi = {
     get: async () => {
-        const raw = await request<Record<string, number>>('/api/admin/stats')
+        const raw = await request<Record<string, number>>('/api/admin/statistics')
         return {
             total_users: raw.total_users ?? raw.totalUsers ?? 0,
             total_students: raw.total_students ?? raw.totalStudents ?? 0,
@@ -73,6 +75,8 @@ export const statsApi = {
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────
+// Backend routes: GET/POST /api/admin/users, DELETE /api/admin/users/:id
+// Reset: POST /api/admin/reset-password { role, username, new_password }
 export interface User {
     id: number
     username: string
@@ -95,49 +99,96 @@ export const usersApi = {
     create: (body: Record<string, unknown>) =>
         request<User>('/api/admin/users', { method: 'POST', body: JSON.stringify(body) }),
     delete: (id: number) => request(`/api/admin/users/${id}`, { method: 'DELETE' }),
-    resetPassword: (id: number, body: { new_password: string }) =>
-        request(`/api/admin/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify(body) }),
-    bulkUploadStudents: (formData: FormData) =>
-        fetch(`${BASE_URL}/api/admin/bulk-upload/students`, {
+
+    // Backend: POST /api/admin/reset-password { role, username, new_password }
+    resetPassword: (role: string, username: string, new_password: string) =>
+        request('/api/admin/reset-password', {
             method: 'POST',
-            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
-            body: formData,
-        }).then((r) => r.json()),
-    bulkUploadFaculty: (formData: FormData) =>
-        fetch(`${BASE_URL}/api/admin/bulk-upload/faculty`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
-            body: formData,
-        }).then((r) => r.json()),
+            body: JSON.stringify({ role, username, new_password }),
+        }),
+
+    // Bulk register: client-side CSV parse → send JSON array to existing bulk endpoints
+    // Backend: POST /api/auth/register/bulk (JSON array of student objects)
+    bulkRegisterStudents: (rows: Record<string, unknown>[]) =>
+        request<{ result: { uid?: string; status: string; error?: string }[] }>(
+            '/api/auth/register/bulk',
+            { method: 'POST', body: JSON.stringify(rows) },
+        ),
+
+    // Backend: POST /api/auth/register/faculty/bulk (JSON array of faculty objects)
+    bulkRegisterFaculty: (rows: Record<string, unknown>[]) =>
+        request<{ result: { email?: string; status: string; error?: string }[] }>(
+            '/api/auth/register/faculty/bulk',
+            { method: 'POST', body: JSON.stringify(rows) },
+        ),
 }
 
 // ── Faculty ───────────────────────────────────────────────────────────────────
+// Backend routes:
+//   GET /api/admin/faculty          → full list with mentee UIDs
+//   GET /api/admin/faculty/basic    → lightweight list
+//   GET /api/admin/faculty/:id/mentees → mentee details for one faculty
+//   DELETE /api/admin/faculty/:id
 export interface Faculty {
     id: number
-    user_id: number
+    user_id?: number
+    uid?: string
+    name?: string
     first_name: string
     last_name: string
     email: string
-    contact_number: string
+    contact_number?: string
+    contact?: string
     assigned_count: number
-    students?: { id: number; name: string; uid: string }[]
+    studentsAssigned?: string[]
+    students?: { id: number; name?: string; uid: string; full_name?: string; semester?: number; section?: string }[]
 }
+
 export const facultyApi = {
+    // GET /api/admin/faculty — returns full list with studentsAssigned (UIDs)
     list: () => request<Faculty[]>('/api/admin/faculty'),
-    get: (id: number) => request<Faculty>(`/api/admin/faculty/${id}`),
+
+    // Compose faculty detail by fetching the full list and the mentees separately
+    get: async (id: number): Promise<Faculty> => {
+        const [allFaculty, mentees] = await Promise.all([
+            request<Faculty[]>('/api/admin/faculty'),
+            request<{ id: number; uid: string; full_name: string; semester?: number; section?: string }[]>(
+                `/api/admin/faculty/${id}/mentees`
+            ),
+        ])
+        const faculty = allFaculty.find((f) => f.id === id)
+        if (!faculty) throw new Error('Faculty not found')
+        return {
+            ...faculty,
+            assigned_count: mentees.length,
+            students: mentees.map((m) => ({
+                id: m.id,
+                uid: m.uid,
+                full_name: m.full_name,
+                name: m.full_name,
+                semester: m.semester,
+                section: m.section,
+            })),
+        }
+    },
+
     delete: (id: number) => request(`/api/admin/faculty/${id}`, { method: 'DELETE' }),
 }
 
 // ── Students ──────────────────────────────────────────────────────────────────
+// Backend routes:
+//   GET /api/students      → searchStudents (admin sees all, faculty sees mentees)
+//   DELETE /api/admin/student/:uid → deleteStudentByUid
 export interface Student {
     id: number
     uid: string
     name: string
+    full_name?: string
     semester: number
     section: string
     year_of_admission: number
-    mentor_name?: string
     mentor_id?: number
+    mentor_name?: string
     career_goal?: string
     domain_of_interest?: string
     personal_info?: Record<string, unknown>
@@ -151,13 +202,65 @@ export interface Student {
     swoc?: Record<string, unknown>
     career_objective?: Record<string, unknown>
 }
+
+type StudentApiResponse = Student & {
+    full_name?: string
+    past_education_records?: Record<string, unknown>[]
+    post_admission_records?: Record<string, unknown>[]
+}
+
+function normalizeStudent(raw: StudentApiResponse): Student {
+    const personalInfo = (raw.personal_info ?? {}) as Record<string, unknown>
+    const skills = (raw.skills ?? {}) as Record<string, unknown>
+    const careerObjective = (raw.career_objective ?? {}) as Record<string, unknown>
+
+    return {
+        ...raw,
+        name: raw.name ?? raw.full_name ?? raw.uid,
+        personal_info: {
+            ...personalInfo,
+            profile_photo: personalInfo.profile_photo ?? personalInfo.photo_url ?? null,
+        },
+        past_education: raw.past_education ?? raw.past_education_records ?? [],
+        academic_records: raw.academic_records ?? raw.post_admission_records ?? [],
+        career_goal: (careerObjective.career_goal as string) ?? raw.career_goal ?? '',
+        domain_of_interest:
+            (skills.domain_of_interest as string) ??
+            (skills.domains_of_interest as string) ??
+            raw.domain_of_interest ??
+            '',
+    }
+}
+
 export const studentsApi = {
-    list: () => request<Student[]>('/api/admin/students'),
-    get: (id: number) => request<Student>(`/api/admin/students/${id}`),
-    delete: (id: number) => request(`/api/admin/students/${id}`, { method: 'DELETE' }),
+    // GET /api/students — returns full serialized student list (includeIds=true for admin)
+    list: async () => {
+        const raw = await request<StudentApiResponse[]>('/api/students')
+        return raw.map(normalizeStudent)
+    },
+
+    // GET /api/students?uid=... — fetch single student by uid
+    getByUid: async (uid: string) => {
+        const rows = await request<StudentApiResponse[]>(`/api/students?uid=${encodeURIComponent(uid)}`)
+        const found = rows[0]
+        if (!found) throw new Error('Student not found')
+        return normalizeStudent(found)
+    },
+
+    // GET /api/students for a single student by integer id (search + find)
+    get: async (id: number) => {
+        const all = await request<StudentApiResponse[]>('/api/students')
+        const found = all.find((s) => s.id === id)
+        if (!found) throw new Error('Student not found')
+        return normalizeStudent(found)
+    },
+
+    // DELETE /api/admin/student/:uid
+    deleteByUid: (uid: string) => request(`/api/admin/student/${uid}`, { method: 'DELETE' }),
 }
 
 // ── Allocation ────────────────────────────────────────────────────────────────
+// Backend routes: GET/POST /api/admin/allocation, GET /api/admin/allocation/:faculty_id/students
 export interface AllocationEntry {
     faculty_id: number
     faculty_name: string
@@ -192,6 +295,14 @@ export const allocationApi = {
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────
+// NOTE: No backend report routes exist yet. All exports are stubs.
+// When backend routes are implemented, remove this stub and restore real calls.
+const REPORTS_ENABLED = false
+
+const notImplemented = () => {
+    throw new Error('Reports backend endpoints are not yet implemented')
+}
+
 export interface ReportStats {
     total_students: number
     avg_sgpa: number
@@ -222,28 +333,16 @@ export interface IncompleteProfile {
     year_of_admission: number
     missing_fields: string[]
 }
+
 export const reportsApi = {
-    stats: () => request<ReportStats>('/api/admin/reports/stats'),
-    toppers: (semester?: number) =>
-        request<Topper[]>(`/api/admin/reports/toppers${semester ? `?semester=${semester}` : ''}`),
-    semesterDistribution: () => request<SemesterDist[]>('/api/admin/reports/semester-distribution'),
-    backlogs: () => request<BacklogEntry[]>('/api/admin/reports/backlogs'),
-    general: (params?: Record<string, string>) => {
-        const qs = params ? '?' + new URLSearchParams(params).toString() : ''
-        return request<Student[]>(`/api/admin/reports/general${qs}`)
-    },
-    incompleteProfiles: (year?: number) =>
-        request<IncompleteProfile[]>(`/api/admin/reports/incomplete${year ? `?year=${year}` : ''}`),
-    exportAll: () =>
-        fetch(`${BASE_URL}/api/admin/reports/export/all`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
-        }),
-    exportBacklog: () =>
-        fetch(`${BASE_URL}/api/admin/reports/export/backlogs`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
-        }),
-    exportIncomplete: (year?: number) =>
-        fetch(`${BASE_URL}/api/admin/reports/export/incomplete${year ? `?year=${year}` : ''}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
-        }),
+    enabled: REPORTS_ENABLED,
+    stats: (): Promise<ReportStats> => notImplemented() as never,
+    toppers: (_semester?: number): Promise<Topper[]> => notImplemented() as never,
+    semesterDistribution: (): Promise<SemesterDist[]> => notImplemented() as never,
+    backlogs: (): Promise<BacklogEntry[]> => notImplemented() as never,
+    general: (_params?: Record<string, string>): Promise<Student[]> => notImplemented() as never,
+    incompleteProfiles: (_year?: number): Promise<IncompleteProfile[]> => notImplemented() as never,
+    exportAll: (): Promise<Response> => notImplemented() as never,
+    exportBacklog: (): Promise<Response> => notImplemented() as never,
+    exportIncomplete: (_year?: number): Promise<Response> => notImplemented() as never,
 }
