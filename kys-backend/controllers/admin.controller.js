@@ -45,6 +45,332 @@ const fullStudentIncludes = [
   'swoc',
 ];
 
+const parseBacklogSubjects = (value) => {
+  if (!value) return [];
+  return String(value)
+    .split(/[,\n;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+};
+
+const toCsv = (rows) => {
+  if (!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const escape = (v) => {
+    const str = v == null ? '' : String(v);
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+  const lines = [headers.map(escape).join(',')];
+  rows.forEach((row) => {
+    lines.push(headers.map((h) => escape(row[h])).join(','));
+  });
+  return lines.join('\n');
+};
+
+const reportsStats = async (_req, res, next) => {
+  try {
+    const students = await Student.findAll({
+      include: ['post_admission_records'],
+      order: [['id', 'ASC']],
+    });
+
+    let sgpaSum = 0;
+    let sgpaCount = 0;
+    const activeSemesters = new Set();
+    let withBacklogs = 0;
+
+    students.forEach((student) => {
+      const records = student.post_admission_records || [];
+      let hasBacklog = false;
+
+      records.forEach((record) => {
+        if (typeof record.sgpa === 'number') {
+          sgpaSum += record.sgpa;
+          sgpaCount += 1;
+        }
+        if (record.semester != null) activeSemesters.add(record.semester);
+        if (parseBacklogSubjects(record.backlog_subjects).length > 0) hasBacklog = true;
+      });
+
+      if (hasBacklog) withBacklogs += 1;
+    });
+
+    return res.status(200).json({
+      total_students: students.length,
+      avg_sgpa: sgpaCount ? Number((sgpaSum / sgpaCount).toFixed(2)) : 0,
+      with_backlogs: withBacklogs,
+      active_semesters: activeSemesters.size,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const reportsToppers = async (req, res, next) => {
+  try {
+    const semester = req.query.semester ? Number(req.query.semester) : null;
+    const students = await Student.findAll({
+      include: ['post_admission_records'],
+      order: [['id', 'ASC']],
+    });
+
+    const rows = [];
+    students.forEach((student) => {
+      const records = student.post_admission_records || [];
+      let sgpa = null;
+      let semValue = semester || null;
+
+      if (semester) {
+        const match = records.find((r) => Number(r.semester) === semester);
+        if (match && typeof match.sgpa === 'number') sgpa = match.sgpa;
+      } else {
+        const withSgpa = records.filter((r) => typeof r.sgpa === 'number');
+        if (withSgpa.length) {
+          sgpa = withSgpa.reduce((sum, r) => sum + r.sgpa, 0) / withSgpa.length;
+          semValue = student.semester || null;
+        }
+      }
+
+      if (sgpa != null) {
+        rows.push({
+          name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+          uid: student.uid,
+          sgpa: Number(sgpa.toFixed(2)),
+          semester: semValue,
+        });
+      }
+    });
+
+    rows.sort((a, b) => b.sgpa - a.sgpa);
+    const top10 = rows.slice(0, 10).map((r, idx) => ({ rank: idx + 1, ...r }));
+    return res.status(200).json(top10);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const reportsSemesterDistribution = async (_req, res, next) => {
+  try {
+    const students = await Student.findAll({ order: [['id', 'ASC']] });
+    const map = new Map();
+    students.forEach((s) => {
+      const sem = Number(s.semester || 0);
+      if (!sem) return;
+      map.set(sem, (map.get(sem) || 0) + 1);
+    });
+    const rows = Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([semester, count]) => ({ semester, count }));
+    return res.status(200).json(rows);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const reportsBacklogs = async (_req, res, next) => {
+  try {
+    const students = await Student.findAll({
+      include: ['post_admission_records'],
+      order: [['id', 'ASC']],
+    });
+
+    const rows = [];
+    students.forEach((student) => {
+      const subjects = [];
+      (student.post_admission_records || []).forEach((r) => {
+        parseBacklogSubjects(r.backlog_subjects).forEach((sub) => {
+          if (!subjects.includes(sub)) subjects.push(sub);
+        });
+      });
+      if (subjects.length) {
+        rows.push({
+          student_id: student.id,
+          name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+          uid: student.uid,
+          subjects,
+        });
+      }
+    });
+
+    return res.status(200).json(rows);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const buildGeneralReportRows = async (query = {}) => {
+  const where = {};
+  if (query.semester) where.semester = Number(query.semester);
+  if (query.section) where.section = query.section;
+  if (query.year_of_admission) where.year_of_admission = Number(query.year_of_admission);
+  if (query.uid) where.uid = query.uid;
+  if (query.name) {
+    where[Op.or] = [
+      { first_name: { [Op.iLike]: `%${query.name}%` } },
+      { last_name: { [Op.iLike]: `%${query.name}%` } },
+    ];
+  }
+
+  const students = await Student.findAll({
+    where,
+    include: ['post_admission_records', 'skills', 'career_objective'],
+    order: [['id', 'ASC']],
+  });
+
+  return students.map((s) => ({
+    id: s.id,
+    uid: s.uid,
+    name: [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(' '),
+    semester: s.semester,
+    section: s.section,
+    year_of_admission: s.year_of_admission,
+    domain_of_interest: s.skills?.domains_of_interest || '',
+    career_goal: s.career_objective?.career_goal || '',
+    academic_records: (s.post_admission_records || []).map((r) => ({
+      semester: r.semester,
+      sgpa: r.sgpa,
+      backlogs: parseBacklogSubjects(r.backlog_subjects).length,
+    })),
+  }));
+};
+
+const reportsGeneral = async (req, res, next) => {
+  try {
+    const rows = await buildGeneralReportRows(req.query);
+    return res.status(200).json(rows);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const reportsIncomplete = async (req, res, next) => {
+  try {
+    const where = {};
+    if (req.query.year) where.year_of_admission = Number(req.query.year);
+
+    const students = await Student.findAll({
+      where,
+      include: ['personal_info', 'past_education_records', 'post_admission_records', 'skills', 'career_objective', 'swoc'],
+      order: [['id', 'ASC']],
+    });
+
+    const rows = students
+      .map((s) => {
+        const missingFields = [];
+        if (!s.personal_info) missingFields.push('personal_info');
+        if (!(s.past_education_records || []).length) missingFields.push('past_education');
+        if (!(s.post_admission_records || []).length) missingFields.push('academic_records');
+        if (!s.skills) missingFields.push('skills');
+        if (!s.career_objective) missingFields.push('career_objective');
+        if (!s.swoc) missingFields.push('swoc');
+
+        return {
+          id: s.id,
+          name: [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(' '),
+          uid: s.uid,
+          year_of_admission: s.year_of_admission,
+          missing_fields: missingFields,
+        };
+      })
+      .filter((r) => r.missing_fields.length > 0);
+
+    return res.status(200).json(rows);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const exportAllStudents = async (_req, res, next) => {
+  try {
+    const rows = await buildGeneralReportRows({});
+    const csvRows = (rows || []).map((r) => ({
+      id: r.id,
+      uid: r.uid,
+      name: r.name,
+      semester: r.semester,
+      section: r.section,
+      year_of_admission: r.year_of_admission,
+      domain_of_interest: r.domain_of_interest,
+      career_goal: r.career_goal,
+    }));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="all-students.csv"');
+    return res.status(200).send(toCsv(csvRows));
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const exportBacklogs = async (_req, res, next) => {
+  try {
+    const students = await Student.findAll({
+      include: ['post_admission_records'],
+      order: [['id', 'ASC']],
+    });
+    const rows = [];
+    students.forEach((student) => {
+      const subjects = [];
+      (student.post_admission_records || []).forEach((r) => {
+        parseBacklogSubjects(r.backlog_subjects).forEach((sub) => {
+          if (!subjects.includes(sub)) subjects.push(sub);
+        });
+      });
+      if (subjects.length) {
+        rows.push({
+          student_id: student.id,
+          uid: student.uid,
+          name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+          subjects: subjects.join('; '),
+        });
+      }
+    });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="backlog-report.csv"');
+    return res.status(200).send(toCsv(rows));
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const exportIncomplete = async (req, res, next) => {
+  try {
+    const where = {};
+    if (req.query.year) where.year_of_admission = Number(req.query.year);
+
+    const students = await Student.findAll({
+      where,
+      include: ['personal_info', 'past_education_records', 'post_admission_records', 'skills', 'career_objective', 'swoc'],
+      order: [['id', 'ASC']],
+    });
+
+    const rows = students
+      .map((s) => {
+        const missingFields = [];
+        if (!s.personal_info) missingFields.push('personal_info');
+        if (!(s.past_education_records || []).length) missingFields.push('past_education');
+        if (!(s.post_admission_records || []).length) missingFields.push('academic_records');
+        if (!s.skills) missingFields.push('skills');
+        if (!s.career_objective) missingFields.push('career_objective');
+        if (!s.swoc) missingFields.push('swoc');
+        if (!missingFields.length) return null;
+        return {
+          id: s.id,
+          uid: s.uid,
+          name: [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(' '),
+          year_of_admission: s.year_of_admission,
+          missing_fields: missingFields.join('; '),
+        };
+      })
+      .filter(Boolean);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="incomplete-profiles.csv"');
+    return res.status(200).send(toCsv(rows));
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const statistics = async (_req, res, next) => {
   try {
     const [totalUsers, totalStudents, totalTeachers, activeUsers] = await Promise.all([
@@ -751,6 +1077,15 @@ module.exports = {
   confirmAllocation,
   removeAllocation,
   listAllocationAssignedStudents,
+  reportsStats,
+  reportsToppers,
+  reportsSemesterDistribution,
+  reportsBacklogs,
+  reportsGeneral,
+  reportsIncomplete,
+  exportAllStudents,
+  exportBacklogs,
+  exportIncomplete,
   deleteStudentByUid,
   deleteFacultyById,
   fullStudentIncludes,

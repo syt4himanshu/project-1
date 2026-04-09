@@ -46,7 +46,7 @@ export default function TeachersTab() {
                 <div className="flex">
                     <Button
                         size="sm"
-                        className="h-6 px-2 text-[11px] bg-slate-100 text-sky-600 border border-slate-200 hover:bg-slate-200"
+                        className="h-6 px-2 text-[11px]"
                         onClick={() => setViewId(f.id)}
                     >
                         <Eye className="w-3 h-3 mr-1" /> View

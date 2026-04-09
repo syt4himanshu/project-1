@@ -26,7 +26,7 @@ export default function AllocationTab() {
                 <div className="flex gap-1.5">
                     <Button
                         size="sm"
-                        className="h-6 px-2 text-[11px] bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200"
+                        className="h-6 px-2 text-[11px]"
                         disabled={e.assigned_count >= e.capacity}
                         onClick={() => setPanel({ type: 'allocate', facultyId: e.faculty_id, facultyName: e.faculty_name })}
                     >
@@ -34,7 +34,8 @@ export default function AllocationTab() {
                     </Button>
                     <Button
                         size="sm"
-                        className="h-6 px-2 text-[11px] bg-red-50 text-red-500 border border-red-200 hover:bg-red-100"
+                        variant="destructive"
+                        className="h-6 px-2 text-[11px]"
                         disabled={e.assigned_count === 0}
                         onClick={() => setPanel({ type: 'remove', facultyId: e.faculty_id, facultyName: e.faculty_name })}
                     >

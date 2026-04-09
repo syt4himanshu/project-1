@@ -172,7 +172,7 @@ export default function UserManagementTab() {
                 <div className="flex gap-1.5 flex-wrap">
                     <Button
                         size="sm"
-                        className="bg-violet-600 text-white hover:bg-violet-700 h-7 px-2 text-xs"
+                        className="h-7 px-2 text-xs"
                         onClick={() => setResetTarget(u)}
                         disabled={u.role === 'admin'}
                         title={u.role === 'admin' ? 'Cannot reset admin password here' : 'Reset password'}
@@ -183,7 +183,8 @@ export default function UserManagementTab() {
                         <AlertDialogTrigger asChild>
                             <Button
                                 size="sm"
-                                className="h-7 px-2 text-xs bg-red-50 text-red-500 border border-red-200 hover:bg-red-100"
+                                variant="destructive"
+                                className="h-7 px-2 text-xs"
                                 disabled={u.username === loggedInUser}
                             >
                                 Delete
@@ -255,7 +256,7 @@ export default function UserManagementTab() {
                         />
                         <Button
                             size="sm"
-                            className="h-8 bg-emerald-500 hover:bg-emerald-600 text-white"
+                            className="h-8"
                             onClick={() => studentFileRef.current?.click()}
                             disabled={bulkLoading}
                         >
@@ -275,7 +276,7 @@ export default function UserManagementTab() {
                         />
                         <Button
                             size="sm"
-                            className="h-8 bg-emerald-500 hover:bg-emerald-600 text-white"
+                            className="h-8"
                             onClick={() => facultyFileRef.current?.click()}
                             disabled={bulkLoading}
                         >
@@ -284,7 +285,8 @@ export default function UserManagementTab() {
 
                         <Button
                             size="sm"
-                            className="h-8 bg-amber-500 hover:bg-amber-600 text-white"
+                            variant="outline"
+                            className="h-8 border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50"
                             onClick={downloadStudentTemplate}
                         >
                             <Download className="w-3.5 h-3.5 mr-1" /> Student Template
@@ -292,13 +294,14 @@ export default function UserManagementTab() {
 
                         <Button
                             size="sm"
-                            className="h-8 bg-orange-500 hover:bg-orange-600 text-white"
+                            variant="outline"
+                            className="h-8 border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50"
                             onClick={downloadFacultyTemplate}
                         >
                             <Download className="w-3.5 h-3.5 mr-1" /> Faculty Template
                         </Button>
 
-                        <Button size="sm" className="h-8 bg-sky-500 hover:bg-sky-600 text-white" onClick={() => setAddOpen(true)}>
+                        <Button size="sm" className="h-8" onClick={() => setAddOpen(true)}>
                             <Plus className="w-3.5 h-3.5 mr-1" /> Add User
                         </Button>
                     </div>
@@ -311,7 +314,7 @@ export default function UserManagementTab() {
                             <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Bulk Upload Results</h3>
                             <button
                                 type="button"
-                                className="text-xs text-slate-400 hover:text-slate-600"
+                                className="text-xs text-blue-600 transition-colors hover:text-blue-700"
                                 onClick={() => setBulkResults(null)}
                             >
                                 Dismiss

@@ -144,19 +144,54 @@ export interface Faculty {
     students?: { id: number; name?: string; uid: string; full_name?: string; semester?: number; section?: string }[]
 }
 
+type FacultyApiResponse = {
+    id: number
+    user_id?: number
+    uid?: string
+    name?: string
+    first_name?: string
+    last_name?: string
+    firstName?: string
+    lastName?: string
+    email: string
+    contact_number?: string
+    contact?: string
+    assigned_count?: number
+    studentsAssigned?: string[]
+}
+
+function normalizeFaculty(raw: FacultyApiResponse): Faculty {
+    return {
+        id: raw.id,
+        user_id: raw.user_id,
+        uid: raw.uid,
+        name: raw.name,
+        first_name: raw.first_name ?? raw.firstName ?? '',
+        last_name: raw.last_name ?? raw.lastName ?? '',
+        email: raw.email,
+        contact_number: raw.contact_number ?? raw.contact ?? '',
+        contact: raw.contact ?? raw.contact_number,
+        assigned_count: raw.assigned_count ?? raw.studentsAssigned?.length ?? 0,
+        studentsAssigned: raw.studentsAssigned ?? [],
+    }
+}
+
 export const facultyApi = {
     // GET /api/admin/faculty — returns full list with studentsAssigned (UIDs)
-    list: () => request<Faculty[]>('/api/admin/faculty'),
+    list: async () => {
+        const rows = await request<FacultyApiResponse[]>('/api/admin/faculty')
+        return rows.map(normalizeFaculty)
+    },
 
     // Compose faculty detail by fetching the full list and the mentees separately
     get: async (id: number): Promise<Faculty> => {
         const [allFaculty, mentees] = await Promise.all([
-            request<Faculty[]>('/api/admin/faculty'),
+            request<FacultyApiResponse[]>('/api/admin/faculty'),
             request<{ id: number; uid: string; full_name: string; semester?: number; section?: string }[]>(
                 `/api/admin/faculty/${id}/mentees`
             ),
         ])
-        const faculty = allFaculty.find((f) => f.id === id)
+        const faculty = allFaculty.map(normalizeFaculty).find((f) => f.id === id)
         if (!faculty) throw new Error('Faculty not found')
         return {
             ...faculty,
@@ -295,14 +330,6 @@ export const allocationApi = {
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────
-// NOTE: No backend report routes exist yet. All exports are stubs.
-// When backend routes are implemented, remove this stub and restore real calls.
-const REPORTS_ENABLED = false
-
-const notImplemented = () => {
-    throw new Error('Reports backend endpoints are not yet implemented')
-}
-
 export interface ReportStats {
     total_students: number
     avg_sgpa: number
@@ -335,14 +362,28 @@ export interface IncompleteProfile {
 }
 
 export const reportsApi = {
-    enabled: REPORTS_ENABLED,
-    stats: (): Promise<ReportStats> => notImplemented() as never,
-    toppers: (_semester?: number): Promise<Topper[]> => notImplemented() as never,
-    semesterDistribution: (): Promise<SemesterDist[]> => notImplemented() as never,
-    backlogs: (): Promise<BacklogEntry[]> => notImplemented() as never,
-    general: (_params?: Record<string, string>): Promise<Student[]> => notImplemented() as never,
-    incompleteProfiles: (_year?: number): Promise<IncompleteProfile[]> => notImplemented() as never,
-    exportAll: (): Promise<Response> => notImplemented() as never,
-    exportBacklog: (): Promise<Response> => notImplemented() as never,
-    exportIncomplete: (_year?: number): Promise<Response> => notImplemented() as never,
+    enabled: true,
+    stats: () => request<ReportStats>('/api/admin/reports/stats'),
+    toppers: (semester?: number) =>
+        request<Topper[]>(`/api/admin/reports/toppers${semester ? `?semester=${semester}` : ''}`),
+    semesterDistribution: () => request<SemesterDist[]>('/api/admin/reports/semester-distribution'),
+    backlogs: () => request<BacklogEntry[]>('/api/admin/reports/backlogs'),
+    general: (params?: Record<string, string>) => {
+        const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+        return request<Student[]>(`/api/admin/reports/general${qs}`)
+    },
+    incompleteProfiles: (year?: number) =>
+        request<IncompleteProfile[]>(`/api/admin/reports/incomplete${year ? `?year=${year}` : ''}`),
+    exportAll: () =>
+        fetch(`${BASE_URL}/api/admin/reports/export/all`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
+        }),
+    exportBacklog: () =>
+        fetch(`${BASE_URL}/api/admin/reports/export/backlogs`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
+        }),
+    exportIncomplete: (year?: number) =>
+        fetch(`${BASE_URL}/api/admin/reports/export/incomplete${year ? `?year=${year}` : ''}`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
+        }),
 }

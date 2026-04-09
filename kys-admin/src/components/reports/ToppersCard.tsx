@@ -23,7 +23,12 @@ export default function ToppersCard() {
                 <div className="flex gap-1 flex-wrap mb-4">
                     <button
                         onClick={() => setSemester(undefined)}
-                        className={cn('px-3 py-1 text-xs rounded-full border cursor-pointer transition-colors', !semester ? 'bg-sky-500 text-white border-sky-500' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}
+                        className={cn(
+                            'px-3 py-1 text-xs rounded-full border cursor-pointer transition-all duration-200 hover:-translate-y-px',
+                            !semester
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm hover:bg-blue-700'
+                                : 'border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700'
+                        )}
                     >
                         All
                     </button>
@@ -31,7 +36,12 @@ export default function ToppersCard() {
                         <button
                             key={s}
                             onClick={() => setSemester(s)}
-                            className={cn('px-3 py-1 text-xs rounded-full border cursor-pointer transition-colors', semester === s ? 'bg-sky-500 text-white border-sky-500' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}
+                            className={cn(
+                                'px-3 py-1 text-xs rounded-full border cursor-pointer transition-all duration-200 hover:-translate-y-px',
+                                semester === s
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm hover:bg-blue-700'
+                                    : 'border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700'
+                            )}
                         >
                             Sem {s}
                         </button>
