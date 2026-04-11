@@ -6,6 +6,12 @@ type RoleCard = {
     href: string
 }
 
+const buildAppUrl = (port: number, path = '') => {
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+    const hostname = window.location.hostname || 'localhost'
+    return `${protocol}//${hostname}:${port}${path}`
+}
+
 const cards: RoleCard[] = [
     {
         letter: 'A',
@@ -19,14 +25,14 @@ const cards: RoleCard[] = [
         title: 'Student',
         description: 'Streamline your academic journey with profile forms, mentoring, and progress tracking.',
         accentClass: 'bg-emerald-500',
-        href: 'http://localhost:5175',
+        href: buildAppUrl(5175, '/login'),
     },
     {
         letter: 'T',
         title: 'Teacher',
         description: 'Manage classes, review student performance, and guide learners with structured mentoring.',
         accentClass: 'bg-violet-500',
-        href: 'http://localhost:5174',
+        href: buildAppUrl(5174, '/login'),
     },
 ]
 

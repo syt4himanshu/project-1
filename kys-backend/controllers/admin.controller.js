@@ -1,8 +1,8 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { sequelize, User, Student, Faculty } = require('../models');
-const { splitFullName } = require('../utils/helpers');
+const { sequelize, User, Student, Faculty, StudentPersonalInfo } = require('../models');
+const { splitFullName, buildFullName } = require('../utils/helpers');
 const { serializeStudent } = require('../utils/serializers');
 
 const verifyPassword = (password, hash) => {
@@ -67,6 +67,21 @@ const toCsv = (rows) => {
   return lines.join('\n');
 };
 
+const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
+
+const parseBoundedInteger = (value, min, max) => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) return null;
+  return parsed;
+};
+
+const hasMinimumPasswordLength = (value, minLength = 6) =>
+  typeof value === 'string' && value.length >= minLength;
+
+const isValidFacultyEmail = (value) => normalizeText(value).endsWith('@stvincentngp.edu.in');
+
+const hasValidContactNumber = (value) => String(value || '').replace(/\D/g, '').length >= 10;
+
 const reportsStats = async (_req, res, next) => {
   try {
     const students = await Student.findAll({
@@ -84,11 +99,13 @@ const reportsStats = async (_req, res, next) => {
       let hasBacklog = false;
 
       records.forEach((record) => {
-        if (typeof record.sgpa === 'number') {
-          sgpaSum += record.sgpa;
+        const sgpa = Number(record.sgpa);
+        if (Number.isFinite(sgpa)) {
+          sgpaSum += sgpa;
           sgpaCount += 1;
         }
-        if (record.semester != null) activeSemesters.add(record.semester);
+        const semester = Number(record.semester);
+        if (Number.isFinite(semester) && semester > 0) activeSemesters.add(semester);
         if (parseBacklogSubjects(record.backlog_subjects).length > 0) hasBacklog = true;
       });
 
@@ -122,11 +139,16 @@ const reportsToppers = async (req, res, next) => {
 
       if (semester) {
         const match = records.find((r) => Number(r.semester) === semester);
-        if (match && typeof match.sgpa === 'number') sgpa = match.sgpa;
+        if (match) {
+          const parsedSgpa = Number(match.sgpa);
+          if (Number.isFinite(parsedSgpa)) sgpa = parsedSgpa;
+        }
       } else {
-        const withSgpa = records.filter((r) => typeof r.sgpa === 'number');
+        const withSgpa = records
+          .map((r) => Number(r.sgpa))
+          .filter((value) => Number.isFinite(value));
         if (withSgpa.length) {
-          sgpa = withSgpa.reduce((sum, r) => sum + r.sgpa, 0) / withSgpa.length;
+          sgpa = withSgpa.reduce((sum, value) => sum + value, 0) / withSgpa.length;
           semValue = student.semester || null;
         }
       }
@@ -393,11 +415,41 @@ const statistics = async (_req, res, next) => {
 
 const listUsers = async (_req, res, next) => {
   try {
-    const users = await User.findAll({ order: [['id', 'ASC']] });
+    const users = await User.findAll({
+      order: [['id', 'ASC']],
+      include: [
+        {
+          model: Student,
+          as: 'student_profile',
+          attributes: ['id', 'uid', 'first_name', 'middle_name', 'last_name'],
+          include: [{ model: StudentPersonalInfo, as: 'personal_info', attributes: ['photo_url'], required: false }],
+          required: false,
+        },
+        {
+          model: Faculty,
+          as: 'faculty_profile',
+          attributes: ['id', 'first_name', 'last_name', 'email'],
+          required: false,
+        },
+      ],
+    });
     const result = users.map((u) => ({
       id: u.id,
       username: u.username,
       role: u.role,
+      name:
+        u.role === 'student'
+          ? buildFullName(
+            u.student_profile?.first_name,
+            u.student_profile?.middle_name,
+            u.student_profile?.last_name,
+          ) || u.student_profile?.uid || u.username
+          : u.role === 'faculty'
+            ? buildFullName(u.faculty_profile?.first_name, '', u.faculty_profile?.last_name) ||
+              u.faculty_profile?.email ||
+              u.username
+            : u.username,
+      profile_photo_url: u.student_profile?.personal_info?.photo_url || null,
       status: 'Active',
       created: '2024-01-01',
     }));
@@ -413,50 +465,101 @@ const createUser = async (req, res, next) => {
     const data = req.body || {};
     if (!Object.keys(data).length) return res.status(400).json({ error: 'No data provided' });
 
-    for (const field of ['username', 'password', 'role']) {
-      if (!(field in data)) return res.status(400).json({ error: `Missing field: ${field}` });
-    }
+    const role = normalizeText(data.role);
+    const password = typeof data.password === 'string' ? data.password : '';
 
-    if (!['admin', 'faculty', 'student'].includes(data.role)) {
+    if (!role) return res.status(400).json({ error: 'Missing field: role' });
+    if (!['admin', 'faculty', 'student'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role. Must be admin, faculty, or student' });
     }
+    if (!hasMinimumPasswordLength(password)) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
 
-    if (data.role === 'student') {
-      const required = ['uid', 'semester', 'section', 'year_of_admission'];
-      for (const field of required) {
-        if (!(field in data)) return res.status(400).json({ error: `Missing student field: ${field}` });
-      }
-      if (!data.first_name && !data.name) {
+    let username = normalizeText(data.username);
+    let studentPayload = null;
+    let facultyPayload = null;
+
+    if (role === 'student') {
+      const uid = normalizeText(data.uid);
+      const fullName = normalizeText(data.name || data.full_name);
+      const semester = parseBoundedInteger(data.semester, 1, 8);
+      const section = normalizeText(data.section);
+      const yearOfAdmission = parseBoundedInteger(data.year_of_admission, 2000, 2100);
+
+      if (!uid) return res.status(400).json({ error: 'Missing student field: uid' });
+      if (!fullName && !normalizeText(data.first_name)) {
         return res.status(400).json({ error: 'Missing student name (first_name or name)' });
       }
+      if (semester == null) {
+        return res.status(400).json({ error: 'semester must be an integer between 1 and 8' });
+      }
+      if (!section) return res.status(400).json({ error: 'Missing student field: section' });
+      if (yearOfAdmission == null) {
+        return res.status(400).json({ error: 'year_of_admission must be between 2000 and 2100' });
+      }
+
+      username = uid;
+      studentPayload = {
+        uid,
+        semester,
+        section,
+        year_of_admission: yearOfAdmission,
+        first_name: normalizeText(data.first_name),
+        middle_name: normalizeText(data.middle_name),
+        last_name: normalizeText(data.last_name),
+        name: fullName,
+      };
     }
 
-    if (data.role === 'faculty') {
-      const required = ['email', 'contact_number'];
-      for (const field of required) {
-        if (!(field in data)) return res.status(400).json({ error: `Missing faculty field: ${field}` });
+    if (role === 'faculty') {
+      const email = normalizeText(data.email);
+      const firstName = normalizeText(data.first_name);
+      const lastName = normalizeText(data.last_name);
+      const fallbackName = normalizeText(data.name);
+      const contactNumber = normalizeText(data.contact_number);
+
+      if (!email) return res.status(400).json({ error: 'Missing faculty field: email' });
+      if (!isValidFacultyEmail(email)) {
+        return res.status(400).json({ error: 'Invalid email format, must end with @stvincentngp.edu.in' });
       }
-      if (!data.first_name && !data.name) {
+      if (!firstName && !fallbackName) {
         return res.status(400).json({ error: 'Missing faculty name (first_name or name)' });
       }
+      if (!hasValidContactNumber(contactNumber)) {
+        return res.status(400).json({ error: 'contact_number must contain at least 10 digits' });
+      }
+
+      username = email;
+      facultyPayload = {
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        contact_number: contactNumber,
+        name: fallbackName,
+      };
     }
 
-    if (await User.findOne({ where: { username: data.username } })) {
+    if (role === 'admin' && !username) {
+      return res.status(400).json({ error: 'Missing field: username' });
+    }
+
+    if (await User.findOne({ where: { username } })) {
       return res.status(400).json({ error: 'Username already exists' });
     }
 
-    if (data.role === 'student' && (await Student.findOne({ where: { uid: data.uid } }))) {
+    if (studentPayload && (await Student.findOne({ where: { uid: studentPayload.uid } }))) {
       return res.status(400).json({ error: 'Student UID already exists' });
     }
 
-    if (data.role === 'faculty' && (await Faculty.findOne({ where: { email: data.email } }))) {
+    if (facultyPayload && (await Faculty.findOne({ where: { email: facultyPayload.email } }))) {
       return res.status(400).json({ error: 'Faculty email already exists' });
     }
 
     const tx = await sequelize.transaction();
     try {
       const user = await User.create(
-        { username: data.username, password_hash: await bcrypt.hash(data.password, 10), role: data.role },
+        { username, password_hash: await bcrypt.hash(password, 10), role },
         { transaction: tx },
       );
 
@@ -465,20 +568,24 @@ const createUser = async (req, res, next) => {
         user: { id: user.id, username: user.username, role: user.role },
       };
 
-      if (data.role === 'student') {
-        const studentNames = data.first_name
-          ? { first: data.first_name, middle: data.middle_name || '', last: data.last_name || '' }
-          : splitFullName(data.name || '');
+      if (studentPayload) {
+        const studentNames = studentPayload.first_name
+          ? {
+              first: studentPayload.first_name,
+              middle: studentPayload.middle_name || '',
+              last: studentPayload.last_name || '',
+            }
+          : splitFullName(studentPayload.name || '');
 
         const student = await Student.create(
           {
-            uid: data.uid,
+            uid: studentPayload.uid,
             first_name: studentNames.first_name || studentNames.first || '',
             middle_name: studentNames.middle_name || studentNames.middle || '',
             last_name: studentNames.last_name || studentNames.last || '',
-            semester: data.semester,
-            section: data.section,
-            year_of_admission: data.year_of_admission,
+            semester: studentPayload.semester,
+            section: studentPayload.section,
+            year_of_admission: studentPayload.year_of_admission,
             user_id: user.id,
           },
           { transaction: tx },
@@ -499,17 +606,17 @@ const createUser = async (req, res, next) => {
         };
       }
 
-      if (data.role === 'faculty') {
-        const facultyNames = data.first_name
-          ? { first: data.first_name, last: data.last_name || '' }
-          : splitFullName(data.name || '');
+      if (facultyPayload) {
+        const facultyNames = facultyPayload.first_name
+          ? { first: facultyPayload.first_name, last: facultyPayload.last_name || '' }
+          : splitFullName(facultyPayload.name || '');
 
         const faculty = await Faculty.create(
           {
-            email: data.email,
+            email: facultyPayload.email,
             first_name: facultyNames.first_name || facultyNames.first || '',
             last_name: facultyNames.last_name || facultyNames.last || '',
-            contact_number: data.contact_number,
+            contact_number: facultyPayload.contact_number,
             user_id: user.id,
           },
           { transaction: tx },
@@ -531,7 +638,7 @@ const createUser = async (req, res, next) => {
       return res.status(201).json(response);
     } catch (error) {
       await tx.rollback();
-      return res.status(500).json({ error: 'Database error' });
+      return res.status(500).json({ error: 'Database error while creating user' });
     }
   } catch (error) {
     return next(error);

@@ -1,13 +1,29 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CheckCircle } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { reportsApi } from '@/lib/api'
+import Pagination from '@/components/shared/Pagination'
+
+const PAGE_SIZE = 20
 
 export default function BacklogList() {
     const { data: backlogs = [], isLoading } = useQuery({
         queryKey: ['backlogs'],
         queryFn: reportsApi.backlogs,
     })
+    const [page, setPage] = useState(1)
+
+    const totalPages = Math.max(1, Math.ceil(backlogs.length / PAGE_SIZE))
+
+    useEffect(() => {
+        setPage((currentPage) => Math.min(currentPage, totalPages))
+    }, [totalPages])
+
+    const pagedBacklogs = useMemo(
+        () => backlogs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        [backlogs, page]
+    )
 
     return (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-100">
@@ -23,15 +39,22 @@ export default function BacklogList() {
                         <p className="text-emerald-600 font-medium">No students with backlogs!</p>
                     </div>
                 ) : (
-                    backlogs.map((b) => (
-                        <div key={b.student_id} className="bg-slate-50 border border-slate-100 rounded-lg p-3 mb-2 flex justify-between items-start">
-                            <div>
-                                <p className="font-semibold text-slate-800">{b.name}</p>
-                                <p className="text-xs text-slate-500">{b.uid}</p>
-                            </div>
-                            <p className="text-sm text-red-600 text-right max-w-[60%]">{b.subjects.join(', ')}</p>
+                    <>
+                        <div className="space-y-2">
+                            {pagedBacklogs.map((b) => (
+                                <div key={b.student_id} className="bg-slate-50 border border-slate-100 rounded-lg p-3 flex justify-between items-start">
+                                    <div>
+                                        <p className="font-semibold text-slate-800">{b.name}</p>
+                                        <p className="text-xs text-slate-500">{b.uid}</p>
+                                    </div>
+                                    <p className="text-sm text-red-600 text-right max-w-[60%]">{b.subjects.join(', ')}</p>
+                                </div>
+                            ))}
                         </div>
-                    ))
+                        <div className="mt-5 -mx-5 -mb-5">
+                            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+                        </div>
+                    </>
                 )}
             </div>
         </div>

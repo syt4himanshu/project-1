@@ -243,9 +243,23 @@ describe('auth APIs', () => {
       await trackUser(rows[2].uid);
     });
 
+    it('invalid student row does not crash the full batch', async () => {
+      const validUid = randomId('BULKOK');
+      const rows = [
+        { uid: randomId('BULKBAD'), full_name: '', semester: 3, section: 'A', year_of_admission: 2023 },
+        { uid: validUid, full_name: 'Valid Bulk Student', semester: 4, section: 'B', year_of_admission: 2024 },
+      ];
+
+      const res = await request('POST', '/api/auth/register/bulk', rows, adminToken);
+      expect(res.status).toBe(200);
+      expect(res.body.result[0].status).toBe('failed');
+      expect(res.body.result[1].status).toBe('success');
+      await trackUser(validUid);
+    });
+
     it('empty array -> 400', async () => {
       const res = await request('POST', '/api/auth/register/bulk', [], adminToken);
-      expect([400, 200]).toContain(res.status);
+      expect(res.status).toBe(400);
     });
 
     it('non-array body -> 400', async () => {
@@ -294,6 +308,20 @@ describe('auth APIs', () => {
       const second = await request('POST', '/api/auth/register/faculty/bulk', [{ email, first_name: 'A', last_name: 'B' }], adminToken);
       expect(second.status).toBe(200);
       expect(second.body.result[0].status).toBe('failed');
+    });
+
+    it('invalid faculty row does not crash the full batch', async () => {
+      const validEmail = `bulk_valid_${Date.now()}@stvincentngp.edu.in`;
+      const rows = [
+        { email: `bad_${Date.now()}@gmail.com`, first_name: 'Bad', last_name: 'Domain', contact_number: '9999999999' },
+        { email: validEmail, first_name: 'Good', last_name: 'Faculty', contact_number: '9999999999', password: 'facultypass123' },
+      ];
+
+      const res = await request('POST', '/api/auth/register/faculty/bulk', rows, adminToken);
+      expect(res.status).toBe(200);
+      expect(res.body.result[0].status).toBe('failed');
+      expect(res.body.result[1].status).toBe('success');
+      await trackUser(validEmail);
     });
 
     it('non-admin token -> 403', async () => {

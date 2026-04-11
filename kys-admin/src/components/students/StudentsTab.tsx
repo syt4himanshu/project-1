@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useDeferredValue, useState } from 'react'
 import { Eye, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,38 +15,42 @@ const GOAL_STYLES: Record<string, string> = {
     'Not Decided': 'bg-slate-100 text-slate-700 border border-slate-200',
 }
 
+const isEmptyText = (value: unknown) => {
+    const text = String(value ?? '').trim().toLowerCase()
+    return !text || text === 'n/a' || text === 'na' || text === 'none' || text === '-' || text === '--'
+}
+
 export default function StudentsTab() {
-    const { data: students = [], isLoading } = useStudents()
+    const [filters, setFilters] = useState<Filters>({ search: '', semester: '', section: '', year: '', domain: '', careerGoal: '' })
+    const deferredFilters = useDeferredValue(filters)
+    const { data: students = [], isLoading } = useStudents(deferredFilters)
     const { mutate: deleteStudent } = useDeleteStudent()
     const [viewId, setViewId] = useState<number | null>(null)
-    const [filters, setFilters] = useState<Filters>({ search: '', semester: '', section: '', year: '', domain: '', careerGoal: '' })
-
-    const filtered = useMemo(() => {
-        return students.filter((s) => {
-            if (filters.search) {
-                const q = filters.search.toLowerCase()
-                if (!s.name.toLowerCase().includes(q) && !s.uid.toLowerCase().includes(q)) return false
-            }
-            if (filters.semester && String(s.semester) !== filters.semester) return false
-            if (filters.section && s.section.toLowerCase() !== filters.section.toLowerCase()) return false
-            if (filters.year && String(s.year_of_admission) !== filters.year) return false
-            if (filters.domain && !s.domain_of_interest?.toLowerCase().includes(filters.domain.toLowerCase())) return false
-            if (filters.careerGoal && s.career_goal !== filters.careerGoal) return false
-            return true
-        })
-    }, [students, filters])
 
     const columns = [
         { header: '#', cell: (_: Student, i: number) => i + 1, className: 'w-12' },
         { header: 'UID', accessor: 'uid' as const },
         { header: 'Name', accessor: 'name' as const },
-        { header: 'Semester', cell: (s: Student) => `Sem ${s.semester}` },
-        { header: 'Section', accessor: 'section' as const },
-        { header: 'Mentor', cell: (s: Student) => s.mentor_name ? s.mentor_name : <span className="text-slate-400 italic">Unassigned</span> },
+        {
+            header: 'Semester',
+            cell: (s: Student) => (Number.isFinite(Number(s.semester)) && Number(s.semester) > 0 ? `Sem ${s.semester}` : <span className="text-slate-400 italic">N/A</span>),
+        },
+        {
+            header: 'Section',
+            cell: (s: Student) => (!isEmptyText(s.section) ? s.section : <span className="text-slate-400 italic">N/A</span>),
+        },
+        {
+            header: 'Mentor',
+            cell: (s: Student) => {
+                if (!isEmptyText(s.mentor_name)) return s.mentor_name
+                if (s.mentor_id != null) return <span className="text-slate-600">Assigned</span>
+                return <span className="text-slate-400 italic">Unassigned</span>
+            },
+        },
         {
             header: 'Career Goal',
-            cell: (s: Student) => s.career_goal ? (
-                <Badge className={`text-xs ${GOAL_STYLES[s.career_goal] ?? GOAL_STYLES['Not Decided']}`}>{s.career_goal}</Badge>
+            cell: (s: Student) => !isEmptyText(s.career_goal) ? (
+                <Badge className={`text-xs ${GOAL_STYLES[String(s.career_goal)] ?? GOAL_STYLES['Not Decided']}`}>{String(s.career_goal)}</Badge>
             ) : <span className="text-slate-400 italic text-xs">—</span>,
         },
         {
@@ -84,7 +88,7 @@ export default function StudentsTab() {
                 <h2 className="text-lg font-semibold text-slate-800">Students List</h2>
             </div>
             <StudentFilters filters={filters} onChange={setFilters} />
-            <DataTable columns={columns} data={filtered} isLoading={isLoading} keyExtractor={(s) => s.id} />
+            <DataTable columns={columns} data={students} isLoading={isLoading} keyExtractor={(s) => s.id} />
             <StudentDetailDialog studentId={viewId} onClose={() => setViewId(null)} />
         </div>
     )

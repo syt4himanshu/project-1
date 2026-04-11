@@ -6,7 +6,6 @@ import TeachersTab from '@/components/teachers/TeachersTab'
 import StudentsTab from '@/components/students/StudentsTab'
 import AllocationTab from '@/components/allocation/AllocationTab'
 import ReportsTab from '@/components/reports/ReportsTab'
-import { BarChart3 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 
 const TAB_VALUES = ['users', 'teachers', 'students', 'allocation', 'reports'] as const
@@ -38,7 +37,7 @@ export default function AdminDashboard() {
                     <TabsTrigger value="teachers">Teachers List</TabsTrigger>
                     <TabsTrigger value="students">Students List</TabsTrigger>
                     <TabsTrigger value="allocation">Student Allocation</TabsTrigger>
-                    <TabsTrigger value="reports"><BarChart3 className="w-3.5 h-3.5" /> Reports</TabsTrigger>
+                    <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
                 <TabsContent value="users"><UserManagementTab /></TabsContent>
                 <TabsContent value="teachers"><TeachersTab /></TabsContent>

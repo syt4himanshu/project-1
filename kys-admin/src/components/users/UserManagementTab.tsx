@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { BriefcaseBusiness, CheckCircle2, Download, KeyRound, Plus, Search, Upload, UserCircle2, Users2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import DataTable from '@/components/shared/DataTable'
 import RoleBadge from '@/components/shared/RoleBadge'
 import AddUserDialog from './AddUserDialog'
@@ -23,19 +24,127 @@ import { Input } from '@/components/ui/input'
 
 // ── CSV parser (no external lib needed) ───────────────────────────────────────
 function parseCSV(text: string): Record<string, string>[] {
-    const lines = text.trim().split('\n').filter(Boolean)
-    if (lines.length < 2) return []
-    const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''))
-    return lines.slice(1).map((line) => {
-        const values = line.split(',').map((v) => v.trim().replace(/^"|"$/g, ''))
-        return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? '']))
-    })
+    const normalized = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim()
+    if (!normalized) return []
+
+    const rows: string[][] = []
+    let currentRow: string[] = []
+    let currentValue = ''
+    let inQuotes = false
+
+    for (let index = 0; index < normalized.length; index += 1) {
+        const char = normalized[index]
+        const nextChar = normalized[index + 1]
+
+        if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+                currentValue += '"'
+                index += 1
+            } else {
+                inQuotes = !inQuotes
+            }
+            continue
+        }
+
+        if (char === ',' && !inQuotes) {
+            currentRow.push(currentValue.trim())
+            currentValue = ''
+            continue
+        }
+
+        if (char === '\n' && !inQuotes) {
+            currentRow.push(currentValue.trim())
+            rows.push(currentRow)
+            currentRow = []
+            currentValue = ''
+            continue
+        }
+
+        currentValue += char
+    }
+
+    currentRow.push(currentValue.trim())
+    rows.push(currentRow)
+
+    if (rows.length < 2) return []
+
+    const headers = rows[0].map((header) => header.replace(/^"|"$/g, '').trim())
+    return rows
+        .slice(1)
+        .filter((row) => row.some((value) => value.trim() !== ''))
+        .map((row) =>
+            Object.fromEntries(headers.map((header, columnIndex) => [header, row[columnIndex]?.replace(/^"|"$/g, '').trim() ?? '']))
+        )
+}
+
+function downloadCsv(filename: string, headers: string[], sample: string[]) {
+    const csv = `\uFEFF${headers.join(',')}\n${sample.join(',')}\n`
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    anchor.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 interface BulkResult {
     identifier: string
     status: 'success' | 'failed'
     error?: string
+}
+
+function getAvatarInitials(user: User) {
+    const source = user.name?.trim() || user.username.trim()
+    const parts = source.split(/\s+/).filter(Boolean)
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    return source.slice(0, 2).toUpperCase()
+}
+
+function resolvePhotoUrl(photoUrl?: string | null) {
+    if (!photoUrl) return null
+    try {
+        return new URL(photoUrl, import.meta.env.VITE_API_URL || window.location.origin).toString()
+    } catch {
+        return photoUrl
+    }
+}
+
+function UserAvatar({ user, onPreview }: { user: User; onPreview: (user: User, photoUrl: string) => void }) {
+    const [imageFailed, setImageFailed] = useState(false)
+    const photoUrl = resolvePhotoUrl(user.profile_photo_url)
+
+    useEffect(() => {
+        setImageFailed(false)
+    }, [photoUrl])
+
+    if (photoUrl && !imageFailed) {
+        return (
+            <button
+                type="button"
+                className="rounded-full transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                onClick={() => onPreview(user, photoUrl)}
+                title="View profile photo"
+            >
+                <img
+                    src={photoUrl}
+                    alt={`${user.name ?? user.username} profile`}
+                    className="h-9 w-9 rounded-full object-cover ring-1 ring-slate-200"
+                    onError={() => setImageFailed(true)}
+                />
+            </button>
+        )
+    }
+
+    if (user.role === 'student') {
+        return (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">
+                {getAvatarInitials(user)}
+            </div>
+        )
+    }
+
+    return <UserCircle2 className="h-9 w-9 text-slate-300" />
 }
 
 export default function UserManagementTab() {
@@ -47,9 +156,16 @@ export default function UserManagementTab() {
     const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'student' | 'faculty'>('all')
     const [bulkResults, setBulkResults] = useState<BulkResult[] | null>(null)
     const [bulkLoading, setBulkLoading] = useState(false)
+    const [previewUser, setPreviewUser] = useState<User | null>(null)
+    const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null)
     const studentFileRef = useRef<HTMLInputElement>(null)
     const facultyFileRef = useRef<HTMLInputElement>(null)
     const loggedInUser = localStorage.getItem('username')
+
+    const openPhotoPreview = (user: User, photoUrl: string) => {
+        setPreviewUser(user)
+        setPreviewPhotoUrl(photoUrl)
+    }
 
     // ── Bulk upload: parse CSV client-side → POST JSON array ─────────────────
     const handleBulkUpload = async (file: File, type: 'students' | 'faculty') => {
@@ -66,14 +182,15 @@ export default function UserManagementTab() {
             if (type === 'students') {
                 // Expected columns: uid, full_name, semester, section, year_of_admission
                 const mapped = rows.map((r) => ({
-                    uid: r.uid,
+                    uid: r.uid?.trim(),
                     full_name: r.full_name || r.name || '',
-                    semester: Number(r.semester) || 1,
-                    section: r.section || 'A',
-                    year_of_admission: Number(r.year_of_admission) || new Date().getFullYear(),
+                    semester: r.semester?.trim() ? Number(r.semester) : undefined,
+                    section: r.section?.trim(),
+                    year_of_admission: r.year_of_admission?.trim() ? Number(r.year_of_admission) : undefined,
                 }))
                 const res = await usersApi.bulkRegisterStudents(mapped)
-                const results: BulkResult[] = res.result.map((r) => ({
+                const resultRows = Array.isArray(res.result) ? res.result : []
+                const results: BulkResult[] = resultRows.map((r) => ({
                     identifier: r.uid ?? '?',
                     status: r.status as 'success' | 'failed',
                     error: r.error,
@@ -86,14 +203,15 @@ export default function UserManagementTab() {
             } else {
                 // Expected columns: email, first_name, last_name, contact_number, password
                 const mapped = rows.map((r) => ({
-                    email: r.email,
-                    first_name: r.first_name || '',
-                    last_name: r.last_name || '',
-                    contact_number: r.contact_number || '',
-                    password: r.password || undefined,
+                    email: r.email?.trim(),
+                    first_name: r.first_name?.trim(),
+                    last_name: r.last_name?.trim(),
+                    contact_number: r.contact_number?.trim(),
+                    password: r.password?.trim() || undefined,
                 }))
                 const res = await usersApi.bulkRegisterFaculty(mapped)
-                const results: BulkResult[] = res.result.map((r) => ({
+                const resultRows = Array.isArray(res.result) ? res.result : []
+                const results: BulkResult[] = resultRows.map((r) => ({
                     identifier: r.email ?? '?',
                     status: r.status as 'success' | 'failed',
                     error: r.error,
@@ -114,36 +232,28 @@ export default function UserManagementTab() {
     const filteredUsers = useMemo(() => {
         return users.filter((u) => {
             const q = query.trim().toLowerCase()
-            const matchesQuery = q ? u.username.toLowerCase().includes(q) : true
+            const matchesQuery = q
+                ? [u.username, u.name ?? ''].some((value) => value.toLowerCase().includes(q))
+                : true
             const matchesRole = roleFilter === 'all' ? true : u.role === roleFilter
             return matchesQuery && matchesRole
         })
     }, [users, query, roleFilter])
 
     const downloadStudentTemplate = () => {
-        const headers = ['uid', 'full_name', 'semester', 'section', 'year_of_admission']
-        const sample = ['24003001', 'John A Doe', '6', 'A', '2024']
-        const csv = `${headers.join(',')}\n${sample.join(',')}\n`
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'students_bulk_template.csv'
-        a.click()
-        URL.revokeObjectURL(url)
+        downloadCsv(
+            'students_bulk_template.csv',
+            ['uid', 'full_name', 'semester', 'section', 'year_of_admission'],
+            ['24003001', 'John A Doe', '6', 'A', '2024']
+        )
     }
 
     const downloadFacultyTemplate = () => {
-        const headers = ['email', 'first_name', 'last_name', 'contact_number', 'password']
-        const sample = ['faculty@stvincentngp.edu.in', 'John', 'Doe', '9999999999', 'Pass@1234']
-        const csv = `${headers.join(',')}\n${sample.join(',')}\n`
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'faculty_bulk_template.csv'
-        a.click()
-        URL.revokeObjectURL(url)
+        downloadCsv(
+            'faculty_bulk_template.csv',
+            ['email', 'first_name', 'last_name', 'contact_number', 'password'],
+            ['faculty@stvincentngp.edu.in', 'John', 'Doe', '9999999999', 'Pass@1234']
+        )
     }
 
     const columns = [
@@ -151,8 +261,13 @@ export default function UserManagementTab() {
             header: 'User ID',
             cell: (u: User) => (
                 <div className="flex items-center gap-2">
-                    <UserCircle2 className="w-7 h-7 text-slate-300" />
-                    <span className="font-semibold text-slate-700">{u.username}</span>
+                    <UserAvatar user={u} onPreview={openPhotoPreview} />
+                    <div className="min-w-0">
+                        <span className="block truncate font-semibold text-slate-700">{u.username}</span>
+                        {u.name && u.name !== u.username && (
+                            <span className="block truncate text-xs text-slate-500">{u.name}</span>
+                        )}
+                    </div>
                 </div>
             ),
         },
@@ -355,6 +470,28 @@ export default function UserManagementTab() {
                     userRole={resetTarget.role}
                 />
             )}
+            <Dialog
+                open={!!previewUser && !!previewPhotoUrl}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setPreviewUser(null)
+                        setPreviewPhotoUrl(null)
+                    }
+                }}
+            >
+                <DialogContent className="max-w-xl border-0 bg-white p-4">
+                    <DialogHeader>
+                        <DialogTitle>{previewUser?.name ?? previewUser?.username ?? 'Profile Photo'}</DialogTitle>
+                    </DialogHeader>
+                    {previewPhotoUrl && (
+                        <img
+                            src={previewPhotoUrl}
+                            alt={`${previewUser?.name ?? previewUser?.username ?? 'User'} profile`}
+                            className="mx-auto max-h-[70vh] w-full rounded-xl object-contain"
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

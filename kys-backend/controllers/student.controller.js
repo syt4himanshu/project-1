@@ -23,7 +23,7 @@ const {
   validatePastEducationPayload,
   validatePostAdmissionRecords,
 } = require('../utils/helpers');
-const { serializeStudent } = require('../utils/serializers');
+const { serializeStudent, serializeStudentSummary } = require('../utils/serializers');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -43,6 +43,61 @@ const includeAll = [
   'skills',
   'swoc',
 ];
+
+const buildStudentSearchWhere = (query = {}) => {
+  const where = {};
+  if (query.semester) where.semester = query.semester;
+  if (query.section) where.section = query.section;
+  if (query.year_of_admission) where.year_of_admission = query.year_of_admission;
+  if (query.uid) where.uid = query.uid;
+
+  const search = String(query.search || query.name || '').trim();
+  if (search) {
+    where[Op.or] = [
+      { uid: { [Op.iLike]: `%${search}%` } },
+      { first_name: { [Op.iLike]: `%${search}%` } },
+      { middle_name: { [Op.iLike]: `%${search}%` } },
+      { last_name: { [Op.iLike]: `%${search}%` } },
+    ];
+  }
+
+  return where;
+};
+
+const buildStudentIncludes = ({ summary = false, domain = '', careerGoal = '' } = {}) => {
+  const trimmedDomain = String(domain || '').trim();
+  const trimmedCareerGoal = String(careerGoal || '').trim();
+
+  return [
+    { model: Faculty, as: 'mentor', attributes: ['id', 'first_name', 'last_name', 'email'], required: false },
+    !summary ? { model: StudentPersonalInfo, as: 'personal_info', required: false } : null,
+    !summary ? { model: PastEducation, as: 'past_education_records', required: false } : null,
+    !summary ? { model: PostAdmissionAcademicRecord, as: 'post_admission_records', required: false } : null,
+    !summary ? { model: Project, as: 'projects', required: false } : null,
+    !summary ? { model: Internship, as: 'internships', required: false } : null,
+    !summary ? { model: CoCurricularParticipation, as: 'cocurricular_participations', required: false } : null,
+    !summary ? { model: CoCurricularOrganization, as: 'cocurricular_organizations', required: false } : null,
+    {
+      model: CareerObjective,
+      as: 'career_objective',
+      required: Boolean(trimmedCareerGoal),
+      ...(trimmedCareerGoal ? { where: { career_goal: trimmedCareerGoal } } : {}),
+    },
+    {
+      model: Skills,
+      as: 'skills',
+      required: Boolean(trimmedDomain),
+      ...(trimmedDomain
+        ? {
+            where: {
+              domains_of_interest: { [Op.iLike]: `%${trimmedDomain}%` },
+            },
+          }
+        : {}),
+    },
+    !summary ? { model: SWOC, as: 'swoc', required: false } : null,
+  ].filter(Boolean);
+};
 
 const parseDatesInPayload = (payload) => {
   if (!payload || typeof payload !== 'object') return payload;
@@ -418,18 +473,8 @@ const getStudentMentoringMinutes = async (req, res, next) => {
 
 const searchStudents = async (req, res, next) => {
   try {
-    const where = {};
-    if (req.query.semester) where.semester = req.query.semester;
-    if (req.query.section) where.section = req.query.section;
-    if (req.query.year_of_admission) where.year_of_admission = req.query.year_of_admission;
-    if (req.query.uid) where.uid = req.query.uid;
-
-    if (req.query.name) {
-      where[Op.or] = [
-        { first_name: { [Op.iLike]: `%${req.query.name}%` } },
-        { last_name: { [Op.iLike]: `%${req.query.name}%` } },
-      ];
-    }
+    const where = buildStudentSearchWhere(req.query);
+    const summary = String(req.query.view || '').toLowerCase() === 'summary';
 
     if (req.currentUser.role === 'faculty') {
       const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
@@ -437,9 +482,43 @@ const searchStudents = async (req, res, next) => {
       where.mentor_id = faculty.id;
     }
 
-    const students = await Student.findAll({ where, include: includeAll, order: [['id', 'ASC']] });
+    const students = await Student.findAll({
+      where,
+      include: buildStudentIncludes({
+        summary,
+        domain: req.query.domain,
+        careerGoal: req.query.careerGoal,
+      }),
+      order: [['id', 'ASC']],
+    });
     const includeIds = req.currentUser.role === 'admin';
-    return res.status(200).json(students.map((s) => serializeStudent(s, { includeIds })));
+    return res
+      .status(200)
+      .json(students.map((s) => (summary ? serializeStudentSummary(s) : serializeStudent(s, { includeIds }))));
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getStudentById = async (req, res, next) => {
+  try {
+    const studentId = Number(req.params.id);
+    if (!studentId) return res.status(400).json({ error: 'Invalid student id' });
+
+    const where = { id: studentId };
+    if (req.currentUser.role === 'faculty') {
+      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+      if (!faculty) return res.status(404).json({ error: 'Faculty profile not found' });
+      where.mentor_id = faculty.id;
+    }
+
+    const student = await Student.findOne({
+      where,
+      include: buildStudentIncludes({ summary: false }),
+    });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    return res.status(200).json(serializeStudent(student, { includeIds: true }));
   } catch (error) {
     return next(error);
   }
@@ -483,5 +562,6 @@ module.exports = {
   getStudentMentor,
   getStudentMentoringMinutes,
   searchStudents,
+  getStudentById,
   updateStudentMentorByAdmin,
 };

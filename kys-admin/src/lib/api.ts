@@ -24,6 +24,48 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     return res.json()
 }
 
+async function authorizedFetch(path: string, options?: RequestInit) {
+    const res = await fetch(`${BASE_URL}${path}`, {
+        ...options,
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}`, ...(options?.headers ?? {}) },
+    })
+
+    if (res.status === 401) {
+        localStorage.clear()
+        window.location.href = '/login'
+        throw new Error('Unauthorized')
+    }
+
+    return res
+}
+
+function toNumber(value: unknown, fallback = 0) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function toStringArray(value: unknown) {
+    if (Array.isArray(value)) {
+        return value
+            .map((entry) => String(entry).trim())
+            .filter((entry) => entry && !isPlaceholderValue(entry))
+    }
+
+    return String(value ?? '')
+        .split(/[,\n;]+/)
+        .map((entry) => entry.trim())
+        .filter((entry) => entry && !isPlaceholderValue(entry))
+}
+
+function isPlaceholderValue(value: unknown) {
+    const text = String(value ?? '').trim().toLowerCase()
+    return text === '' || text === 'none' || text === 'n/a' || text === 'na' || text === '-' || text === '--' || text === 'nil'
+}
+
+function cleanDisplayText(value: unknown) {
+    return isPlaceholderValue(value) ? '' : String(value ?? '').trim()
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
     login: async (body: { uid?: string; email?: string; password: string }) => {
@@ -82,6 +124,7 @@ export interface User {
     username: string
     role: 'admin' | 'student' | 'faculty'
     name?: string
+    profile_photo_url?: string | null
     status?: string
     created?: string
     created_at?: string
@@ -92,6 +135,7 @@ export const usersApi = {
         return raw.map((u) => ({
             ...u,
             name: u.name ?? u.username,
+            profile_photo_url: u.profile_photo_url ?? null,
             status: u.status ?? 'Active',
             created: u.created ?? (u.created_at ? new Date(u.created_at).toISOString().slice(0, 10) : '2024-01-01'),
         }))
@@ -238,10 +282,93 @@ export interface Student {
     career_objective?: Record<string, unknown>
 }
 
+export interface StudentListFilters {
+    search?: string
+    semester?: string
+    section?: string
+    year?: string
+    domain?: string
+    careerGoal?: string
+}
+
 type StudentApiResponse = Student & {
     full_name?: string
     past_education_records?: Record<string, unknown>[]
     post_admission_records?: Record<string, unknown>[]
+}
+
+function normalizePersonalInfo(raw: Record<string, unknown>) {
+    return {
+        ...raw,
+        profile_photo: raw.profile_photo ?? raw.photo_url ?? null,
+        department: raw.department ?? raw.dept ?? raw.branch ?? '',
+        roll_no: raw.roll_no ?? raw.roll_number ?? raw.uid ?? '',
+        mis_uid: raw.mis_uid ?? raw.misid ?? raw.roll_no ?? '',
+        mobile: raw.mobile ?? raw.mobile_no ?? '',
+        linkedin: raw.linkedin ?? raw.linked_in_id ?? '',
+        github: raw.github ?? raw.github_id ?? '',
+        address: raw.address ?? raw.permanent_address ?? '',
+        permanent_address: raw.permanent_address ?? raw.address ?? '',
+        present_address: raw.present_address ?? '',
+        local_guardian_name: raw.local_guardian_name ?? '',
+        local_guardian_mobile: raw.local_guardian_mobile ?? '',
+        local_guardian_email: raw.local_guardian_email ?? '',
+        father_mobile: raw.father_mobile ?? raw.father_mobile_no ?? '',
+        father_email: raw.father_email ?? '',
+        mother_mobile: raw.mother_mobile ?? raw.mother_mobile_no ?? '',
+        mother_email: raw.mother_email ?? '',
+        emergency_contact: raw.emergency_contact ?? raw.emergency_contact_number ?? '',
+        aadhar: raw.aadhar ?? raw.aadhar_number ?? '',
+    }
+}
+
+function normalizePastEducationRecord(raw: Record<string, unknown>) {
+    return {
+        ...raw,
+        exam: raw.exam ?? raw.exam_name ?? '—',
+        percentage: raw.percentage ?? '—',
+    }
+}
+
+function normalizeAcademicRecord(raw: Record<string, unknown>) {
+    const backlogSubjects = String(raw.backlog_subjects ?? '').trim()
+    const normalizedBacklogs = Number(raw.backlogs)
+    const parsedSubjects = backlogSubjects
+        ? backlogSubjects
+            .split(/[,\n;]+/)
+            .map((value) => value.trim())
+            .filter((value) => !isPlaceholderValue(value))
+        : []
+
+    return {
+        ...raw,
+        backlog_subjects: parsedSubjects.join(', '),
+        backlogs:
+            Number.isFinite(normalizedBacklogs) && normalizedBacklogs >= 0
+                ? normalizedBacklogs
+                : parsedSubjects.length,
+    }
+}
+
+function normalizeSkills(raw: Record<string, unknown>) {
+    return {
+        ...raw,
+        technologies: raw.technologies ?? raw.technologies_frameworks ?? '',
+        domains: raw.domains ?? raw.domains_of_interest ?? raw.domain_of_interest ?? '',
+        tools: raw.tools ?? raw.familiar_tools_platforms ?? '',
+    }
+}
+
+function normalizeCareerObjective(raw: Record<string, unknown>) {
+    return {
+        ...raw,
+        clarity_score: raw.clarity_score ?? raw.clarity_preparedness ?? '',
+        campus_placement:
+            raw.campus_placement ??
+            (typeof raw.interested_in_campus_placement === 'boolean'
+                ? (raw.interested_in_campus_placement ? 'Yes' : 'No')
+                : raw.campus_placement_reasons ?? ''),
+    }
 }
 
 function normalizeStudent(raw: StudentApiResponse): Student {
@@ -252,25 +379,49 @@ function normalizeStudent(raw: StudentApiResponse): Student {
     return {
         ...raw,
         name: raw.name ?? raw.full_name ?? raw.uid,
-        personal_info: {
-            ...personalInfo,
-            profile_photo: personalInfo.profile_photo ?? personalInfo.photo_url ?? null,
-        },
-        past_education: raw.past_education ?? raw.past_education_records ?? [],
-        academic_records: raw.academic_records ?? raw.post_admission_records ?? [],
-        career_goal: (careerObjective.career_goal as string) ?? raw.career_goal ?? '',
-        domain_of_interest:
+        personal_info: normalizePersonalInfo(personalInfo),
+        past_education: (raw.past_education ?? raw.past_education_records ?? []).map((row) =>
+            normalizePastEducationRecord(row as Record<string, unknown>)
+        ),
+        academic_records: (raw.academic_records ?? raw.post_admission_records ?? []).map((row) =>
+            normalizeAcademicRecord(row as Record<string, unknown>)
+        ),
+        mentor_name: cleanDisplayText(raw.mentor_name),
+        co_curricular_participations:
+            (raw.co_curricular_participations as Record<string, unknown>[] | undefined) ??
+            ((raw as unknown as Record<string, unknown>).cocurricular_participations as Record<string, unknown>[] | undefined) ??
+            [],
+        co_curricular_organizations:
+            (raw.co_curricular_organizations as Record<string, unknown>[] | undefined) ??
+            ((raw as unknown as Record<string, unknown>).cocurricular_organizations as Record<string, unknown>[] | undefined) ??
+            [],
+        skills: normalizeSkills(skills),
+        career_objective: normalizeCareerObjective(careerObjective),
+        career_goal: cleanDisplayText((careerObjective.career_goal as string) ?? raw.career_goal ?? ''),
+        domain_of_interest: cleanDisplayText(
             (skills.domain_of_interest as string) ??
             (skills.domains_of_interest as string) ??
             raw.domain_of_interest ??
-            '',
+            ''
+        ),
     }
 }
 
+function buildStudentListQuery(filters: StudentListFilters = {}) {
+    const params = new URLSearchParams({ view: 'summary' })
+    if (filters.search?.trim()) params.set('search', filters.search.trim())
+    if (filters.semester) params.set('semester', filters.semester)
+    if (filters.section?.trim()) params.set('section', filters.section.trim())
+    if (filters.year) params.set('year_of_admission', filters.year)
+    if (filters.domain?.trim()) params.set('domain', filters.domain.trim())
+    if (filters.careerGoal) params.set('careerGoal', filters.careerGoal)
+    return params.toString()
+}
+
 export const studentsApi = {
-    // GET /api/students — returns full serialized student list (includeIds=true for admin)
-    list: async () => {
-        const raw = await request<StudentApiResponse[]>('/api/students')
+    // GET /api/students?view=summary — lightweight list for admin table
+    list: async (filters: StudentListFilters = {}) => {
+        const raw = await request<StudentApiResponse[]>(`/api/students?${buildStudentListQuery(filters)}`)
         return raw.map(normalizeStudent)
     },
 
@@ -282,12 +433,10 @@ export const studentsApi = {
         return normalizeStudent(found)
     },
 
-    // GET /api/students for a single student by integer id (search + find)
+    // GET /api/students/:id — fetch one full student profile
     get: async (id: number) => {
-        const all = await request<StudentApiResponse[]>('/api/students')
-        const found = all.find((s) => s.id === id)
-        if (!found) throw new Error('Student not found')
-        return normalizeStudent(found)
+        const raw = await request<StudentApiResponse>(`/api/students/${id}`)
+        return normalizeStudent(raw)
     },
 
     // DELETE /api/admin/student/:uid
@@ -363,27 +512,61 @@ export interface IncompleteProfile {
 
 export const reportsApi = {
     enabled: true,
-    stats: () => request<ReportStats>('/api/admin/reports/stats'),
-    toppers: (semester?: number) =>
-        request<Topper[]>(`/api/admin/reports/toppers${semester ? `?semester=${semester}` : ''}`),
-    semesterDistribution: () => request<SemesterDist[]>('/api/admin/reports/semester-distribution'),
-    backlogs: () => request<BacklogEntry[]>('/api/admin/reports/backlogs'),
+    stats: async () => {
+        const raw = await request<Record<string, unknown>>('/api/admin/reports/stats')
+        return {
+            total_students: toNumber(raw.total_students),
+            avg_sgpa: toNumber(raw.avg_sgpa),
+            with_backlogs: toNumber(raw.with_backlogs),
+            active_semesters: toNumber(raw.active_semesters),
+        } satisfies ReportStats
+    },
+    toppers: async (semester?: number) => {
+        const rows = await request<Array<Partial<Topper>>>(`/api/admin/reports/toppers${semester ? `?semester=${semester}` : ''}`)
+        return rows.map((row, index) => ({
+            rank: toNumber(row.rank, index + 1),
+            name: String(row.name ?? 'Unknown Student'),
+            uid: String(row.uid ?? ''),
+            sgpa: toNumber(row.sgpa),
+            semester: toNumber(row.semester),
+        }))
+    },
+    semesterDistribution: async () => {
+        const rows = await request<Array<Partial<SemesterDist>>>('/api/admin/reports/semester-distribution')
+        return rows
+            .map((row) => ({
+                semester: toNumber(row.semester),
+                count: toNumber(row.count),
+            }))
+            .filter((row) => row.semester > 0)
+    },
+    backlogs: async () => {
+        const rows = await request<Array<Partial<BacklogEntry>>>('/api/admin/reports/backlogs')
+        return rows.map((row) => ({
+            student_id: toNumber(row.student_id),
+            name: String(row.name ?? 'Unknown Student'),
+            uid: String(row.uid ?? ''),
+            subjects: toStringArray(row.subjects),
+        }))
+    },
     general: (params?: Record<string, string>) => {
         const qs = params ? '?' + new URLSearchParams(params).toString() : ''
-        return request<Student[]>(`/api/admin/reports/general${qs}`)
+        return request<StudentApiResponse[]>(`/api/admin/reports/general${qs}`).then((rows) => rows.map(normalizeStudent))
     },
-    incompleteProfiles: (year?: number) =>
-        request<IncompleteProfile[]>(`/api/admin/reports/incomplete${year ? `?year=${year}` : ''}`),
+    incompleteProfiles: async (year?: number) => {
+        const rows = await request<Array<Partial<IncompleteProfile>>>(`/api/admin/reports/incomplete${year ? `?year=${year}` : ''}`)
+        return rows.map((row) => ({
+            id: toNumber(row.id),
+            name: String(row.name ?? 'Unknown Student'),
+            uid: String(row.uid ?? ''),
+            year_of_admission: toNumber(row.year_of_admission),
+            missing_fields: toStringArray(row.missing_fields),
+        }))
+    },
     exportAll: () =>
-        fetch(`${BASE_URL}/api/admin/reports/export/all`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
-        }),
+        authorizedFetch('/api/admin/reports/export/all'),
     exportBacklog: () =>
-        fetch(`${BASE_URL}/api/admin/reports/export/backlogs`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
-        }),
+        authorizedFetch('/api/admin/reports/export/backlogs'),
     exportIncomplete: (year?: number) =>
-        fetch(`${BASE_URL}/api/admin/reports/export/incomplete${year ? `?year=${year}` : ''}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
-        }),
+        authorizedFetch(`/api/admin/reports/export/incomplete${year ? `?year=${year}` : ''}`),
 }
