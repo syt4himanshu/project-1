@@ -11,6 +11,7 @@ import Step7SWOC from '../components/wizard/Step7SWOC'
 import Step8CareerSkills from '../components/wizard/Step8CareerSkills'
 import Step9ReviewSubmit from '../components/wizard/Step9ReviewSubmit'
 import { useAuth } from '../context/AuthContext'
+import { validateStudentProfileData } from '../validation/studentProfileSchema'
 
 const STEPS = [
     'Student Personal Information',
@@ -214,6 +215,14 @@ export default function ProfileWizard() {
             return
         }
 
+        const validation = validateStudentProfileData(data)
+        if (!validation.isValid) {
+            const message = validation.errors[0] || 'Please correct invalid values in the form.'
+            setError(message)
+            showToast('Please fix highlighted validation issues before proceeding.', 'error')
+            return
+        }
+
         setError('')
         const nextStep = Math.min(step + 1, STEPS.length - 1)
         const saved = saveDraft(data, nextStep)
@@ -233,6 +242,13 @@ export default function ProfileWizard() {
         setSaving(true)
         setError('')
         try {
+            const validation = validateStudentProfileData(data)
+            if (!validation.isValid) {
+                setError(validation.errors[0] || 'Validation failed.')
+                showToast('Please fix validation issues before submitting.', 'error')
+                return
+            }
+
             await updateProfile(data)
             localStorage.removeItem(draftKey)
             navigate('/dashboard')
