@@ -8,13 +8,15 @@ import Mentees from './pages/Mentees'
 import MenteeDetail from './pages/MenteeDetail'
 import Profile from './pages/Profile'
 import Chatbot from './pages/Chatbot'
+import RoleSelection from './pages/RoleSelection'
 
 export default function App() {
     return (
         <AuthProvider>
             <BrowserRouter>
                 <Routes>
-                    <Route path="/" element={<Login />} />
+                    <Route path="/" element={<RoleSelection />} />
+                    <Route path="/login" element={<Login />} />
                     <Route element={<ProtectedRoute />}>
                         <Route element={<Layout />}>
                             <Route path="/dashboard" element={<Dashboard />} />

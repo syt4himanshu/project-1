@@ -25,14 +25,14 @@ const cards: RoleCard[] = [
         title: 'Student',
         description: 'Streamline your academic journey with profile forms, mentoring, and progress tracking.',
         accentClass: 'bg-emerald-500',
-        href: '/login',
+        href: buildAppUrl(5175, '/login'),
     },
     {
         letter: 'T',
         title: 'Teacher',
         description: 'Manage classes, review student performance, and guide learners with structured mentoring.',
         accentClass: 'bg-violet-500',
-        href: buildAppUrl(5174, '/login'),
+        href: '/login',
     },
 ]
 
@@ -46,7 +46,7 @@ export default function RoleSelection() {
                         onClick={() => window.history.back()}
                         className="rounded-full border border-slate-600/80 px-4 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-400 hover:text-white"
                     >
-                        ← Back
+                        {'<- Back'}
                     </button>
                     <h1 className="text-3xl font-bold tracking-tight">Choose Your Role</h1>
                     <div className="w-[76px]" />

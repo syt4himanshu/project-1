@@ -144,4 +144,30 @@ describe('students search API', () => {
     expect(JSON.stringify(sample)).not.toContain('password_hash');
     expect(JSON.stringify(sample)).not.toContain('password');
   });
+
+  it('summary view returns lightweight student list data', async () => {
+    const res = await request<any[]>('GET', '/api/students?view=summary&search=john', undefined, adminToken);
+    expect(res.status).toBe(200);
+    const sample = res.body[0];
+    expect(sample).toHaveProperty('id');
+    expect(sample).toHaveProperty('uid');
+    expect(sample).toHaveProperty('name');
+    expect(sample).toHaveProperty('mentor_name');
+    expect(sample).toHaveProperty('career_goal');
+    expect(sample).toHaveProperty('domain_of_interest');
+    expect(sample).not.toHaveProperty('projects');
+    expect(sample).not.toHaveProperty('post_admission_records');
+  });
+
+  it('admin can fetch one student by id', async () => {
+    const list = await request<any[]>('GET', '/api/students?view=summary', undefined, adminToken);
+    const targetId = list.body[0]?.id;
+    expect(targetId).toBeTruthy();
+
+    const res = await request<any>('GET', `/api/students/${targetId}`, undefined, adminToken);
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe(targetId);
+    expect(res.body).toHaveProperty('personal_info');
+    expect(res.body).toHaveProperty('projects');
+  });
 });

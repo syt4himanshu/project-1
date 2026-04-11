@@ -2,11 +2,14 @@ const rateLimit = require('express-rate-limit');
 const rateLimitModule = require('express-rate-limit');
 const ipKeyGenerator = rateLimitModule.ipKeyGenerator || ((req) => req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip);
 
+const skipRateLimit = () => process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
+
 const loginRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipRateLimit,
 });
 
 const globalRateLimiter = rateLimit({
@@ -14,6 +17,7 @@ const globalRateLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipRateLimit,
 });
 
 const chatbotRateLimiter = rateLimit({
