@@ -17,6 +17,15 @@ const {
   confirmAllocation,
   removeAllocation,
   listAllocationAssignedStudents,
+  reportsStats,
+  reportsToppers,
+  reportsSemesterDistribution,
+  reportsBacklogs,
+  reportsGeneral,
+  reportsIncomplete,
+  exportAllStudents,
+  exportBacklogs,
+  exportIncomplete,
   deleteStudentByUid,
   deleteFacultyById,
 } = require('../controllers/admin.controller');
@@ -42,6 +51,15 @@ router.post('/allocation/generate', generateAllocation);
 router.post('/allocation/confirm', confirmAllocation);
 router.post('/allocation/remove', removeAllocation);
 router.get('/allocation/:faculty_id/students', listAllocationAssignedStudents);
+router.get('/reports/stats', reportsStats);
+router.get('/reports/toppers', reportsToppers);
+router.get('/reports/semester-distribution', reportsSemesterDistribution);
+router.get('/reports/backlogs', reportsBacklogs);
+router.get('/reports/general', reportsGeneral);
+router.get('/reports/incomplete', reportsIncomplete);
+router.get('/reports/export/all', exportAllStudents);
+router.get('/reports/export/backlogs', exportBacklogs);
+router.get('/reports/export/incomplete', exportIncomplete);
 router.delete('/student/:uid', deleteStudentByUid);
 router.delete('/faculty/:id', deleteFacultyById);
 

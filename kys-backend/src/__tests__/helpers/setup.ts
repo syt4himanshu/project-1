@@ -1,4 +1,4 @@
-import { beforeAll } from 'vitest';
+
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -65,11 +65,7 @@ export async function loginAdmin(): Promise<string> {
   return adminToken;
 }
 
-beforeAll(async () => {
-  if (!adminToken) {
-    await loginAdmin();
-  }
-});
+
 
 export default async function globalSetup() {
   // Keep global setup lightweight; per-suite login still runs via beforeAll above.

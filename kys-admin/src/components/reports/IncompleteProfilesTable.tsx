@@ -18,11 +18,12 @@ export default function IncompleteProfilesTable() {
     const handleExport = async () => {
         try {
             const res = await reportsApi.exportIncomplete(year ? parseInt(year) : undefined)
+            if (!res.ok) throw new Error('Export failed')
             const blob = await res.blob()
             const url = URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
-            a.download = 'incomplete-profiles.xlsx'
+            a.download = 'incomplete-profiles.csv'
             a.click()
             URL.revokeObjectURL(url)
         } catch {

@@ -53,7 +53,7 @@ export default function StudentsTab() {
             header: 'Actions',
             cell: (s: Student) => (
                 <div className="flex gap-1.5">
-                    <Button size="sm" className="bg-sky-500 text-white hover:bg-sky-600 h-7 px-2 text-xs" onClick={() => setViewId(s.id)}>
+                    <Button size="sm" className="h-7 px-2 text-xs" onClick={() => setViewId(s.id)}>
                         <Eye className="w-3 h-3 mr-1" /> View
                     </Button>
                     <AlertDialog>
@@ -69,7 +69,7 @@ export default function StudentsTab() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteStudent(s.id)}>Delete</AlertDialogAction>
+                                <AlertDialogAction onClick={() => deleteStudent(s.uid)}>Delete</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>

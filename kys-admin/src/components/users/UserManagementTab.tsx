@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { BriefcaseBusiness, Download, KeyRound, Plus, Search, Upload, UserCircle2, Users2 } from 'lucide-react'
+import { BriefcaseBusiness, CheckCircle2, Download, KeyRound, Plus, Search, Upload, UserCircle2, Users2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,6 +21,23 @@ import { useUsers, useDeleteUser } from '@/hooks/useUsers'
 import { usersApi, type User } from '@/lib/api'
 import { Input } from '@/components/ui/input'
 
+// ── CSV parser (no external lib needed) ───────────────────────────────────────
+function parseCSV(text: string): Record<string, string>[] {
+    const lines = text.trim().split('\n').filter(Boolean)
+    if (lines.length < 2) return []
+    const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''))
+    return lines.slice(1).map((line) => {
+        const values = line.split(',').map((v) => v.trim().replace(/^"|"$/g, ''))
+        return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? '']))
+    })
+}
+
+interface BulkResult {
+    identifier: string
+    status: 'success' | 'failed'
+    error?: string
+}
+
 export default function UserManagementTab() {
     const { data: users = [], isLoading } = useUsers()
     const { mutate: deleteUser } = useDeleteUser()
@@ -28,18 +45,69 @@ export default function UserManagementTab() {
     const [resetTarget, setResetTarget] = useState<User | null>(null)
     const [query, setQuery] = useState('')
     const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'student' | 'faculty'>('all')
+    const [bulkResults, setBulkResults] = useState<BulkResult[] | null>(null)
+    const [bulkLoading, setBulkLoading] = useState(false)
     const studentFileRef = useRef<HTMLInputElement>(null)
     const facultyFileRef = useRef<HTMLInputElement>(null)
     const loggedInUser = localStorage.getItem('username')
 
+    // ── Bulk upload: parse CSV client-side → POST JSON array ─────────────────
     const handleBulkUpload = async (file: File, type: 'students' | 'faculty') => {
-        const fd = new FormData()
-        fd.append('file', file)
+        setBulkResults(null)
+        setBulkLoading(true)
         try {
-            const res = type === 'students' ? await usersApi.bulkUploadStudents(fd) : await usersApi.bulkUploadFaculty(fd)
-            toast.success(`Bulk upload complete: ${res.created ?? 0} created, ${res.skipped ?? 0} skipped`)
-        } catch {
-            toast.error('Bulk upload failed')
+            const text = await file.text()
+            const rows = parseCSV(text)
+            if (!rows.length) {
+                toast.error('CSV is empty or has no data rows')
+                return
+            }
+
+            if (type === 'students') {
+                // Expected columns: uid, full_name, semester, section, year_of_admission
+                const mapped = rows.map((r) => ({
+                    uid: r.uid,
+                    full_name: r.full_name || r.name || '',
+                    semester: Number(r.semester) || 1,
+                    section: r.section || 'A',
+                    year_of_admission: Number(r.year_of_admission) || new Date().getFullYear(),
+                }))
+                const res = await usersApi.bulkRegisterStudents(mapped)
+                const results: BulkResult[] = res.result.map((r) => ({
+                    identifier: r.uid ?? '?',
+                    status: r.status as 'success' | 'failed',
+                    error: r.error,
+                }))
+                setBulkResults(results)
+                const ok = results.filter((r) => r.status === 'success').length
+                const fail = results.filter((r) => r.status === 'failed').length
+                if (fail === 0) toast.success(`${ok} students created successfully`)
+                else toast.warning(`${ok} created, ${fail} failed — see report below`)
+            } else {
+                // Expected columns: email, first_name, last_name, contact_number, password
+                const mapped = rows.map((r) => ({
+                    email: r.email,
+                    first_name: r.first_name || '',
+                    last_name: r.last_name || '',
+                    contact_number: r.contact_number || '',
+                    password: r.password || undefined,
+                }))
+                const res = await usersApi.bulkRegisterFaculty(mapped)
+                const results: BulkResult[] = res.result.map((r) => ({
+                    identifier: r.email ?? '?',
+                    status: r.status as 'success' | 'failed',
+                    error: r.error,
+                }))
+                setBulkResults(results)
+                const ok = results.filter((r) => r.status === 'success').length
+                const fail = results.filter((r) => r.status === 'failed').length
+                if (fail === 0) toast.success(`${ok} faculty created successfully`)
+                else toast.warning(`${ok} created, ${fail} failed — see report below`)
+            }
+        } catch (err: any) {
+            toast.error(err?.message ?? 'Bulk upload failed')
+        } finally {
+            setBulkLoading(false)
         }
     }
 
@@ -52,7 +120,7 @@ export default function UserManagementTab() {
         })
     }, [users, query, roleFilter])
 
-    const downloadTemplate = () => {
+    const downloadStudentTemplate = () => {
         const headers = ['uid', 'full_name', 'semester', 'section', 'year_of_admission']
         const sample = ['24003001', 'John A Doe', '6', 'A', '2024']
         const csv = `${headers.join(',')}\n${sample.join(',')}\n`
@@ -61,6 +129,19 @@ export default function UserManagementTab() {
         const a = document.createElement('a')
         a.href = url
         a.download = 'students_bulk_template.csv'
+        a.click()
+        URL.revokeObjectURL(url)
+    }
+
+    const downloadFacultyTemplate = () => {
+        const headers = ['email', 'first_name', 'last_name', 'contact_number', 'password']
+        const sample = ['faculty@stvincentngp.edu.in', 'John', 'Doe', '9999999999', 'Pass@1234']
+        const csv = `${headers.join(',')}\n${sample.join(',')}\n`
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'faculty_bulk_template.csv'
         a.click()
         URL.revokeObjectURL(url)
     }
@@ -91,8 +172,10 @@ export default function UserManagementTab() {
                 <div className="flex gap-1.5 flex-wrap">
                     <Button
                         size="sm"
-                        className="bg-violet-600 text-white hover:bg-violet-700 h-7 px-2 text-xs"
+                        className="h-7 px-2 text-xs"
                         onClick={() => setResetTarget(u)}
+                        disabled={u.role === 'admin'}
+                        title={u.role === 'admin' ? 'Cannot reset admin password here' : 'Reset password'}
                     >
                         <KeyRound className="w-3 h-3 mr-1" /> Password
                     </Button>
@@ -100,7 +183,8 @@ export default function UserManagementTab() {
                         <AlertDialogTrigger asChild>
                             <Button
                                 size="sm"
-                                className="h-7 px-2 text-xs bg-red-50 text-red-500 border border-red-200 hover:bg-red-100"
+                                variant="destructive"
+                                className="h-7 px-2 text-xs"
                                 disabled={u.username === loggedInUser}
                             >
                                 Delete
@@ -133,7 +217,7 @@ export default function UserManagementTab() {
                         User Management
                     </h2>
                     <div className="bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg">
-                        Primary Hub: Create students & faculty here. They will appear in respective sections once profiles are complete.
+                        Primary Hub: Create students &amp; faculty here. They will appear in respective sections once profiles are complete.
                     </div>
                 </div>
 
@@ -159,10 +243,11 @@ export default function UserManagementTab() {
                             <option value="faculty">Faculty</option>
                         </select>
 
+                        {/* Bulk Student Upload */}
                         <input
                             ref={studentFileRef}
                             type="file"
-                            accept=".csv,.xlsx"
+                            accept=".csv"
                             className="hidden"
                             onChange={(e) => {
                                 if (e.target.files?.[0]) handleBulkUpload(e.target.files[0], 'students')
@@ -171,16 +256,18 @@ export default function UserManagementTab() {
                         />
                         <Button
                             size="sm"
-                            className="h-8 bg-emerald-500 hover:bg-emerald-600 text-white"
+                            className="h-8"
                             onClick={() => studentFileRef.current?.click()}
+                            disabled={bulkLoading}
                         >
                             <Upload className="w-3.5 h-3.5 mr-1" /> Bulk Upload Student
                         </Button>
 
+                        {/* Bulk Faculty Upload */}
                         <input
                             ref={facultyFileRef}
                             type="file"
-                            accept=".csv,.xlsx"
+                            accept=".csv"
                             className="hidden"
                             onChange={(e) => {
                                 if (e.target.files?.[0]) handleBulkUpload(e.target.files[0], 'faculty')
@@ -189,25 +276,69 @@ export default function UserManagementTab() {
                         />
                         <Button
                             size="sm"
-                            className="h-8 bg-emerald-500 hover:bg-emerald-600 text-white"
+                            className="h-8"
                             onClick={() => facultyFileRef.current?.click()}
+                            disabled={bulkLoading}
                         >
                             <BriefcaseBusiness className="w-3.5 h-3.5 mr-1" /> Bulk Upload Faculty
                         </Button>
 
                         <Button
                             size="sm"
-                            className="h-8 bg-amber-500 hover:bg-amber-600 text-white"
-                            onClick={downloadTemplate}
+                            variant="outline"
+                            className="h-8 border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                            onClick={downloadStudentTemplate}
                         >
-                            <Download className="w-3.5 h-3.5 mr-1" /> Download Excel Format
+                            <Download className="w-3.5 h-3.5 mr-1" /> Student Template
                         </Button>
 
-                        <Button size="sm" className="h-8 bg-sky-500 hover:bg-sky-600 text-white" onClick={() => setAddOpen(true)}>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                            onClick={downloadFacultyTemplate}
+                        >
+                            <Download className="w-3.5 h-3.5 mr-1" /> Faculty Template
+                        </Button>
+
+                        <Button size="sm" className="h-8" onClick={() => setAddOpen(true)}>
                             <Plus className="w-3.5 h-3.5 mr-1" /> Add User
                         </Button>
                     </div>
                 </div>
+
+                {/* Bulk upload result report */}
+                {bulkResults && (
+                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Bulk Upload Results</h3>
+                            <button
+                                type="button"
+                                className="text-xs text-blue-600 transition-colors hover:text-blue-700"
+                                onClick={() => setBulkResults(null)}
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto space-y-1">
+                            {bulkResults.map((r, i) => (
+                                <div
+                                    key={i}
+                                    className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg ${r.status === 'success'
+                                        ? 'bg-emerald-50 text-emerald-700'
+                                        : 'bg-red-50 text-red-700'
+                                        }`}
+                                >
+                                    {r.status === 'success'
+                                        ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                                        : <XCircle className="w-3.5 h-3.5 flex-shrink-0" />}
+                                    <span className="font-mono font-medium">{r.identifier}</span>
+                                    {r.error && <span className="text-red-500">— {r.error}</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <DataTable columns={columns} data={filteredUsers} isLoading={isLoading} keyExtractor={(u) => u.id} />
             </div>
@@ -221,6 +352,7 @@ export default function UserManagementTab() {
                     }}
                     userId={resetTarget.id}
                     userName={resetTarget.username}
+                    userRole={resetTarget.role}
                 />
             )}
         </div>

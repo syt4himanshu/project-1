@@ -24,9 +24,10 @@ interface Props {
     onOpenChange: (v: boolean) => void
     userId: number
     userName: string
+    userRole: string
 }
 
-export default function PasswordResetDialog({ open, onOpenChange, userId, userName }: Props) {
+export default function PasswordResetDialog({ open, onOpenChange, userName, userRole }: Props) {
     const [showNew, setShowNew] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const { mutateAsync, isPending } = useResetPassword()
@@ -36,7 +37,8 @@ export default function PasswordResetDialog({ open, onOpenChange, userId, userNa
     })
 
     const onSubmit = async (data: FormData) => {
-        await mutateAsync({ id: userId, new_password: data.new_password })
+        // Backend requires: role, username, new_password
+        await mutateAsync({ role: userRole, username: userName, new_password: data.new_password })
         reset()
         onOpenChange(false)
     }
@@ -46,7 +48,10 @@ export default function PasswordResetDialog({ open, onOpenChange, userId, userNa
             <DialogContent className="max-w-sm">
                 <DialogHeader>
                     <DialogTitle>Reset Password</DialogTitle>
-                    <p className="text-sm text-slate-500">Resetting password for <strong>{userName}</strong></p>
+                    <p className="text-sm text-slate-500">
+                        Resetting password for <strong>{userName}</strong>
+                        <span className="ml-1 text-xs text-slate-400">({userRole})</span>
+                    </p>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-1">

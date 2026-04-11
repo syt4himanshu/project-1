@@ -40,7 +40,13 @@ export default function AllocationPanel({ facultyId, facultyName, onClose }: Pro
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mt-4 animate-in fade-in">
             <h3 className="text-lg font-semibold text-slate-800">Allocating students to {facultyName}</h3>
             <div className="mt-3 flex gap-2 flex-wrap">
-                <Button size="sm" className="bg-emerald-500 text-white hover:bg-emerald-600" onClick={handleGenerate} disabled={generating}>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                    onClick={handleGenerate}
+                    disabled={generating}
+                >
                     {generating && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Generate Random Allocation
                 </Button>
                 <Button size="sm" onClick={handleConfirm} disabled={confirming || selected.size === 0}>
@@ -60,7 +66,7 @@ export default function AllocationPanel({ facultyId, facultyName, onClose }: Pro
                             <div
                                 key={s.id}
                                 onClick={() => toggleStudent(s.id)}
-                                className={`border rounded-lg p-3 bg-white cursor-pointer select-none flex items-center gap-3 transition-colors ${selected.has(s.id) ? 'border-sky-400 bg-sky-50' : 'border-slate-200'
+                                className={`border rounded-lg p-3 bg-white cursor-pointer select-none flex items-center gap-3 transition-colors ${selected.has(s.id) ? 'border-blue-400 bg-blue-50' : 'border-slate-200'
                                     }`}
                             >
                                 <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggleStudent(s.id)} onClick={(e) => e.stopPropagation()} />

@@ -35,7 +35,7 @@ export default function Header() {
 
     const onSubmit = async (data: FormData) => {
         try {
-            await authApi.changePassword({ current_password: data.current_password, new_password: data.new_password })
+            await authApi.changePassword({ old_password: data.current_password, new_password: data.new_password })
             toast.success('Password changed successfully')
             reset()
             setOpen(false)
@@ -53,14 +53,19 @@ export default function Header() {
         <>
             <div className="flex justify-between items-center border-b border-slate-200 pb-5 mb-6">
                 <div className="flex items-center gap-3">
-                    <Circle className="w-5 h-5 text-sky-500" />
-                    <span className="text-sky-500 font-semibold text-[30px] leading-none">Admin Dashboard</span>
+                    <Circle className="w-5 h-5 text-blue-600" />
+                    <span className="text-blue-600 font-semibold text-[30px] leading-none">Admin Dashboard</span>
                 </div>
                 <div className="flex gap-2 text-sm">
-                    <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-700" onClick={() => setOpen(true)}>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                        onClick={() => setOpen(true)}
+                    >
                         <KeyRound className="w-3.5 h-3.5 mr-1" /> Change Password
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-700" onClick={handleLogout}>
+                    <Button variant="destructive" size="sm" onClick={handleLogout}>
                         <LogOut className="w-3.5 h-3.5 mr-1" /> Logout
                     </Button>
                 </div>

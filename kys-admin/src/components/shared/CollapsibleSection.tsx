@@ -16,10 +16,10 @@ export default function CollapsibleSection({ title, children, defaultOpen = fals
                 type="button"
                 onClick={() => setOpen(!open)}
                 className={cn(
-                    'w-full border rounded-lg px-5 py-3 flex justify-between items-center cursor-pointer font-semibold text-slate-800 transition-colors',
+                    'w-full border rounded-lg px-5 py-3 flex justify-between items-center cursor-pointer font-semibold text-slate-800 transition-all duration-200 hover:-translate-y-px hover:shadow-sm',
                     open
-                        ? 'bg-indigo-50 border-indigo-200 text-indigo-800 rounded-b-none'
-                        : 'bg-slate-50 border-slate-200'
+                        ? 'bg-blue-50 border-blue-200 text-blue-800 rounded-b-none'
+                        : 'bg-slate-50 border-slate-200 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700'
                 )}
             >
                 {title}

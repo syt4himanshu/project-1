@@ -10,7 +10,11 @@ export function useCreateUser() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: usersApi.create,
-        onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); qc.invalidateQueries({ queryKey: ['stats'] }); toast.success('User created successfully') },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['users'] })
+            qc.invalidateQueries({ queryKey: ['stats'] })
+            toast.success('User created successfully')
+        },
         onError: (e: Error) => toast.error(e.message),
     })
 }
@@ -19,15 +23,20 @@ export function useDeleteUser() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: usersApi.delete,
-        onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); qc.invalidateQueries({ queryKey: ['stats'] }); toast.success('User deleted') },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['users'] })
+            qc.invalidateQueries({ queryKey: ['stats'] })
+            toast.success('User deleted')
+        },
         onError: (e: Error) => toast.error(e.message),
     })
 }
 
 export function useResetPassword() {
     return useMutation({
-        mutationFn: ({ id, new_password }: { id: number; new_password: string }) =>
-            usersApi.resetPassword(id, { new_password }),
+        // Backend: POST /api/admin/reset-password { role, username, new_password }
+        mutationFn: ({ role, username, new_password }: { role: string; username: string; new_password: string }) =>
+            usersApi.resetPassword(role, username, new_password),
         onSuccess: () => toast.success('Password reset successfully'),
         onError: (e: Error) => toast.error(e.message),
     })

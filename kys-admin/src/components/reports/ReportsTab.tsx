@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+﻿import { useQuery } from '@tanstack/react-query'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,10 +11,13 @@ import { reportsApi } from '@/lib/api'
 import { toast } from 'sonner'
 
 async function downloadBlob(res: Response, filename: string) {
+    if (!res.ok) throw new Error('Export failed')
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = filename; a.click()
+    a.href = url
+    a.download = filename
+    a.click()
     URL.revokeObjectURL(url)
 }
 
@@ -30,7 +33,6 @@ export default function ReportsTab() {
 
     return (
         <div>
-            {/* Metric cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {metricCards.map((m) => (
                     <div key={m.label} className="bg-white rounded-xl p-4 shadow-sm text-center border border-slate-100">
@@ -46,31 +48,59 @@ export default function ReportsTab() {
                 ))}
             </div>
 
-            {/* Export buttons */}
             <div className="flex gap-2 mb-5 flex-wrap">
-                <Button size="sm" variant="outline" className="border-sky-300 text-sky-600 hover:bg-sky-50">
+                <Button size="sm" variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50" disabled>
                     <Download className="w-3 h-3 mr-1" /> Export Filtered
                 </Button>
-                <Button size="sm" variant="outline" className="border-emerald-300 text-emerald-600 hover:bg-emerald-50"
-                    onClick={async () => { try { await downloadBlob(await reportsApi.exportAll(), 'all-students.xlsx') } catch { toast.error('Export failed') } }}>
-                    <Download className="w-3 h-3 mr-1" /> Export All Batched
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                    onClick={async () => {
+                        try {
+                            await downloadBlob(await reportsApi.exportAll(), 'all-students.csv')
+                        } catch {
+                            toast.error('Export failed')
+                        }
+                    }}
+                >
+                    <Download className="w-3 h-3 mr-1" /> Export All
                 </Button>
-                <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50"
-                    onClick={async () => { try { await downloadBlob(await reportsApi.exportBacklog(), 'backlog-report.xlsx') } catch { toast.error('Export failed') } }}>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                    onClick={async () => {
+                        try {
+                            await downloadBlob(await reportsApi.exportBacklog(), 'backlog-report.csv')
+                        } catch {
+                            toast.error('Export failed')
+                        }
+                    }}
+                >
                     <Download className="w-3 h-3 mr-1" /> Export Backlog Report
                 </Button>
-                <Button size="sm" variant="outline" className="border-amber-300 text-amber-600 hover:bg-amber-50">
-                    <Download className="w-3 h-3 mr-1" /> Export Incomplete Profiles → Excel
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                    onClick={async () => {
+                        try {
+                            await downloadBlob(await reportsApi.exportIncomplete(), 'incomplete-profiles.csv')
+                        } catch {
+                            toast.error('Export failed')
+                        }
+                    }}
+                >
+                    <Download className="w-3 h-3 mr-1" /> Export Incomplete Profiles
                 </Button>
             </div>
 
-            {/* Charts row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
                 <ToppersCard />
                 <DistributionCard />
             </div>
 
-            {/* Full-width cards */}
             <div className="space-y-5">
                 <BacklogList />
                 <GeneralReportTable />
