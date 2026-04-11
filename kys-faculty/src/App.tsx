@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Mentees from './pages/Mentees'
 import MenteeDetail from './pages/MenteeDetail'
 import Profile from './pages/Profile'
+import Chatbot from './pages/Chatbot'
 
 export default function App() {
     return (
@@ -19,6 +20,7 @@ export default function App() {
                             <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/mentees" element={<Mentees />} />
                             <Route path="/mentees/:uid" element={<MenteeDetail />} />
+                            <Route path="/chatbot" element={<Chatbot />} />
                             <Route path="/profile" element={<Profile />} />
                         </Route>
                     </Route>

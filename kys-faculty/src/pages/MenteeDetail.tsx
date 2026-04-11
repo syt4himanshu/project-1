@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { addMentoringMinute, getMentee, getMenteeMinutes } from '../api/faculty'
 import DataPanel, { ArraySection, ObjectSection } from '../components/DataPanel'
+import { extractData } from '../utils/apiHandler'
 
 function formatDate(iso: string) {
     try {
@@ -59,9 +60,12 @@ export default function MenteeDetail() {
         setError('')
         Promise.all([getMentee(uid), getMenteeMinutes(uid)])
             .then(([mRes, minRes]) => {
-                setMentee(mRes.data as MenteePayload)
-                setMinutes((minRes.data?.mentoring_minutes as MinuteRow[]) || [])
-                setStudentBanner(minRes.data?.student || null)
+                const menteeData = extractData(mRes) || mRes.data;
+                const minData = extractData(minRes) || minRes.data;
+                
+                setMentee(menteeData as MenteePayload)
+                setMinutes((minData?.mentoring_minutes as MinuteRow[]) || [])
+                setStudentBanner(minData?.student || null)
             })
             .catch(() => setError('Could not load mentee (check assignment or UID).'))
             .finally(() => setLoading(false))
@@ -87,7 +91,8 @@ export default function MenteeDetail() {
             setAction('')
             setSaveMsg('Mentoring minute saved.')
             const minRes = await getMenteeMinutes(uid)
-            setMinutes((minRes.data?.mentoring_minutes as MinuteRow[]) || [])
+            const minData = extractData(minRes) || minRes.data;
+            setMinutes((minData?.mentoring_minutes as MinuteRow[]) || [])
         } catch {
             setSaveMsg('Could not save. Try again.')
         } finally {
@@ -177,7 +182,7 @@ export default function MenteeDetail() {
                         <p className="text-sm text-gray-500 dark:text-gray-400">No minutes yet.</p>
                     ) : (
                         <ul className="space-y-4 max-h-[28rem] overflow-y-auto pr-1">
-                            {minutes.map((m) => (
+                            {(Array.isArray(minutes) ? minutes : []).map((m) => (
                                 <li key={m.id} className="border-b border-gray-100 dark:border-gray-700 pb-4 last:border-0">
                                     <div className="flex justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
                                         <span>{formatDate(m.date)}</span>

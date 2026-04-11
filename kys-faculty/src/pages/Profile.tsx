@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { getProfile, updateProfile } from '../api/faculty'
 import ChangePasswordModal from '../components/ChangePasswordModal'
+import { extractData } from '../utils/apiHandler'
 
 interface FacultyProfile {
     first_name: string
@@ -23,7 +24,7 @@ export default function Profile() {
     useEffect(() => {
         getProfile()
             .then((res) => {
-                const p = res.data as FacultyProfile
+                const p = (extractData(res) || res.data) as FacultyProfile;
                 setProfile(p)
                 setFirst(p.first_name || '')
                 setLast(p.last_name || '')
@@ -42,7 +43,7 @@ export default function Profile() {
             await updateProfile({ first_name, last_name, contact_number })
             setMessage('Profile updated')
             const res = await getProfile()
-            setProfile(res.data as FacultyProfile)
+            setProfile((extractData(res) || res.data) as FacultyProfile)
         } catch (err: unknown) {
             const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
             setError(msg || 'Update failed')

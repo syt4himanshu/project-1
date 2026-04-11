@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const requiredEnv = ['DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET_KEY'];
+const requiredEnv = ['DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET_KEY', 'GROQ_API_KEY'];
 
 const requireEnv = (name) => {
   const value = process.env[name];
@@ -10,6 +10,7 @@ const requireEnv = (name) => {
 
 const validateEnv = () => {
   requiredEnv.forEach(requireEnv);
+  console.log("GROQ_API_KEY Loaded:", process.env.GROQ_API_KEY ? "YES" : "NO");
 };
 
 const getCorsSettings = () => {
