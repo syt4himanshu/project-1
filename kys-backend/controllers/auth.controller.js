@@ -45,6 +45,23 @@ const signAccessToken = (user) =>
     { expiresIn: '1h' },
   );
 
+const MAX_BULK_BATCH_SIZE = 500;
+
+const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
+
+const parseBoundedInteger = (value, min, max) => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) return null;
+  return parsed;
+};
+
+const hasMinimumPasswordLength = (value, minLength = 6) =>
+  typeof value === 'string' && value.length >= minLength;
+
+const hasValidContactNumber = (value) => String(value || '').replace(/\D/g, '').length >= 10;
+
+const isValidFacultyEmail = (value) => normalizeText(value).endsWith('@stvincentngp.edu.in');
+
 const login = async (req, res, next) => {
   try {
     const data = req.body || {};
@@ -183,50 +200,77 @@ const registerBulkStudents = async (req, res, next) => {
   try {
     const students = req.body;
     if (!Array.isArray(students)) return res.status(400).json({ error: 'Input must be a list of students' });
+    if (!students.length) return res.status(400).json({ error: 'At least one student record is required' });
+    if (students.length > MAX_BULK_BATCH_SIZE) {
+      return res.status(400).json({ error: `Maximum ${MAX_BULK_BATCH_SIZE} student rows allowed per upload` });
+    }
 
     const results = [];
-    const tx = await sequelize.transaction();
 
-    try {
-      for (const entry of students) {
-        const uid = entry.uid;
-        if (!uid) {
-          results.push({ uid: null, status: 'failed', error: 'Missing UID' });
-          continue;
-        }
+    for (const entry of students) {
+      const uid = normalizeText(entry?.uid);
+      const fullName = normalizeText(entry?.full_name || entry?.name);
+      const semester = parseBoundedInteger(entry?.semester, 1, 8);
+      const section = normalizeText(entry?.section);
+      const yearOfAdmission = parseBoundedInteger(entry?.year_of_admission, 2000, 2100);
 
-        if (await User.findOne({ where: { username: uid, role: 'student' }, transaction: tx })) {
-          results.push({ uid, status: 'failed', error: 'UID already exists' });
-          continue;
-        }
-
-        const names = splitFullName(entry.full_name || '');
-        const user = await User.create(
-          { username: uid, role: 'student', password_hash: await bcrypt.hash(uid, 10) },
-          { transaction: tx },
-        );
-
-        await Student.create(
-          {
-            uid,
-            first_name: names.first_name,
-            middle_name: names.middle_name,
-            last_name: names.last_name,
-            semester: entry.semester,
-            section: entry.section,
-            year_of_admission: entry.year_of_admission,
-            user_id: user.id,
-          },
-          { transaction: tx },
-        );
-
-        results.push({ uid, status: 'success' });
+      if (!uid) {
+        results.push({ uid: null, status: 'failed', error: 'Missing UID' });
+        continue;
+      }
+      if (!fullName) {
+        results.push({ uid, status: 'failed', error: 'Missing full_name' });
+        continue;
+      }
+      if (semester == null) {
+        results.push({ uid, status: 'failed', error: 'semester must be between 1 and 8' });
+        continue;
+      }
+      if (!section) {
+        results.push({ uid, status: 'failed', error: 'Missing section' });
+        continue;
+      }
+      if (yearOfAdmission == null) {
+        results.push({ uid, status: 'failed', error: 'year_of_admission must be between 2000 and 2100' });
+        continue;
       }
 
-      await tx.commit();
-    } catch (error) {
-      await tx.rollback();
-      return res.status(500).json({ error: 'Database error' });
+      const [existingUser, existingStudent] = await Promise.all([
+        User.findOne({ where: { username: uid, role: 'student' } }),
+        Student.findOne({ where: { uid } }),
+      ]);
+      if (existingUser || existingStudent) {
+        results.push({ uid, status: 'failed', error: 'UID already exists' });
+        continue;
+      }
+
+      try {
+        await sequelize.transaction(async (tx) => {
+          const names = splitFullName(fullName);
+          const user = await User.create(
+            { username: uid, role: 'student', password_hash: await bcrypt.hash(uid, 10) },
+            { transaction: tx },
+          );
+
+          await Student.create(
+            {
+              uid,
+              first_name: names.first_name,
+              middle_name: names.middle_name,
+              last_name: names.last_name,
+              semester,
+              section,
+              year_of_admission: yearOfAdmission,
+              user_id: user.id,
+            },
+            { transaction: tx },
+          );
+        });
+
+        results.push({ uid, status: 'success' });
+      } catch (_error) {
+        results.push({ uid, status: 'failed', error: 'Could not create student record' });
+      }
     }
 
     return res.status(200).json({ result: results });
@@ -241,45 +285,67 @@ const registerBulkFaculty = async (req, res, next) => {
     if (!Array.isArray(faculties)) {
       return res.status(400).json({ error: 'Input must be a list of faculty members' });
     }
+    if (!faculties.length) {
+      return res.status(400).json({ error: 'At least one faculty record is required' });
+    }
+    if (faculties.length > MAX_BULK_BATCH_SIZE) {
+      return res.status(400).json({ error: `Maximum ${MAX_BULK_BATCH_SIZE} faculty rows allowed per upload` });
+    }
 
     const results = [];
-    const tx = await sequelize.transaction();
 
-    try {
-      for (const entry of faculties) {
-        const email = entry.email;
-        const password = entry.password || crypto.randomBytes(8).toString('hex');
-        const first_name = entry.first_name || '';
-        const last_name = entry.last_name || '';
-        const contact_number = entry.contact_number || '';
+    for (const entry of faculties) {
+      const email = normalizeText(entry?.email);
+      const suppliedPassword = typeof entry?.password === 'string' ? entry.password : undefined;
+      const password = suppliedPassword || crypto.randomBytes(8).toString('hex');
+      const first_name = normalizeText(entry?.first_name);
+      const last_name = normalizeText(entry?.last_name);
+      const contact_number = normalizeText(entry?.contact_number);
 
-        if (!email || !email.endsWith('@stvincentngp.edu.in')) {
-          results.push({ email, status: 'failed', error: 'Invalid email format' });
-          continue;
-        }
+      if (!email || !isValidFacultyEmail(email)) {
+        results.push({ email, status: 'failed', error: 'Invalid email format' });
+        continue;
+      }
+      if (!first_name || !last_name) {
+        results.push({ email, status: 'failed', error: 'Missing first_name or last_name' });
+        continue;
+      }
+      if (contact_number && !hasValidContactNumber(contact_number)) {
+        results.push({ email, status: 'failed', error: 'contact_number must contain at least 10 digits' });
+        continue;
+      }
+      if (suppliedPassword && !hasMinimumPasswordLength(suppliedPassword)) {
+        results.push({ email, status: 'failed', error: 'password must be at least 6 characters long' });
+        continue;
+      }
 
-        if (await User.findOne({ where: { username: email }, transaction: tx })) {
-          results.push({ email, status: 'failed', error: 'Faculty with given email already exists' });
-          continue;
-        }
+      const [existingUser, existingFaculty] = await Promise.all([
+        User.findOne({ where: { username: email } }),
+        Faculty.findOne({ where: { email } }),
+      ]);
+      if (existingUser || existingFaculty) {
+        results.push({ email, status: 'failed', error: 'Faculty with given email already exists' });
+        continue;
+      }
 
-        const user = await User.create(
-          { username: email, role: 'faculty', password_hash: await bcrypt.hash(password, 10) },
-          { transaction: tx },
-        );
+      try {
+        await sequelize.transaction(async (tx) => {
+          const user = await User.create(
+            { username: email, role: 'faculty', password_hash: await bcrypt.hash(password, 10) },
+            { transaction: tx },
+          );
 
-        await Faculty.create({ email, first_name, last_name, contact_number, user_id: user.id }, { transaction: tx });
+          await Faculty.create({ email, first_name, last_name, contact_number, user_id: user.id }, { transaction: tx });
+        });
+
         results.push({
           email,
           status: 'success',
-          temp_password: entry.password ? undefined : password,
+          temp_password: suppliedPassword ? undefined : password,
         });
+      } catch (_error) {
+        results.push({ email, status: 'failed', error: 'Could not create faculty record' });
       }
-
-      await tx.commit();
-    } catch (error) {
-      await tx.rollback();
-      return res.status(500).json({ error: 'Database error' });
     }
 
     return res.status(200).json({ result: results });

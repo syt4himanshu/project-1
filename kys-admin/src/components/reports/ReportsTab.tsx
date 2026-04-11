@@ -11,14 +11,19 @@ import { reportsApi } from '@/lib/api'
 import { toast } from 'sonner'
 
 async function downloadBlob(res: Response, filename: string) {
-    if (!res.ok) throw new Error('Export failed')
+    if (!res.ok) {
+        const message = await res.text().catch(() => '')
+        throw new Error(message || 'Export failed')
+    }
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = filename
+    const contentDisposition = res.headers.get('content-disposition') || ''
+    const matchedFilename = contentDisposition.match(/filename="?([^"]+)"?/)
+    a.download = matchedFilename?.[1] || filename
     a.click()
-    URL.revokeObjectURL(url)
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export default function ReportsTab() {

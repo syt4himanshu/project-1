@@ -1,9 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { studentsApi } from '@/lib/api'
+import { studentsApi, type StudentListFilters } from '@/lib/api'
 import { toast } from 'sonner'
 
-export function useStudents() {
-    return useQuery({ queryKey: ['students'], queryFn: studentsApi.list })
+export function useStudents(filters: StudentListFilters) {
+    return useQuery({
+        queryKey: ['students', filters],
+        queryFn: () => studentsApi.list(filters),
+        staleTime: 30_000,
+    })
 }
 
 export function useStudentDetail(id: number) {

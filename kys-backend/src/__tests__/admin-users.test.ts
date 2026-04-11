@@ -3,6 +3,8 @@ import { adminToken, loginAdmin, request } from './helpers/setup';
 import { cleanup, createTestFaculty, createTestStudent, findUserIdByUsername, loginAs } from './helpers/seed';
 import { randomId } from './helpers/utils';
 
+const { User, StudentPersonalInfo } = require('../../models');
+
 const createdUserIds: number[] = [];
 
 async function track(username: string) {
@@ -54,6 +56,43 @@ describe('admin users APIs', () => {
       expect(u.createdAt || u.created).toBeDefined();
     });
 
+    it('includes student profile photo url when available', async () => {
+      const student = await createTestStudent();
+      expect(student.res.status).toBe(201);
+      await track(student.payload.username);
+
+      const user = await User.findOne({
+        where: { username: student.payload.username },
+        include: [{ association: 'student_profile' }],
+      });
+      expect(user?.student_profile?.id).toBeTruthy();
+
+      await StudentPersonalInfo.create({
+        student_id: user.student_profile.id,
+        mobile_no: '9999999999',
+        personal_email: `${randomId('person')}@mail.com`,
+        college_email: `${randomId('college')}@stvincentngp.edu.in`,
+        linked_in_id: 'https://linkedin.com/in/test-user',
+        permanent_address: 'Nagpur',
+        dob: '2004-01-01',
+        gender: 'Male',
+        father_name: 'Father Test',
+        father_mobile_no: '9999999998',
+        father_occupation: 'Engineer',
+        mother_name: 'Mother Test',
+        mother_mobile_no: '9999999997',
+        mother_occupation: 'Teacher',
+        emergency_contact_name: 'Guardian Test',
+        emergency_contact_number: '9999999996',
+        photo_url: 'https://example.com/student-photo.jpg',
+      });
+
+      const res = await request<any[]>('GET', '/api/admin/users', undefined, adminToken);
+      expect(res.status).toBe(200);
+      const found = res.body.find((u) => u.username === student.payload.username);
+      expect(found?.profile_photo_url).toBe('https://example.com/student-photo.jpg');
+    });
+
     it('no token -> 401', async () => {
       const res = await request('GET', '/api/admin/users');
       expect(res.status).toBe(401);
@@ -90,6 +129,24 @@ describe('admin users APIs', () => {
 
       const list = await request<any[]>('GET', '/api/admin/users', undefined, adminToken);
       expect(list.body.some((u) => u.username === uid)).toBe(true);
+    });
+
+    it('admin dialog payload without username -> 201', async () => {
+      const uid = randomId('ADDST');
+      const payload = {
+        password: 'strongPass123',
+        role: 'student',
+        uid,
+        name: 'Dialog Student',
+        semester: 5,
+        section: 'B',
+        year_of_admission: 2024,
+      };
+
+      const res = await request<any>('POST', '/api/admin/users', payload, adminToken);
+      expect(res.status).toBe(201);
+      expect(res.body.user.username).toBe(uid);
+      await track(uid);
     });
 
     it('duplicate username/uid -> 409 or 400', async () => {
@@ -176,6 +233,27 @@ describe('admin users APIs', () => {
       );
       expect(res.status).toBe(201);
       expect(res.body.user.role).toBe('faculty');
+      await track(email);
+    });
+
+    it('admin dialog payload without username -> 201', async () => {
+      const email = `${randomId('dialog')}@stvincentngp.edu.in`;
+      const res = await request(
+        'POST',
+        '/api/admin/users',
+        {
+          password: 'facStrong123',
+          role: 'faculty',
+          email,
+          first_name: 'Dialog',
+          last_name: 'Faculty',
+          contact_number: '9999999999',
+        },
+        adminToken,
+      );
+
+      expect(res.status).toBe(201);
+      expect(res.body.user.username).toBe(email);
       await track(email);
     });
 
