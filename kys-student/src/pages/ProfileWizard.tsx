@@ -56,9 +56,13 @@ function isBlank(value: unknown) {
 
 function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     const pi = (data.personal_info as Record<string, unknown>) || {}
+    const past = (data.past_education_records as Record<string, unknown>[]) || []
     const swoc = (data.swoc as Record<string, unknown>) || {}
     const co = (data.career_objective as Record<string, unknown>) || {}
     const sk = (data.skills as Record<string, unknown>) || {}
+    const admissionType = (data.admission_type as string) || (past.some(r => r.exam_name === 'DIPLOMA') ? 'diploma' : past.some(r => r.exam_name === 'HSSC' || r.exam_name === 'ENTRANCE_EXAM') ? 'hsc' : '')
+
+    const getPast = (examName: string) => past.find(record => record.exam_name === examName) || {}
 
     if (step === 0) {
         const missing: string[] = []
@@ -80,6 +84,31 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
         if (isBlank(pi.mother_name)) missing.push("Mother's Name")
         if (isBlank(pi.mother_mobile_no)) missing.push("Mother's WhatsApp Mobile No.")
         if (isBlank(pi.mother_occupation)) missing.push("Mother's Occupation")
+        return missing
+    }
+
+    if (step === 2) {
+        const missing: string[] = []
+        const ssc = getPast('SSC')
+        if (isBlank(ssc.percentage)) missing.push('SSC Percentage / Grade')
+        if (isBlank(ssc.year_of_passing)) missing.push('SSC Year of Passing')
+        if (isBlank(admissionType)) missing.push('Admission Type (after 10th)')
+
+        if (admissionType === 'hsc') {
+            const hssc = getPast('HSSC')
+            const entrance = getPast('ENTRANCE_EXAM')
+            if (isBlank(hssc.percentage)) missing.push('HSC Percentage / Grade')
+            if (isBlank(hssc.year_of_passing)) missing.push('HSC Year of Passing')
+            if (isBlank(entrance.exam_type)) missing.push('Entrance Exam Type')
+            if (isBlank(entrance.percentage)) missing.push('Entrance Percentile')
+        }
+
+        if (admissionType === 'diploma') {
+            const diploma = getPast('DIPLOMA')
+            if (isBlank(diploma.percentage)) missing.push('Diploma Percentage / Grade')
+            if (isBlank(diploma.year_of_passing)) missing.push('Diploma Year of Passing')
+        }
+
         return missing
     }
 
@@ -357,7 +386,7 @@ export default function ProfileWizard() {
 
                         <button
                             onClick={() => navigate('/dashboard')}
-                            className="text-sm text-[#5f7190] transition hover:text-[#2c446b]"
+                            className="rounded-xl px-4 py-2 text-sm font-medium text-[#5f7190] transition hover:bg-[#e8edf5] hover:text-[#2c446b]"
                         >
                             Back to Dashboard
                         </button>
@@ -383,7 +412,7 @@ export default function ProfileWizard() {
             </div>
 
             {toast && (
-                <div className="fixed bottom-5 right-5 z-50">
+                <div className="fixed top-12 right-10 z-50 transition-all duration-300 animate-in fade-in slide-in-from-top-4">
                     <div
                         className={`rounded-2xl px-5 py-4 text-sm font-semibold text-white shadow-[0_12px_30px_-10px_rgba(0,0,0,0.35)] ${
                             toast.tone === 'success'

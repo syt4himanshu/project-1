@@ -87,8 +87,8 @@ export default function Step9ReviewSubmit({ data, update }: WizardStepProps) {
                     <TwoColGrid>
                         <Row label='SSC Percentage' value={findExam('SSC').percentage} />
                         <Row label='SSC Year' value={findExam('SSC').year_of_passing} />
-                        <Row label='HSSC Percentage' value={findExam('HSSC').percentage} />
-                        <Row label='HSSC Year' value={findExam('HSSC').year_of_passing} />
+                        <Row label='HSC Percentage' value={findExam('HSSC').percentage} />
+                        <Row label='HSC Year' value={findExam('HSSC').year_of_passing} />
                         <Row label='Diploma Percentage' value={findExam('DIPLOMA').percentage} />
                         <Row label='Diploma Year' value={findExam('DIPLOMA').year_of_passing} />
                         <Row label='Entrance Exam' value={findExam('ENTRANCE_EXAM').exam_type} />

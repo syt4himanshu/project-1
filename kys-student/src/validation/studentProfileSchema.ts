@@ -3,17 +3,26 @@ import Joi from 'joi'
 const text200 = Joi.string().trim().max(200).allow('', null)
 const text255 = Joi.string().trim().max(255).allow('', null)
 const text500 = Joi.string().trim().max(500).allow('', null)
+const optionalEmail = Joi.string()
+  .trim()
+  .max(255)
+  .allow('', null)
+  .pattern(/^(|n\/a|na|-|[^\s@]+@[^\s@]+\.[^\s@]+)$/i)
+  .messages({
+    'string.pattern.base': 'must be a valid email',
+  })
 
 const studentProfileSchema = Joi.object({
   full_name: Joi.string().trim().min(3).max(120).allow('', null),
   section: Joi.string().trim().max(10).allow('', null),
   semester: Joi.number().integer().min(1).max(8).allow(null),
   year_of_admission: Joi.number().integer().min(1990).max(2100).allow(null),
+  admission_type: Joi.string().valid('hsc', 'diploma').allow('', null),
 
   personal_info: Joi.object({
     mobile_no: Joi.string().trim().max(20).allow('', null),
-    personal_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
-    college_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
+    personal_email: optionalEmail,
+    college_email: optionalEmail,
     linked_in_id: Joi.string().trim().max(255).allow('', null),
     permanent_address: text500,
     present_address: text500,
@@ -21,11 +30,11 @@ const studentProfileSchema = Joi.object({
     gender: Joi.string().trim().max(20).allow('', null),
     father_name: Joi.string().trim().max(120).allow('', null),
     father_mobile_no: Joi.string().trim().max(20).allow('', null),
-    father_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
+    father_email: text255,
     father_occupation: Joi.string().trim().max(255).allow('', null),
     mother_name: Joi.string().trim().max(120).allow('', null),
     mother_mobile_no: Joi.string().trim().max(20).allow('', null),
-    mother_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
+    mother_email: text255,
     mother_occupation: Joi.string().trim().max(255).allow('', null),
     emergency_contact_name: Joi.string().trim().max(120).allow('', null),
     emergency_contact_number: Joi.string().trim().max(20).allow('', null),
@@ -36,7 +45,7 @@ const studentProfileSchema = Joi.object({
     github_id: Joi.string().trim().max(255).allow('', null),
     guardian_name: Joi.string().trim().max(120).allow('', null),
     guardian_mobile: Joi.string().trim().max(20).allow('', null),
-    guardian_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
+    guardian_email: text255,
   }).unknown(true),
 
   past_education_records: Joi.array().items(Joi.object({
@@ -136,10 +145,25 @@ export function validateStudentProfileData(data: Record<string, unknown>) {
     convert: true,
   })
 
-  if (!error) {
+  const dynamicErrors: string[] = []
+  const records = ((data.past_education_records as Record<string, unknown>[]) || [])
+  const admissionType = String(data.admission_type || '').trim()
+  const hasHssc = records.some((record) => record.exam_name === 'HSSC')
+  const hasDiploma = records.some((record) => record.exam_name === 'DIPLOMA')
+
+  if (admissionType === 'hsc' && hasDiploma) {
+    dynamicErrors.push('Diploma details are not allowed for HSC admission type')
+  }
+
+  if (admissionType === 'diploma' && hasHssc) {
+    dynamicErrors.push('HSC details are not allowed for Diploma admission type')
+  }
+
+  if (!error && dynamicErrors.length === 0) {
     return { isValid: true, errors: [] as string[] }
   }
 
-  const errors = [...new Set(error.details.map((detail) => detail.message.replace(/\"/g, '')))]
+  const joiErrors = error ? error.details.map((detail) => detail.message.replace(/\"/g, '')) : []
+  const errors = [...new Set([...joiErrors, ...dynamicErrors])]
   return { isValid: false, errors }
 }

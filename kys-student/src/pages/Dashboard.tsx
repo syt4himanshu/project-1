@@ -40,13 +40,10 @@ function formatDate(iso: string) {
 }
 
 function initials(name: string) {
-    return name
-        .split(' ')
-        .filter(Boolean)
-        .map(part => part[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
+    const parts = name.split(' ').filter(Boolean)
+    if (parts.length === 0) return ''
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 export default function Dashboard() {

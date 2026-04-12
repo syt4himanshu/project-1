@@ -11,7 +11,11 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 function formatValue(v: unknown): string {
     if (v === null || v === undefined) return '—'
     if (typeof v === 'boolean') return v ? 'Yes' : 'No'
-    if (typeof v === 'number' || typeof v === 'string') return String(v)
+    if (typeof v === 'number' || typeof v === 'string') {
+        const text = String(v)
+        if (text === 'HSSC') return 'HSC'
+        return text
+    }
     return JSON.stringify(v)
 }
 
