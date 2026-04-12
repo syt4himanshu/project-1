@@ -1,5 +1,7 @@
 const express = require('express');
 const multer = require('multer');
+const { validate } = require('../middleware/validate');
+const { studentProfileSchema } = require('../middleware/validation/student.validation');
 const {
   getStudentsMe,
   putStudentsMe,
@@ -18,13 +20,13 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 *
 
 const studentsRouter = express.Router();
 studentsRouter.get('/me', verifyToken, roleRequired(['student']), getStudentsMe);
-studentsRouter.put('/me', verifyToken, roleRequired(['student']), putStudentsMe);
+studentsRouter.put('/me', verifyToken, roleRequired(['student']), validate(studentProfileSchema), putStudentsMe);
 studentsRouter.get('/me/mentor', verifyToken, roleRequired(['student']), getStudentMentor);
 studentsRouter.get('/me/mentoring-minutes', verifyToken, roleRequired(['student']), getStudentMentoringMinutes);
 
 const studentRouter = express.Router();
 studentRouter.get('/me', verifyToken, roleRequired(['student']), getStudentMe);
-studentRouter.put('/me', verifyToken, roleRequired(['student']), putStudentMe);
+studentRouter.put('/me', verifyToken, roleRequired(['student']), validate(studentProfileSchema), putStudentMe);
 studentRouter.post('/me/upload-photo', verifyToken, roleRequired(['student']), upload.single('photo'), uploadStudentPhoto);
 
 const apiStudentsRouter = express.Router();
