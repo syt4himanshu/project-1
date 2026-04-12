@@ -11,7 +11,7 @@ import Step7SWOC from '../components/wizard/Step7SWOC'
 import Step8CareerSkills from '../components/wizard/Step8CareerSkills'
 import Step9ReviewSubmit from '../components/wizard/Step9ReviewSubmit'
 import { useAuth } from '../context/AuthContext'
-import { validateStudentProfileData } from '../validation/studentProfileSchema'
+import { formatZodFieldErrors, studentProfileSchema, validateStudentProfileData } from '../validation/studentProfileSchema'
 
 const STEPS = [
     'Student Personal Information',
@@ -115,6 +115,7 @@ export default function ProfileWizard() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
     const [toast, setToast] = useState<{ message: string, tone: ToastTone } | null>(null)
 
     const toastTimerRef = useRef<number | null>(null)
@@ -169,9 +170,13 @@ export default function ProfileWizard() {
     }
 
     useEffect(() => {
-        getProfile()
-            .then(r => {
-                const serverData = (r.data || {}) as Record<string, unknown>
+        let cancelled = false
+
+        const load = async () => {
+            try {
+                const serverData = await getProfile()
+
+                if (cancelled) return
 
                 let restored = false
                 try {
@@ -183,7 +188,7 @@ export default function ProfileWizard() {
                         const notExpired = Number(parsed?.expiresAt || 0) > Date.now()
 
                         if (validVersion && validData && notExpired) {
-                            setData(parsed.data)
+                            setData(parsed.data as Record<string, unknown>)
                             setStep(Math.max(0, Math.min(Number(parsed.step || 0), STEPS.length - 1)))
                             showToast('Draft restored from local storage.', 'info')
                             restored = true
@@ -198,10 +203,19 @@ export default function ProfileWizard() {
                 if (!restored) {
                     setData(serverData)
                 }
+            } catch {
+                if (!cancelled) {
+                    setError('Unable to load your profile. Please refresh or try again later.')
+                }
+            } finally {
+                if (!cancelled) setLoading(false)
+            }
+        }
 
-                setLoading(false)
-            })
-            .catch(() => setLoading(false))
+        void load()
+        return () => {
+            cancelled = true
+        }
     }, [draftKey])
 
     const update = (patch: Record<string, unknown>) => setData(prev => ({ ...prev, ...patch }))
@@ -209,6 +223,7 @@ export default function ProfileWizard() {
     const next = () => {
         const missing = getMissingRequiredFields(step, data)
         if (missing.length > 0) {
+            setFieldErrors({})
             const message = `Please fill required fields: ${missing.join(', ')}`
             setError(message)
             showToast('Required fields are missing. Please complete this step.', 'error')
@@ -217,12 +232,14 @@ export default function ProfileWizard() {
 
         const validation = validateStudentProfileData(data)
         if (!validation.isValid) {
+            setFieldErrors(validation.fieldErrors)
             const message = validation.errors[0] || 'Please correct invalid values in the form.'
             setError(message)
             showToast('Please fix highlighted validation issues before proceeding.', 'error')
             return
         }
 
+        setFieldErrors({})
         setError('')
         const nextStep = Math.min(step + 1, STEPS.length - 1)
         const saved = saveDraft(data, nextStep)
@@ -236,16 +253,28 @@ export default function ProfileWizard() {
         setStep(nextStep)
     }
 
-    const prev = () => setStep(s => Math.max(s - 1, 0))
+    const prev = () => {
+        setFieldErrors({})
+        setStep(s => Math.max(s - 1, 0))
+    }
 
     const submit = async () => {
         setSaving(true)
         setError('')
+        setFieldErrors({})
         try {
-            const validation = validateStudentProfileData(data)
-            if (!validation.isValid) {
-                setError(validation.errors[0] || 'Validation failed.')
+            const parsed = studentProfileSchema.safeParse(data)
+            if (!parsed.success) {
+                setFieldErrors(formatZodFieldErrors(parsed.error))
+                setError(parsed.error.issues[0]?.message || 'Please fix validation issues before submitting.')
                 showToast('Please fix validation issues before submitting.', 'error')
+                return
+            }
+
+            if (!data.declaration_accepted) {
+                setFieldErrors({ declaration_accepted: 'You must confirm the declaration before submitting.' })
+                setError('Please confirm the declaration to submit your profile.')
+                showToast('Declaration is required to submit.', 'error')
                 return
             }
 
@@ -253,8 +282,9 @@ export default function ProfileWizard() {
             localStorage.removeItem(draftKey)
             navigate('/dashboard')
         } catch (err: unknown) {
-            const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+            const msg = err instanceof Error ? err.message : 'Failed to save profile'
             setError(msg || 'Failed to save profile')
+            showToast(msg || 'Failed to save profile', 'error')
         } finally {
             setSaving(false)
         }
@@ -273,7 +303,7 @@ export default function ProfileWizard() {
         )
     }
 
-    const stepProps = { data, update }
+    const stepProps = { data, update, fieldErrors }
 
     return (
         <div className="min-h-screen bg-[#edf2f8] px-3 py-5 sm:px-4 sm:py-8">

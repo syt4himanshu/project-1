@@ -24,6 +24,7 @@ const {
   validatePostAdmissionRecords,
 } = require('../utils/helpers');
 const { serializeStudent, serializeStudentSummary } = require('../utils/serializers');
+const { sendResponse } = require('../utils/responseWrapper');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -137,25 +138,30 @@ const syncRelatedRecords = async (model, studentId, currentRecords, incoming, tx
 const getStudentsMe = async (req, res, next) => {
   try {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
-    if (!student) return res.status(404).json({ error: 'Profile not found' });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Profile not found' });
+    }
 
-    return res.status(200).json({
-      id: student.id,
-      uid: student.uid,
-      full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
-      semester: student.semester,
-      section: student.section,
-      year_of_admission: student.year_of_admission,
-      personal_info: student.personal_info ? serializeModel(student.personal_info) : null,
-      past_education_records: (student.past_education_records || []).map(serializeModel),
-      post_admission_records: (student.post_admission_records || []).map(serializeModel),
-      projects: (student.projects || []).map(serializeModel),
-      internships: (student.internships || []).map(serializeModel),
-      cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
-      cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
-      career_objective: student.career_objective ? serializeModel(student.career_objective) : null,
-      skills: student.skills ? serializeModel(student.skills) : null,
-      swoc: student.swoc ? serializeModel(student.swoc) : null,
+    return sendResponse(res, {
+      success: true,
+      data: {
+        id: student.id,
+        uid: student.uid,
+        full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+        semester: student.semester,
+        section: student.section,
+        year_of_admission: student.year_of_admission,
+        personal_info: student.personal_info ? serializeModel(student.personal_info) : null,
+        past_education_records: (student.past_education_records || []).map(serializeModel),
+        post_admission_records: (student.post_admission_records || []).map(serializeModel),
+        projects: (student.projects || []).map(serializeModel),
+        internships: (student.internships || []).map(serializeModel),
+        cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
+        cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
+        career_objective: student.career_objective ? serializeModel(student.career_objective) : null,
+        skills: student.skills ? serializeModel(student.skills) : null,
+        swoc: student.swoc ? serializeModel(student.swoc) : null,
+      },
     });
   } catch (error) {
     return next(error);
@@ -165,7 +171,9 @@ const getStudentsMe = async (req, res, next) => {
 const putStudentsMe = async (req, res, next) => {
   try {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
-    if (!student) return res.status(404).json({ error: 'Profile not found' });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Profile not found' });
+    }
 
     const data = req.body || {};
 
@@ -197,13 +205,13 @@ const putStudentsMe = async (req, res, next) => {
       const peValidation = validatePastEducationPayload(data.past_education_records || []);
       if (!peValidation.valid) {
         await tx.rollback();
-        return res.status(400).json({ error: peValidation.error });
+        return sendResponse(res, { success: false, status: 400, error: peValidation.error });
       }
 
       const paValidation = validatePostAdmissionRecords(Number(student.semester || 0), data.post_admission_records || []);
       if (!paValidation.valid) {
         await tx.rollback();
-        return res.status(400).json({ error: paValidation.error });
+        return sendResponse(res, { success: false, status: 400, error: paValidation.error });
       }
 
       await syncRelatedRecords(
@@ -258,10 +266,13 @@ const putStudentsMe = async (req, res, next) => {
       }
 
       await tx.commit();
-      return res.status(200).json({ message: 'Profile updated successfully.' });
+      return sendResponse(res, {
+        success: true,
+        data: { message: 'Profile updated successfully.' },
+      });
     } catch (_error) {
       await tx.rollback();
-      return res.status(500).json({ error: 'Failed to update profile' });
+      return sendResponse(res, { success: false, status: 500, error: 'Failed to update profile' });
     }
   } catch (error) {
     return next(error);
@@ -271,28 +282,33 @@ const putStudentsMe = async (req, res, next) => {
 const getStudentMe = async (req, res, next) => {
   try {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
-    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+    }
 
-    return res.status(200).json({
-      id: student.id,
-      uid: student.uid,
-      first_name: student.first_name,
-      middle_name: student.middle_name,
-      last_name: student.last_name,
-      full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
-      semester: student.semester,
-      section: student.section,
-      year_of_admission: student.year_of_admission,
-      personal_info: student.personal_info ? serializeModel(student.personal_info) : null,
-      past_education_records: (student.past_education_records || []).map(serializeModel),
-      post_admission_records: (student.post_admission_records || []).map(serializeModel),
-      projects: (student.projects || []).map(serializeModel),
-      internships: (student.internships || []).map(serializeModel),
-      cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
-      cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
-      career_objective: student.career_objective ? serializeModel(student.career_objective) : null,
-      skills: student.skills ? serializeModel(student.skills) : null,
-      swoc: student.swoc ? serializeModel(student.swoc) : null,
+    return sendResponse(res, {
+      success: true,
+      data: {
+        id: student.id,
+        uid: student.uid,
+        first_name: student.first_name,
+        middle_name: student.middle_name,
+        last_name: student.last_name,
+        full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+        semester: student.semester,
+        section: student.section,
+        year_of_admission: student.year_of_admission,
+        personal_info: student.personal_info ? serializeModel(student.personal_info) : null,
+        past_education_records: (student.past_education_records || []).map(serializeModel),
+        post_admission_records: (student.post_admission_records || []).map(serializeModel),
+        projects: (student.projects || []).map(serializeModel),
+        internships: (student.internships || []).map(serializeModel),
+        cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
+        cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
+        career_objective: student.career_objective ? serializeModel(student.career_objective) : null,
+        skills: student.skills ? serializeModel(student.skills) : null,
+        swoc: student.swoc ? serializeModel(student.swoc) : null,
+      },
     });
   } catch (error) {
     return next(error);
@@ -302,16 +318,43 @@ const getStudentMe = async (req, res, next) => {
 const putStudentMe = async (req, res, next) => {
   try {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
-    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+    }
 
     const data = req.body || {};
-    if (!Object.keys(data).length) return res.status(400).json({ error: 'No data provided' });
+    if (!Object.keys(data).length) {
+      return sendResponse(res, { success: false, status: 400, error: 'No data provided' });
+    }
 
     const tx = await sequelize.transaction();
     try {
+      if ('full_name' in data) {
+        const names = splitFullName(data.full_name || '');
+        student.first_name = names.first_name;
+        student.middle_name = names.middle_name;
+        student.last_name = names.last_name;
+      }
       if ('semester' in data) student.semester = data.semester;
       if ('section' in data) student.section = data.section;
+      if ('year_of_admission' in data) student.year_of_admission = data.year_of_admission;
       await student.save({ transaction: tx });
+
+      if (Object.prototype.hasOwnProperty.call(data, 'past_education_records')) {
+        const peValidation = validatePastEducationPayload(data.past_education_records || []);
+        if (!peValidation.valid) {
+          await tx.rollback();
+          return sendResponse(res, { success: false, status: 400, error: peValidation.error });
+        }
+      }
+
+      if (Object.prototype.hasOwnProperty.call(data, 'post_admission_records')) {
+        const paValidation = validatePostAdmissionRecords(Number(student.semester || 0), data.post_admission_records || []);
+        if (!paValidation.valid) {
+          await tx.rollback();
+          return sendResponse(res, { success: false, status: 400, error: paValidation.error });
+        }
+      }
 
       const modelMappings = {
         personal_info: [StudentPersonalInfo, 'personal_info'],
@@ -357,10 +400,13 @@ const putStudentMe = async (req, res, next) => {
       }
 
       await tx.commit();
-      return res.status(200).json({ message: 'Student profile updated successfully' });
+      return sendResponse(res, {
+        success: true,
+        data: { message: 'Student profile updated successfully' },
+      });
     } catch (_error) {
       await tx.rollback();
-      return res.status(500).json({ error: 'Failed to update profile' });
+      return sendResponse(res, { success: false, status: 500, error: 'Failed to update profile' });
     }
   } catch (error) {
     return next(error);
@@ -370,22 +416,32 @@ const putStudentMe = async (req, res, next) => {
 const uploadStudentPhoto = async (req, res, next) => {
   try {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: ['personal_info'] });
-    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+    }
     if (!student.personal_info) {
-      return res.status(400).json({ error: 'Please save personal information first, then upload photo.' });
+      return sendResponse(res, {
+        success: false,
+        status: 400,
+        error: 'Please save personal information first, then upload photo.',
+      });
     }
 
-    if (!req.file) return res.status(400).json({ error: 'No file provided' });
+    if (!req.file) return sendResponse(res, { success: false, status: 400, error: 'No file provided' });
     if (!req.file.mimetype || !req.file.mimetype.startsWith('image/')) {
-      return res.status(400).json({ error: 'Invalid file type' });
+      return sendResponse(res, { success: false, status: 400, error: 'Invalid file type' });
     }
 
     if (req.file.size > 2 * 1024 * 1024) {
-      return res.status(400).json({ error: 'File too large. Max size is 2MB' });
+      return sendResponse(res, { success: false, status: 400, error: 'File too large. Max size is 2MB' });
     }
 
     if (!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)) {
-      return res.status(500).json({ error: 'Cloudinary credentials are missing on the server' });
+      return sendResponse(res, {
+        success: false,
+        status: 500,
+        error: 'Cloudinary credentials are missing on the server',
+      });
     }
 
     try {
@@ -402,13 +458,16 @@ const uploadStudentPhoto = async (req, res, next) => {
       student.personal_info.photo_public_id = uploadResult.public_id;
       await student.personal_info.save();
 
-      return res.status(200).json({
-        message: 'Upload successful',
-        photo_url: student.personal_info.photo_url,
-        photo_public_id: student.personal_info.photo_public_id,
+      return sendResponse(res, {
+        success: true,
+        data: {
+          message: 'Upload successful',
+          photo_url: student.personal_info.photo_url,
+          photo_public_id: student.personal_info.photo_public_id,
+        },
       });
     } catch (_error) {
-      return res.status(500).json({ error: 'Upload failed' });
+      return sendResponse(res, { success: false, status: 500, error: 'Upload failed' });
     }
   } catch (error) {
     return next(error);
@@ -527,26 +586,30 @@ const getStudentById = async (req, res, next) => {
 const updateStudentMentorByAdmin = async (req, res, next) => {
   try {
     const student = await Student.findByPk(Number(req.params.id));
-    if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student not found' });
+    }
 
     const data = req.body || {};
-    if (!Object.keys(data).length) return res.status(400).json({ error: 'No data provided' });
 
-    if ('mentor_id' in data) {
-      if (data.mentor_id === null) {
-        student.mentor_id = null;
-      } else {
-        const faculty = await Faculty.findByPk(Number(data.mentor_id));
-        if (!faculty) return res.status(404).json({ error: 'Faculty not found' });
-        student.mentor_id = Number(data.mentor_id);
+    if (data.mentor_id === null) {
+      student.mentor_id = null;
+    } else {
+      const faculty = await Faculty.findByPk(Number(data.mentor_id));
+      if (!faculty) {
+        return sendResponse(res, { success: false, status: 404, error: 'Faculty not found' });
       }
+      student.mentor_id = Number(data.mentor_id);
     }
 
     try {
       await student.save();
-      return res.status(200).json({ message: 'Student updated successfully' });
+      return sendResponse(res, {
+        success: true,
+        data: { message: 'Student updated successfully' },
+      });
     } catch (_error) {
-      return res.status(500).json({ error: 'Database error' });
+      return sendResponse(res, { success: false, status: 500, error: 'Database error' });
     }
   } catch (error) {
     return next(error);

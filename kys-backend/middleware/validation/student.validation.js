@@ -18,7 +18,7 @@ const studentProfileSchema = Joi.object({
     permanent_address: text500,
     present_address: text500,
     dob: Joi.date().iso().allow('', null),
-    gender: Joi.string().trim().max(10).allow('', null),
+    gender: Joi.string().trim().max(20).allow('', null),
     father_name: Joi.string().trim().max(120).allow('', null),
     father_mobile_no: Joi.string().trim().max(20).allow('', null),
     father_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
@@ -130,6 +130,23 @@ const studentProfileSchema = Joi.object({
     opportunities: text500,
     challenges: text500,
   }).unknown(true),
+
+  skill_programs: Joi.array().items(
+    Joi.object({
+      course_title: text255,
+      platform: text255,
+      duration_hours: Joi.number().min(0).max(10000).allow(null),
+      date_from: Joi.string().trim().max(20).allow('', null),
+      date_to: Joi.string().trim().max(20).allow('', null),
+    }).unknown(true),
+  ),
+
+  declaration_accepted: Joi.boolean().allow(null),
 }).unknown(true);
 
-module.exports = { studentProfileSchema };
+/** Admin-only: assign or clear a student's mentor */
+const adminStudentMentorUpdateSchema = Joi.object({
+  mentor_id: Joi.alternatives().try(Joi.number().integer().positive(), Joi.valid(null)).required(),
+}).unknown(true);
+
+module.exports = { studentProfileSchema, adminStudentMentorUpdateSchema };

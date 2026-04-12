@@ -1,116 +1,112 @@
-import Joi from 'joi'
+import { z, type ZodError } from 'zod'
 
-const text200 = Joi.string().trim().max(200).allow('', null)
-const text255 = Joi.string().trim().max(255).allow('', null)
-const text500 = Joi.string().trim().max(500).allow('', null)
+const text200 = z.string().trim().max(200, 'Must not exceed 200 characters').nullable().optional().or(z.literal(''))
+const text255 = z.string().trim().max(255).nullable().optional().or(z.literal(''))
+const text500 = z.string().trim().max(500).nullable().optional().or(z.literal(''))
 
-const studentProfileSchema = Joi.object({
-  full_name: Joi.string().trim().min(3).max(120).allow('', null),
-  section: Joi.string().trim().max(10).allow('', null),
-  semester: Joi.number().integer().min(1).max(8).allow(null),
-  year_of_admission: Joi.number().integer().min(1990).max(2100).allow(null),
+export const studentProfileSchema = z.object({
+  full_name: z.string().trim().min(3).max(120).nullable().optional().or(z.literal('')),
+  section: z.string().trim().max(10).nullable().optional().or(z.literal('')),
+  semester: z.coerce.number().int().min(1).max(8).nullable().optional(),
+  year_of_admission: z.coerce.number().int().min(1990).max(2100).nullable().optional(),
 
-  personal_info: Joi.object({
-    mobile_no: Joi.string().trim().max(20).allow('', null),
-    personal_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
-    college_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
-    linked_in_id: Joi.string().trim().max(255).allow('', null),
+  personal_info: z.object({
+    mobile_no: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    personal_email: z.string().trim().email({ message: 'Invalid email' }).max(255).nullable().optional().or(z.literal('')),
+    college_email: z.string().trim().email({ message: 'Invalid email' }).max(255).nullable().optional().or(z.literal('')),
+    linked_in_id: z.string().trim().max(255).nullable().optional().or(z.literal('')),
     permanent_address: text500,
     present_address: text500,
-    dob: Joi.string().trim().max(20).allow('', null),
-    gender: Joi.string().trim().max(20).allow('', null),
-    father_name: Joi.string().trim().max(120).allow('', null),
-    father_mobile_no: Joi.string().trim().max(20).allow('', null),
-    father_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
-    father_occupation: Joi.string().trim().max(255).allow('', null),
-    mother_name: Joi.string().trim().max(120).allow('', null),
-    mother_mobile_no: Joi.string().trim().max(20).allow('', null),
-    mother_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
-    mother_occupation: Joi.string().trim().max(255).allow('', null),
-    emergency_contact_name: Joi.string().trim().max(120).allow('', null),
-    emergency_contact_number: Joi.string().trim().max(20).allow('', null),
-    blood_group: Joi.string().trim().max(5).allow('', null),
-    category: Joi.string().trim().max(20).allow('', null),
-    aadhar_number: Joi.string().trim().max(14).allow('', null),
-    mis_uid: Joi.string().trim().max(50).allow('', null),
-    github_id: Joi.string().trim().max(255).allow('', null),
-    guardian_name: Joi.string().trim().max(120).allow('', null),
-    guardian_mobile: Joi.string().trim().max(20).allow('', null),
-    guardian_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
-  }).unknown(true),
+    dob: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    gender: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    father_name: z.string().trim().max(120).nullable().optional().or(z.literal('')),
+    father_mobile_no: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    father_email: z.string().trim().email({ message: 'Invalid email' }).max(255).nullable().optional().or(z.literal('')),
+    father_occupation: z.string().trim().max(255).nullable().optional().or(z.literal('')),
+    mother_name: z.string().trim().max(120).nullable().optional().or(z.literal('')),
+    mother_mobile_no: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    mother_email: z.string().trim().email({ message: 'Invalid email' }).max(255).nullable().optional().or(z.literal('')),
+    mother_occupation: z.string().trim().max(255).nullable().optional().or(z.literal('')),
+    emergency_contact_name: z.string().trim().max(120).nullable().optional().or(z.literal('')),
+    emergency_contact_number: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    blood_group: z.string().trim().max(5).nullable().optional().or(z.literal('')),
+    category: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    aadhar_number: z.string().trim().max(14).nullable().optional().or(z.literal('')),
+    mis_uid: z.string().trim().max(50).nullable().optional().or(z.literal('')),
+    github_id: z.string().trim().max(255).nullable().optional().or(z.literal('')),
+    guardian_name: z.string().trim().max(120).nullable().optional().or(z.literal('')),
+    guardian_mobile: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    guardian_email: z.string().trim().email({ message: 'Invalid email' }).max(255).nullable().optional().or(z.literal('')),
+  }).catchall(z.unknown()).optional(),
 
-  past_education_records: Joi.array().items(Joi.object({
-    exam_name: Joi.string().trim().max(100).allow('', null),
-    percentage: Joi.number().min(0).max(100).allow(null),
-    year_of_passing: Joi.number().integer().min(1990).max(2100).allow(null),
-    board: Joi.string().trim().max(100).allow('', null),
-    exam_type: Joi.string().trim().max(100).allow('', null),
-  }).unknown(true)),
+  past_education_records: z.array(z.object({
+    exam_name: z.string().trim().max(100).nullable().optional().or(z.literal('')),
+    percentage: z.coerce.number().min(0).max(100).nullable().optional(),
+    year_of_passing: z.coerce.number().int().min(1990).max(2100).nullable().optional(),
+    board: z.string().trim().max(100).nullable().optional().or(z.literal('')),
+    exam_type: z.string().trim().max(100).nullable().optional().or(z.literal('')),
+  }).catchall(z.unknown())).optional(),
 
-  post_admission_records: Joi.array().items(Joi.object({
-    semester: Joi.number().integer().min(1).max(8).allow(null),
-    sgpa: Joi.number().min(0).max(100).allow(null),
+  post_admission_records: z.array(z.object({
+    semester: z.coerce.number().int().min(1).max(8).nullable().optional(),
+    sgpa: z.coerce.number().min(0).max(100).nullable().optional(),
     backlog_subjects: text500,
-    season: Joi.string().trim().max(20).allow('', null),
-    year_of_passing: Joi.number().integer().min(1990).max(2100).allow(null),
-    college_rank: Joi.string().trim().max(100).allow('', null),
+    season: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    year_of_passing: z.coerce.number().int().min(1990).max(2100).nullable().optional(),
+    college_rank: z.string().trim().max(100).nullable().optional().or(z.literal('')),
     academic_awards: text255,
-  }).unknown(true)),
+  }).catchall(z.unknown())).optional(),
 
-  projects: Joi.array().items(Joi.object({
+  projects: z.array(z.object({
     title: text255,
-    description: text200.messages({
-      'string.max': 'Project description must not exceed 200 characters',
-    }),
-  }).unknown(true)),
+    description: z.string().trim().max(200, 'Project description must not exceed 200 characters').nullable().optional().or(z.literal('')),
+  }).catchall(z.unknown())).optional(),
 
-  internships: Joi.array().items(Joi.object({
+  internships: z.array(z.object({
     company_name: text255,
     domain: text255,
-    internship_type: Joi.string().trim().max(20).allow('', null),
-    paid_unpaid: Joi.string().trim().max(10).allow('', null),
-    start_date: Joi.string().trim().max(20).allow('', null),
-    end_date: Joi.string().trim().max(20).allow('', null),
-    designation: Joi.string().trim().max(120).allow('', null),
-    description: text200.messages({
-      'string.max': 'Internship description must not exceed 200 characters',
-    }),
-  }).unknown(true)),
+    internship_type: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    paid_unpaid: z.string().trim().max(10).nullable().optional().or(z.literal('')),
+    start_date: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    end_date: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    designation: z.string().trim().max(120).nullable().optional().or(z.literal('')),
+    description: z.string().trim().max(200, 'Internship description must not exceed 200 characters').nullable().optional().or(z.literal('')),
+  }).catchall(z.unknown())).optional(),
 
-  cocurricular_participations: Joi.array().items(Joi.object({
+  cocurricular_participations: z.array(z.object({
     name: text255,
-    date: Joi.string().trim().max(20).allow('', null),
-    level: Joi.string().trim().max(100).allow('', null),
+    date: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    level: z.string().trim().max(100).nullable().optional().or(z.literal('')),
     awards: text255,
-  }).unknown(true)),
+  }).catchall(z.unknown())).optional(),
 
-  cocurricular_organizations: Joi.array().items(Joi.object({
+  cocurricular_organizations: z.array(z.object({
     name: text255,
-    date: Joi.string().trim().max(20).allow('', null),
-    level: Joi.string().trim().max(100).allow('', null),
+    date: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    level: z.string().trim().max(100).nullable().optional().or(z.literal('')),
     remark: text255,
-  }).unknown(true)),
+  }).catchall(z.unknown())).optional(),
 
-  skill_programs: Joi.array().items(Joi.object({
+  skill_programs: z.array(z.object({
     course_title: text255,
     platform: text255,
-    duration_hours: Joi.number().min(0).max(10000).allow(null),
-    date_from: Joi.string().trim().max(20).allow('', null),
-    date_to: Joi.string().trim().max(20).allow('', null),
-  }).unknown(true)),
+    duration_hours: z.coerce.number().min(0).max(10000).nullable().optional(),
+    date_from: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    date_to: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+  }).catchall(z.unknown())).optional(),
 
-  career_objective: Joi.object({
-    career_goal: Joi.string().trim().max(50).allow('', null),
+  career_objective: z.object({
+    career_goal: z.string().trim().max(50).nullable().optional().or(z.literal('')),
     specific_details: text200,
-    clarity_preparedness: Joi.string().trim().max(20).allow('', null),
-    interested_in_campus_placement: Joi.boolean().allow(null),
+    clarity_preparedness: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    interested_in_campus_placement: z.boolean().nullable().optional(),
     campus_placement_reasons: text200,
     non_technical_areas: text255,
-    student_mentor_interest: Joi.string().trim().max(20).allow('', null),
+    student_mentor_interest: z.string().trim().max(20).nullable().optional().or(z.literal('')),
     expectations_from_institute: text200,
-  }).unknown(true),
+  }).catchall(z.unknown()).optional(),
 
-  skills: Joi.object({
+  skills: z.object({
     programming_languages: text500,
     technologies_frameworks: text500,
     domains_of_interest: text255,
@@ -118,28 +114,42 @@ const studentProfileSchema = Joi.object({
     technical_soft_skills_overall: text500,
     additional_technical_skills: text500,
     additional_soft_skills: text500,
-  }).unknown(true),
+  }).catchall(z.unknown()).optional(),
 
-  swoc: Joi.object({
+  swoc: z.object({
     strengths: text500,
     weaknesses: text500,
     opportunities: text500,
     challenges: text500,
-  }).unknown(true),
+  }).catchall(z.unknown()).optional(),
 
-  declaration_accepted: Joi.boolean().allow(null),
-}).unknown(true)
+  declaration_accepted: z.boolean().nullable().optional(),
+}).catchall(z.unknown())
 
-export function validateStudentProfileData(data: Record<string, unknown>) {
-  const { error } = studentProfileSchema.validate(data, {
-    abortEarly: false,
-    convert: true,
-  })
+/** Alias matching common naming; same schema as `studentProfileSchema`. */
+export const studentSchema = studentProfileSchema
 
-  if (!error) {
-    return { isValid: true, errors: [] as string[] }
+export function formatZodFieldErrors(error: ZodError): Record<string, string> {
+  const acc: Record<string, string> = {}
+  for (const issue of error.issues) {
+    const key = issue.path.length ? issue.path.map(String).join('.') : '_root'
+    if (!acc[key]) acc[key] = issue.message
+  }
+  return acc
+}
+
+export function validateStudentProfileData(data: unknown): {
+  isValid: boolean
+  errors: string[]
+  fieldErrors: Record<string, string>
+} {
+  const result = studentProfileSchema.safeParse(data)
+
+  if (result.success) {
+    return { isValid: true, errors: [], fieldErrors: {} }
   }
 
-  const errors = [...new Set(error.details.map((detail) => detail.message.replace(/\"/g, '')))]
-  return { isValid: false, errors }
+  const fieldErrors = formatZodFieldErrors(result.error)
+  const errors = [...new Set(result.error.issues.map(issue => issue.message))]
+  return { isValid: false, errors, fieldErrors }
 }

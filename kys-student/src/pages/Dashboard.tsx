@@ -66,7 +66,7 @@ export default function Dashboard() {
 
     useEffect(() => {
         getProfile()
-            .then(r => setProfile(r.data))
+            .then(body => setProfile(body))
             .catch(() => { })
             .finally(() => setLoadingProfile(false))
 

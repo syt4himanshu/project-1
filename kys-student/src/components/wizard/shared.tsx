@@ -3,6 +3,8 @@ import { ReactNode } from 'react'
 export interface WizardStepProps {
     data: Record<string, unknown>
     update: (patch: Record<string, unknown>) => void
+    /** Dot-path keys from Zod (e.g. `personal_info.personal_email`) */
+    fieldErrors?: Record<string, string>
 }
 
 export const inputCls =
@@ -13,7 +15,7 @@ export const textareaCls =
 
 export const sectionCardCls = 'rounded-2xl border border-[#d6deea] bg-[#f7f9fc] p-4 sm:p-5'
 
-export function field(label: string, children: ReactNode) {
+export function field(label: string, children: ReactNode, fieldError?: string) {
     const isRequired = label.includes('*')
     const cleanLabel = label.replace(/\s*\*\s*/g, ' ').trim()
 
@@ -24,6 +26,7 @@ export function field(label: string, children: ReactNode) {
                 {isRequired && <span className="ml-1 text-[#dc2626]">*</span>}
             </label>
             {children}
+            {fieldError ? <p className="mt-1 text-xs font-medium text-[#b91c1c]">{fieldError}</p> : null}
         </div>
     )
 }
