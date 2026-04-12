@@ -42,8 +42,8 @@ export default function Step8CareerSkills({ data, update, fieldErrors = {} }: Wi
                     ), err('career_objective.specific_details'))}
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                        {field('Clarity and Preparedness Level *', select(['Unsatisfactory', 'Satisfactory', 'Good', 'Excellent', 'Other'], (co.clarity_preparedness as string) || '', v => updCo('clarity_preparedness', v), 'Select Level'), err('career_objective.clarity_preparedness'))}
-                        {field('Interested in Campus Placement? *', select(['Yes', 'No'], interested, v => updCo('interested_in_campus_placement', v === 'Yes' ? true : v === 'No' ? false : null), 'Select Option'), err('career_objective.interested_in_campus_placement'))}
+                        {field('Clarity and Preparedness Level *', select(['Unsatisfactory', 'Satisfactory', 'Good', 'Excellent'], (co.clarity_preparedness as string) || '', v => updCo('clarity_preparedness', v), 'Select Level'))}
+                        {field('Interested in Campus Placement? *', select(['Yes', 'No'], interested, v => updCo('interested_in_campus_placement', v === 'Yes' ? true : v === 'No' ? false : null), 'Select Option'))}
                     </div>
 
                     <div>
