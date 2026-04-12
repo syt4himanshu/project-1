@@ -1,5 +1,9 @@
 {
   "dependencies": {
     "joi": "^18.1.2"
-  }
+  },
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "packageManager": "npm@10"
 }
