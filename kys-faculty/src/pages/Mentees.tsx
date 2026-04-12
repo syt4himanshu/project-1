@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMentees } from '../api/faculty'
+import { extractData } from '../utils/apiHandler'
 
 interface MenteeRow {
     id: number
@@ -18,7 +19,15 @@ export default function Mentees() {
 
     useEffect(() => {
         getMentees()
-            .then((res) => setRows(res.data as MenteeRow[]))
+            .then((res) => {
+                console.log("API Response:", res.data);
+                if (res.data && res.data.success === false) {
+                    setError(res.data.error || 'Failed to load mentees');
+                    setRows([]);
+                    return;
+                }
+                setRows((extractData(res) || []) as MenteeRow[]);
+            })
             .catch(() => setError('Failed to load mentees'))
             .finally(() => setLoading(false))
     }, [])
@@ -52,7 +61,7 @@ export default function Mentees() {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map((r) => (
+                            {(Array.isArray(rows) ? rows : []).map((r) => (
                                 <tr key={r.id} className="border-b border-gray-100 dark:border-gray-700/80 hover:bg-gray-50 dark:hover:bg-gray-900/30">
                                     <td className="px-4 py-3 font-mono text-gray-900 dark:text-white">{r.uid}</td>
                                     <td className="px-4 py-3 text-gray-900 dark:text-white">{r.full_name}</td>

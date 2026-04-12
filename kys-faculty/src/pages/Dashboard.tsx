@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMentees } from '../api/faculty'
+import { extractData } from '../utils/apiHandler'
 
 export default function Dashboard() {
     const [count, setCount] = useState<number | null>(null)
@@ -9,7 +10,10 @@ export default function Dashboard() {
 
     useEffect(() => {
         getMentees()
-            .then((res) => setCount(Array.isArray(res.data) ? res.data.length : 0))
+            .then((res) => {
+                const data = extractData(res) || res.data;
+                setCount(Array.isArray(data) ? data.length : 0);
+            })
             .catch(() => setError('Could not load mentee list'))
             .finally(() => setLoading(false))
     }, [])
@@ -23,7 +27,7 @@ export default function Dashboard() {
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Link
                     to="/mentees"
                     className="block rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-600 transition"
@@ -42,6 +46,15 @@ export default function Dashboard() {
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Faculty profile</p>
                     <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">Name & contact</p>
                     <p className="mt-3 text-sm text-indigo-600 dark:text-indigo-400 font-medium">Edit profile →</p>
+                </Link>
+
+                <Link
+                    to="/chatbot"
+                    className="block rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-600 transition"
+                >
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">AI insights</p>
+                    <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">Faculty Chatbot</p>
+                    <p className="mt-3 text-sm text-indigo-600 dark:text-indigo-400 font-medium">Open chatbot →</p>
                 </Link>
             </div>
 
