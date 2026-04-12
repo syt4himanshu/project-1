@@ -36,7 +36,10 @@ function isEmpty(value: unknown) {
 }
 
 function showValue(value: unknown) {
-    return isEmpty(value) ? 'N/A' : textValue(value)
+    if (isEmpty(value)) return 'N/A'
+    const text = textValue(value)
+    if (text === 'HSSC') return 'HSC'
+    return text
 }
 
 function pick(record: AnyRecord | undefined, ...keys: string[]) {
@@ -334,7 +337,7 @@ export default function StudentDetailDialog({ studentId, onClose }: Props) {
                             <>
                                 <CollapsibleSection title="Student's Personal Information" defaultOpen forceOpen={forceOpenForExport}>
                                     <InfoTable rows={[
-                                        { label: 'Department', value: showValue(pick(pi, 'department', 'dept', 'branch')) },
+                                        { label: 'Department', value: 'Computer Science Engineering' },
                                         { label: 'Full Name', value: showValue(student.name) },
                                         { label: 'Section', value: showValue(student.section) },
                                         { label: 'Semester', value: showValue(student.semester) },

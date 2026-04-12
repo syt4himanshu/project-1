@@ -3,17 +3,26 @@ const Joi = require('joi');
 const text200 = Joi.string().trim().max(200).allow('', null);
 const text255 = Joi.string().trim().max(255).allow('', null);
 const text500 = Joi.string().trim().max(500).allow('', null);
+const optionalEmail = Joi.string()
+  .trim()
+  .max(255)
+  .allow('', null)
+  .pattern(/^(|n\/a|na|-|[^\s@]+@[^\s@]+\.[^\s@]+)$/i)
+  .messages({
+    'string.pattern.base': 'must be a valid email',
+  });
 
 const studentProfileSchema = Joi.object({
   full_name: Joi.string().trim().min(3).max(120).allow('', null),
   section: Joi.string().trim().max(10).allow('', null),
   semester: Joi.number().integer().min(1).max(8).allow(null),
   year_of_admission: Joi.number().integer().min(1990).max(2100).allow(null),
+  admission_type: Joi.string().valid('hsc', 'diploma').allow('', null),
 
   personal_info: Joi.object({
     mobile_no: Joi.string().trim().max(20).allow('', null),
-    personal_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
-    college_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
+    personal_email: optionalEmail,
+    college_email: optionalEmail,
     linked_in_id: Joi.string().trim().max(255).allow('', null),
     permanent_address: text500,
     present_address: text500,
@@ -21,11 +30,11 @@ const studentProfileSchema = Joi.object({
     gender: Joi.string().trim().max(20).allow('', null),
     father_name: Joi.string().trim().max(120).allow('', null),
     father_mobile_no: Joi.string().trim().max(20).allow('', null),
-    father_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
+    father_email: text255,
     father_occupation: Joi.string().trim().max(255).allow('', null),
     mother_name: Joi.string().trim().max(120).allow('', null),
     mother_mobile_no: Joi.string().trim().max(20).allow('', null),
-    mother_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
+    mother_email: text255,
     mother_occupation: Joi.string().trim().max(255).allow('', null),
     emergency_contact_name: Joi.string().trim().max(120).allow('', null),
     emergency_contact_number: Joi.string().trim().max(20).allow('', null),
@@ -36,7 +45,7 @@ const studentProfileSchema = Joi.object({
     github_id: Joi.string().trim().max(255).allow('', null),
     guardian_name: Joi.string().trim().max(120).allow('', null),
     guardian_mobile: Joi.string().trim().max(20).allow('', null),
-    guardian_email: Joi.string().trim().email({ tlds: { allow: false } }).max(255).allow('', null),
+    guardian_email: text255,
   }).unknown(true),
 
   past_education_records: Joi.array().items(
@@ -130,23 +139,23 @@ const studentProfileSchema = Joi.object({
     opportunities: text500,
     challenges: text500,
   }).unknown(true),
+}).unknown(true).custom((value, helpers) => {
+  const admissionType = String(value.admission_type || '').trim();
+  const records = Array.isArray(value.past_education_records) ? value.past_education_records : [];
+  const hasHssc = records.some((record) => record && record.exam_name === 'HSSC');
+  const hasDiploma = records.some((record) => record && record.exam_name === 'DIPLOMA');
 
-  skill_programs: Joi.array().items(
-    Joi.object({
-      course_title: text255,
-      platform: text255,
-      duration_hours: Joi.number().min(0).max(10000).allow(null),
-      date_from: Joi.string().trim().max(20).allow('', null),
-      date_to: Joi.string().trim().max(20).allow('', null),
-    }).unknown(true),
-  ),
+  if (admissionType === 'hsc' && hasDiploma) {
+    return helpers.error('any.invalid', { message: 'Diploma details are not allowed for HSC admission type' });
+  }
 
-  declaration_accepted: Joi.boolean().allow(null),
-}).unknown(true);
+  if (admissionType === 'diploma' && hasHssc) {
+    return helpers.error('any.invalid', { message: 'HSC details are not allowed for Diploma admission type' });
+  }
 
-/** Admin-only: assign or clear a student's mentor */
-const adminStudentMentorUpdateSchema = Joi.object({
-  mentor_id: Joi.alternatives().try(Joi.number().integer().positive(), Joi.valid(null)).required(),
-}).unknown(true);
+  return value;
+}, 'admission route consistency').messages({
+  'any.invalid': '{{#message}}',
+});
 
 module.exports = { studentProfileSchema, adminStudentMentorUpdateSchema };
