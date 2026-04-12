@@ -339,14 +339,15 @@ function normalizeAcademicRecord(raw: Record<string, unknown>) {
             .map((value) => value.trim())
             .filter((value) => !isPlaceholderValue(value))
         : []
+    const computedBacklogs =
+        Number.isFinite(normalizedBacklogs) && normalizedBacklogs >= 0
+            ? normalizedBacklogs
+            : parsedSubjects.length
 
     return {
         ...raw,
         backlog_subjects: parsedSubjects.join(', '),
-        backlogs:
-            Number.isFinite(normalizedBacklogs) && normalizedBacklogs >= 0
-                ? normalizedBacklogs
-                : parsedSubjects.length,
+        backlogs: parsedSubjects.length === 0 ? 0 : computedBacklogs,
     }
 }
 

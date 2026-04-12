@@ -1,13 +1,17 @@
-const { validationResult } = require('express-validator');
-const { sendResponse } = require('../utils/responseWrapper');
+const validate = (schema) => (req, res, next) => {
+  const { error } = schema.validate(req.body, {
+    abortEarly: false,
+    convert: true,
+  });
 
-const validateRequest = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const errorMsg = errors.array().map(e => `${e.path}: ${e.msg}`).join(', ');
-    return sendResponse(res, { success: false, status: 400, error: errorMsg });
+  if (error) {
+    return res.status(400).json({
+      message: 'Validation Error',
+      errors: error.details.map((err) => err.message),
+    });
   }
-  next();
+
+  return next();
 };
 
-module.exports = { validateRequest };
+module.exports = { validate };

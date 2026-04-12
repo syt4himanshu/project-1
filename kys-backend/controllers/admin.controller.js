@@ -45,12 +45,38 @@ const fullStudentIncludes = [
   'swoc',
 ];
 
+const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
+
+const isBacklogPlaceholder = (value) => {
+  const token = normalizeText(value).toLowerCase();
+  return (
+    !token ||
+    token === 'n/a' ||
+    token === 'na' ||
+    token === 'none' ||
+    token === 'nil' ||
+    token === '-' ||
+    token === '--' ||
+    token === 'no backlog' ||
+    token === 'no backlogs'
+  );
+};
+
 const parseBacklogSubjects = (value) => {
   if (!value) return [];
-  return String(value)
+
+  const tokens = (Array.isArray(value) ? value.join(',') : String(value))
     .split(/[,\n;]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+    .map((s) => normalizeText(s))
+    .filter((s) => !isBacklogPlaceholder(s));
+
+  const uniqueByLowerCase = new Map();
+  tokens.forEach((subject) => {
+    const key = subject.toLowerCase();
+    if (!uniqueByLowerCase.has(key)) uniqueByLowerCase.set(key, subject);
+  });
+
+  return Array.from(uniqueByLowerCase.values());
 };
 
 const toCsv = (rows) => {
@@ -66,8 +92,6 @@ const toCsv = (rows) => {
   });
   return lines.join('\n');
 };
-
-const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
 
 const parseBoundedInteger = (value, min, max) => {
   const parsed = Number(value);
