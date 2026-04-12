@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { validate } = require('../middleware/validate');
-const { studentProfileSchema } = require('../middleware/validation/student.validation');
+const { studentProfileSchema, adminStudentMentorUpdateSchema } = require('../middleware/validation/student.validation');
 const {
   getStudentsMe,
   putStudentsMe,
@@ -32,7 +32,13 @@ studentRouter.post('/me/upload-photo', verifyToken, roleRequired(['student']), u
 const apiStudentsRouter = express.Router();
 apiStudentsRouter.get('/', verifyToken, roleRequired(['admin', 'faculty']), searchStudents);
 apiStudentsRouter.get('/:id', verifyToken, roleRequired(['admin', 'faculty']), getStudentById);
-apiStudentsRouter.put('/:id', verifyToken, roleRequired(['admin']), updateStudentMentorByAdmin);
+apiStudentsRouter.put(
+  '/:id',
+  verifyToken,
+  roleRequired(['admin']),
+  validate(adminStudentMentorUpdateSchema),
+  updateStudentMentorByAdmin,
+);
 
 module.exports = {
   studentsRouter,

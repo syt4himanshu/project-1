@@ -1,8 +1,9 @@
 import { WizardStepProps, field, input, sectionCardCls } from './shared'
 
-export default function Step2Parents({ data, update }: WizardStepProps) {
+export default function Step2Parents({ data, update, fieldErrors = {} }: WizardStepProps) {
     const pi = (data.personal_info as Record<string, unknown>) || {}
     const upd = (k: string, v: unknown) => update({ personal_info: { ...pi, [k]: v } })
+    const err = (path: string) => fieldErrors[path]
 
     return (
         <div className="space-y-5">

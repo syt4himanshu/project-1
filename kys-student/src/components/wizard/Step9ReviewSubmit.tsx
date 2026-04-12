@@ -24,7 +24,7 @@ function Row({ label, value }: { label: string, value: unknown }) {
     )
 }
 
-export default function Step9ReviewSubmit({ data, update }: WizardStepProps) {
+export default function Step9ReviewSubmit({ data, update, fieldErrors = {} }: WizardStepProps) {
     const pi = (data.personal_info as Record<string, unknown>) || {}
     const past = (data.past_education_records as Record<string, unknown>[]) || []
     const post = (data.post_admission_records as Record<string, unknown>[]) || []
@@ -161,15 +161,20 @@ export default function Step9ReviewSubmit({ data, update }: WizardStepProps) {
                 </div>
             </section>
 
-            <label className="flex items-start gap-3 rounded-xl border border-[#d0d8e6] bg-white px-4 py-3 text-sm text-[#334155]">
-                <input
-                    type="checkbox"
-                    checked={Boolean(data.declaration_accepted)}
-                    onChange={e => update({ declaration_accepted: e.target.checked })}
-                    className="mt-0.5 h-4 w-4 rounded border-[#9fb0c8] text-[#234574]"
-                />
-                <span>I confirm that all the information provided is accurate and I agree to the terms and conditions *</span>
-            </label>
+            <div>
+                <label className="flex items-start gap-3 rounded-xl border border-[#d0d8e6] bg-white px-4 py-3 text-sm text-[#334155]">
+                    <input
+                        type="checkbox"
+                        checked={Boolean(data.declaration_accepted)}
+                        onChange={e => update({ declaration_accepted: e.target.checked })}
+                        className="mt-0.5 h-4 w-4 rounded border-[#9fb0c8] text-[#234574]"
+                    />
+                    <span>I confirm that all the information provided is accurate and I agree to the terms and conditions *</span>
+                </label>
+                {fieldErrors.declaration_accepted ? (
+                    <p className="mt-2 text-xs font-medium text-[#b91c1c]">{fieldErrors.declaration_accepted}</p>
+                ) : null}
+            </div>
         </div>
     )
 }

@@ -2,10 +2,11 @@ import { ChangeEvent, useState } from 'react'
 import { uploadProfilePhoto } from '../../api/student'
 import { WizardStepProps, field, input, inputCls, select, textareaCls } from './shared'
 
-export default function Step1Personal({ data, update }: WizardStepProps) {
+export default function Step1Personal({ data, update, fieldErrors = {} }: WizardStepProps) {
     const pi = (data.personal_info as Record<string, unknown>) || {}
     const postAdmissionRecords = (data.post_admission_records as Record<string, unknown>[]) || []
     const upd = (k: string, v: unknown) => update({ personal_info: { ...pi, [k]: v } })
+    const err = (path: string) => fieldErrors[path]
 
     const handleSemesterChange = (value: string) => {
         const semester = value ? Number(value.replace('Semester ', '')) : null
@@ -30,8 +31,8 @@ export default function Step1Personal({ data, update }: WizardStepProps) {
         setUploadMsg('')
         try {
             const response = await uploadProfilePhoto(file)
-            upd('photo_url', response.data?.photo_url || '')
-            upd('photo_public_id', response.data?.photo_public_id || '')
+            upd('photo_url', response.photo_url || '')
+            upd('photo_public_id', response.photo_public_id || '')
             setUploadMsg('Photo uploaded successfully.')
         } catch {
             setUploadMsg('Failed to upload photo. You can try again later.')
@@ -52,14 +53,14 @@ export default function Step1Personal({ data, update }: WizardStepProps) {
                     data.semester ? `Semester ${data.semester}` : '',
                     handleSemesterChange,
                     'Select Semester',
-                ))}
-                {field('Year of Admission', input('number', String(data.year_of_admission || ''), v => update({ year_of_admission: v ? Number(v) : null }), 'e.g. 2023'))}
+                ), err('semester'))}
+                {field('Year of Admission', input('number', String(data.year_of_admission || ''), v => update({ year_of_admission: v ? Number(v) : null }), 'e.g. 2023'), err('year_of_admission'))}
 
-                {field('Date of Birth *', input('date', (pi.dob as string) || '', v => upd('dob', v), 'dd-mm-yyyy'))}
-                {field('Gender *', select(['Male', 'Female', 'Other'], (pi.gender as string) || '', v => upd('gender', v), 'Select Gender'))}
+                {field('Date of Birth *', input('date', (pi.dob as string) || '', v => upd('dob', v), 'dd-mm-yyyy'), err('personal_info.dob'))}
+                {field('Gender *', select(['Male', 'Female', 'Other'], (pi.gender as string) || '', v => upd('gender', v), 'Select Gender'), err('personal_info.gender'))}
 
-                {field('Blood Group', select(['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'], (pi.blood_group as string) || '', v => upd('blood_group', v), 'Select Blood Group'))}
-                {field('Category', select(['General', 'OBC', 'SC', 'ST', 'NT', 'EWS'], (pi.category as string) || '', v => upd('category', v), 'Select Category'))}
+                {field('Blood Group', select(['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'], (pi.blood_group as string) || '', v => upd('blood_group', v), 'Select Blood Group'), err('personal_info.blood_group'))}
+                {field('Category', select(['General', 'OBC', 'SC', 'ST', 'NT', 'EWS'], (pi.category as string) || '', v => upd('category', v), 'Select Category'), err('personal_info.category'))}
 
                 {field('Aadhar Card Number', input('text', (pi.aadhar_number as string) || '', v => upd('aadhar_number', v), 'e.g. 123412341234'))}
                 {field('MIS UID', input('text', (pi.mis_uid as string) || '', v => upd('mis_uid', v), 'e.g. 240030**'))}
@@ -82,7 +83,7 @@ export default function Step1Personal({ data, update }: WizardStepProps) {
                         placeholder="Street, City, State, PIN"
                         className={textareaCls}
                     />
-                ))}
+                ), err('personal_info.permanent_address'))}
 
                 {field('Present Address', (
                     <textarea
@@ -92,7 +93,7 @@ export default function Step1Personal({ data, update }: WizardStepProps) {
                         placeholder="Current address"
                         className={textareaCls}
                     />
-                ))}
+                ), err('personal_info.present_address'))}
             </div>
 
             <div>

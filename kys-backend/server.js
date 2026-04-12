@@ -127,7 +127,7 @@ app.get('/api/health/faculty', async (req, res) => {
 });
 
 app.use((_req, res) => {
-  res.status(404).json({ error: 'Not found' });
+  res.status(404).json({ success: false, data: null, error: 'Not found' });
 });
 
 app.use((err, req, res, next) => {
@@ -136,8 +136,8 @@ app.use((err, req, res, next) => {
   if (req.path.includes('/faculty')) {
     return res.status(500).json({ success: false, data: null, error: 'Internal server error' });
   }
-  
-  return res.status(500).json({ error: 'Internal server error' });
+
+  return res.status(500).json({ success: false, data: null, error: 'Internal server error' });
 });
 
 const PORT = Number(process.env.PORT || 5002);

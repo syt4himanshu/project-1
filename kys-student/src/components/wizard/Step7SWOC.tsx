@@ -1,8 +1,9 @@
 import { WizardStepProps, field, sectionCardCls, textareaCls } from './shared'
 
-export default function Step7SWOC({ data, update }: WizardStepProps) {
+export default function Step7SWOC({ data, update, fieldErrors = {} }: WizardStepProps) {
     const swoc = (data.swoc as Record<string, unknown>) || {}
     const upd = (k: string, v: string) => update({ swoc: { ...swoc, [k]: v } })
+    const err = (path: string) => fieldErrors[path]
 
     return (
         <section className={sectionCardCls}>
@@ -15,7 +16,7 @@ export default function Step7SWOC({ data, update }: WizardStepProps) {
                         placeholder='e.g. Team player, leadership, communication'
                         className={textareaCls}
                     />
-                ))}
+                ), err('swoc.strengths'))}
 
                 {field('Weaknesses / Areas of Improvement *', (
                     <textarea
@@ -25,7 +26,7 @@ export default function Step7SWOC({ data, update }: WizardStepProps) {
                         placeholder='e.g. Multitasking, time management'
                         className={textareaCls}
                     />
-                ))}
+                ), err('swoc.weaknesses'))}
 
                 {field('Opportunities *', (
                     <textarea
@@ -35,7 +36,7 @@ export default function Step7SWOC({ data, update }: WizardStepProps) {
                         placeholder='e.g. Projects, internships, hackathons'
                         className={textareaCls}
                     />
-                ))}
+                ), err('swoc.opportunities'))}
 
                 {field('Challenges *', (
                     <textarea
@@ -45,7 +46,7 @@ export default function Step7SWOC({ data, update }: WizardStepProps) {
                         placeholder='e.g. Academics, balancing personal projects'
                         className={textareaCls}
                     />
-                ))}
+                ), err('swoc.challenges'))}
             </div>
         </section>
     )

@@ -27,7 +27,7 @@ const studentProfileSchema = Joi.object({
     permanent_address: text500,
     present_address: text500,
     dob: Joi.date().iso().allow('', null),
-    gender: Joi.string().trim().max(10).allow('', null),
+    gender: Joi.string().trim().max(20).allow('', null),
     father_name: Joi.string().trim().max(120).allow('', null),
     father_mobile_no: Joi.string().trim().max(20).allow('', null),
     father_email: text255,
@@ -158,4 +158,4 @@ const studentProfileSchema = Joi.object({
   'any.invalid': '{{#message}}',
 });
 
-module.exports = { studentProfileSchema };
+module.exports = { studentProfileSchema, adminStudentMentorUpdateSchema };

@@ -10,6 +10,13 @@ async function track(username: string) {
   return id;
 }
 
+function unwrapStudentEnvelope<T>(body: unknown): T {
+  if (body && typeof body === 'object' && 'success' in body && (body as { success: boolean }).success === true) {
+    return (body as { data: T }).data;
+  }
+  return body as T;
+}
+
 describe('student self APIs', () => {
   let studentToken = '';
   let facultyToken = '';
@@ -47,8 +54,9 @@ describe('student self APIs', () => {
   it('GET /students/me student token -> 200', async () => {
     const res = await request<any>('GET', '/students/me', undefined, studentToken);
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('uid');
-    expect(res.body).toHaveProperty('semester');
+    const profile = unwrapStudentEnvelope<any>(res.body);
+    expect(profile).toHaveProperty('uid');
+    expect(profile).toHaveProperty('semester');
   });
 
   it('GET /students/me admin token -> 403', async () => {
@@ -154,7 +162,7 @@ describe('student self APIs', () => {
 
   it('after faculty adds minute, student sees it', async () => {
     const me = await request<any>('GET', '/students/me', undefined, studentToken);
-    const uid = me.body.uid;
+    const uid = unwrapStudentEnvelope<any>(me.body).uid;
 
     const add = await request(
       'POST',

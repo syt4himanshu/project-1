@@ -1,3 +1,7 @@
+const { validationResult } = require('express-validator');
+const { sendResponse } = require('../utils/responseWrapper');
+
+// Schema-based validator (e.g., Joi)
 const validate = (schema) => (req, res, next) => {
   const { error } = schema.validate(req.body, {
     abortEarly: false,
@@ -5,13 +9,37 @@ const validate = (schema) => (req, res, next) => {
   });
 
   if (error) {
-    return res.status(400).json({
-      message: 'Validation Error',
-      errors: error.details.map((err) => err.message),
+    return sendResponse(res, {
+      success: false,
+      status: 400,
+      error: error.details.map((err) => err.message).join(', '),
     });
   }
 
-  return next();
+  next();
 };
 
-module.exports = { validate };
+// express-validator middleware
+const validateRequest = (req, res, next) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    const errorMsg = errors
+      .array()
+      .map((e) => `${e.path}: ${e.msg}`)
+      .join(', ');
+
+    return sendResponse(res, {
+      success: false,
+      status: 400,
+      error: errorMsg,
+    });
+  }
+
+  next();
+};
+
+module.exports = {
+  validate,
+  validateRequest,
+};
