@@ -16,12 +16,12 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
         <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
+            <BrowserRouter basename="/admin" future={{ v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/" element={<RoleSelection />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route
-                        path="/admin"
+                        path="/dashboard"
                         element={
                             <ProtectedRoute>
                                 <AdminDashboard />

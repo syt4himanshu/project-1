@@ -6,37 +6,50 @@ type RoleCard = {
     href: string
 }
 
-const buildAppUrl = (port: number, path = '') => {
+const GATEWAY_PORT = '3005'
+const DEV_PORTS = { admin: 5176, student: 5173, faculty: 5174 } as const
+
+const buildAppUrl = (port: number, path: string) => {
     const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
     const hostname = window.location.hostname || 'localhost'
     return `${protocol}//${hostname}:${port}${path}`
 }
 
-const cards: RoleCard[] = [
-    {
-        letter: 'A',
-        title: 'Administrator',
-        description: 'Comprehensive system management with full access to user administration and analytics.',
-        accentClass: 'bg-red-500',
-        href: buildAppUrl(5173, '/login'),
-    },
-    {
-        letter: 'S',
-        title: 'Student',
-        description: 'Streamline your academic journey with profile forms, mentoring, and progress tracking.',
-        accentClass: 'bg-emerald-500',
-        href: buildAppUrl(5175, '/login'),
-    },
-    {
-        letter: 'T',
-        title: 'Teacher',
-        description: 'Manage classes, review student performance, and guide learners with structured mentoring.',
-        accentClass: 'bg-violet-500',
-        href: '/login',
-    },
-]
+function roleLinks() {
+    const onGateway = window.location.port === GATEWAY_PORT
+    return {
+        admin: onGateway ? '/admin/login' : buildAppUrl(DEV_PORTS.admin, '/admin/login'),
+        student: onGateway ? '/student/login' : buildAppUrl(DEV_PORTS.student, '/student/login'),
+        faculty: onGateway ? '/faculty/login' : buildAppUrl(DEV_PORTS.faculty, '/faculty/login'),
+    }
+}
 
 export default function RoleSelection() {
+    const { admin: adminLoginHref, student: studentLoginHref, faculty: facultyLoginHref } = roleLinks()
+    const cards: RoleCard[] = [
+        {
+            letter: 'A',
+            title: 'Administrator',
+            description: 'Comprehensive system management with full access to user administration and analytics.',
+            accentClass: 'bg-red-500',
+            href: adminLoginHref,
+        },
+        {
+            letter: 'S',
+            title: 'Student',
+            description: 'Streamline your academic journey with profile forms, mentoring, and progress tracking.',
+            accentClass: 'bg-emerald-500',
+            href: studentLoginHref,
+        },
+        {
+            letter: 'T',
+            title: 'Teacher',
+            description: 'Manage classes, review student performance, and guide learners with structured mentoring.',
+            accentClass: 'bg-violet-500',
+            href: `${import.meta.env.BASE_URL}login`,
+        },
+    ]
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-[#111a33] to-[#0d1630] text-slate-100">
             <header className="border-b border-slate-700/50">

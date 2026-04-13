@@ -5,7 +5,7 @@ export type StudentProfilePayload = Record<string, unknown>
 
 export async function getProfile(): Promise<StudentProfilePayload> {
     try {
-        const res = await api.get<unknown>('/student/me')
+        const res = await api.get<unknown>('/api/student/me')
         const parsed = readApiEnvelope<StudentProfilePayload>(res.data)
         if (!parsed.ok) throw new Error(parsed.error)
         return parsed.data
@@ -18,7 +18,7 @@ export async function getProfile(): Promise<StudentProfilePayload> {
 
 export async function updateProfile(data: unknown): Promise<{ message?: string }> {
     try {
-        const res = await api.put<unknown>('/student/me', data)
+        const res = await api.put<unknown>('/api/student/me', data)
         const parsed = readApiEnvelope<{ message?: string }>(res.data)
         if (!parsed.ok) throw new Error(parsed.error)
         return parsed.data
@@ -29,8 +29,8 @@ export async function updateProfile(data: unknown): Promise<{ message?: string }
     }
 }
 
-export const getMentor = () => api.get('/students/me/mentor')
-export const getMentoringMinutes = () => api.get('/students/me/mentoring-minutes')
+export const getMentor = () => api.get('/api/students/me/mentor')
+export const getMentoringMinutes = () => api.get('/api/students/me/mentoring-minutes')
 
 export type UploadPhotoResult = {
     message?: string
@@ -42,7 +42,7 @@ export async function uploadProfilePhoto(file: File): Promise<UploadPhotoResult>
     try {
         const formData = new FormData()
         formData.append('photo', file)
-        const res = await api.post<unknown>('/student/me/upload-photo', formData, {
+        const res = await api.post<unknown>('/api/student/me/upload-photo', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

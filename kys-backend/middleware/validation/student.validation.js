@@ -157,5 +157,8 @@ const studentProfileSchema = Joi.object({
 }, 'admission route consistency').messages({
   'any.invalid': '{{#message}}',
 });
+const adminStudentMentorUpdateSchema = Joi.object({
+  mentor_id: Joi.number().integer().allow(null).required()
+}).unknown(true);
 
 module.exports = { studentProfileSchema, adminStudentMentorUpdateSchema };

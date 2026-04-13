@@ -16,6 +16,7 @@ const { studentsRouter, studentRouter, apiStudentsRouter } = require('./routes/s
 validateEnv();
 
 const app = express();
+app.set('trust proxy', 1); // PROD-FIX: trust reverse proxy X-Forwarded-* headers
 const { allowedOrigins } = getCorsSettings();
 const forceHttps = String(process.env.FORCE_HTTPS || 'false').toLowerCase() === 'true';
 
@@ -31,15 +32,7 @@ app.use(
   cors({
     origin(origin, callback) {
       if (!origin) return callback(null, true);
-
-      const isAllowed = allowedOrigins.some((allowed) => {
-        if (allowed.includes('\\d+') || allowed.includes('\\.')) {
-          return new RegExp(`^${allowed}$`).test(origin);
-        }
-        return allowed === origin;
-      });
-
-      if (isAllowed) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
@@ -62,13 +55,16 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/health/live', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/students', studentsRouter);
 app.use('/api/students', apiStudentsRouter);
+app.use('/api/student', studentRouter);
 app.use('/api/faculty', facultyRoutes);
-app.use('/students', studentsRouter);
-app.use('/student', studentRouter);
-app.use('/faculty', facultyRoutes);
 
 app.get('/api/health/faculty', async (req, res) => {
   try {

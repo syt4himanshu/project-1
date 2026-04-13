@@ -3,10 +3,24 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
+    base: '/admin/',
     plugins: [react()],
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+        },
+    },
+    server: {
+        port: 5176,
+        strictPort: true,
+        hmr: {
+            clientPort: 3005,
+        },
+        proxy: {
+            '/api': {
+                target: 'http://localhost:5002',
+                changeOrigin: true,
+            },
         },
     },
 })

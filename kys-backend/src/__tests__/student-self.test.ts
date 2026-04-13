@@ -51,25 +51,25 @@ describe('student self APIs', () => {
     await cleanup(createdUserIds);
   });
 
-  it('GET /students/me student token -> 200', async () => {
-    const res = await request<any>('GET', '/students/me', undefined, studentToken);
+  it('GET /api/student/me student token -> 200', async () => {
+    const res = await request<any>('GET', '/api/student/me', undefined, studentToken);
     expect(res.status).toBe(200);
     const profile = unwrapStudentEnvelope<any>(res.body);
     expect(profile).toHaveProperty('uid');
     expect(profile).toHaveProperty('semester');
   });
 
-  it('GET /students/me admin token -> 403', async () => {
-    const res = await request('GET', '/students/me', undefined, adminToken);
+  it('GET /api/student/me admin token -> 403', async () => {
+    const res = await request('GET', '/api/student/me', undefined, adminToken);
     expect(res.status).toBe(403);
   });
 
-  it('GET /students/me no token -> 401', async () => {
-    const res = await request('GET', '/students/me');
+  it('GET /api/student/me no token -> 401', async () => {
+    const res = await request('GET', '/api/student/me');
     expect(res.status).toBe(401);
   });
 
-  it('PUT /students/me update personal info and project', async () => {
+  it('PUT /api/student/me update personal info and project', async () => {
     const payload = {
       full_name: 'Student Self Test',
       semester: 3,
@@ -111,14 +111,14 @@ describe('student self APIs', () => {
       },
     };
 
-    const res = await request('PUT', '/students/me', payload, studentToken);
+    const res = await request('PUT', '/api/student/me', payload, studentToken);
     expect([200, 400]).toContain(res.status);
 
-    const get = await request<any>('GET', '/students/me', undefined, studentToken);
+    const get = await request<any>('GET', '/api/student/me', undefined, studentToken);
     expect(get.status).toBe(200);
   });
 
-  it('PUT /students/me second call upsert no duplicates expectation', async () => {
+  it('PUT /api/student/me second call upsert no duplicates expectation', async () => {
     const payload = {
       full_name: 'Student Self Test Updated',
       semester: 3,
@@ -135,38 +135,38 @@ describe('student self APIs', () => {
       cocurricular_organizations: [],
     };
 
-    const res = await request('PUT', '/students/me', payload, studentToken);
+    const res = await request('PUT', '/api/student/me', payload, studentToken);
     expect([200, 400]).toContain(res.status);
   });
 
   it('attempt UID/semester change -> 400 or ignored', async () => {
-    const res = await request('PUT', '/students/me', { uid: 'HACKUID', semester: 8 }, studentToken);
+    const res = await request('PUT', '/api/student/me', { uid: 'HACKUID', semester: 8 }, studentToken);
     expect([200, 400]).toContain(res.status);
   });
 
-  it('PUT /students/me admin token -> 403', async () => {
-    const res = await request('PUT', '/students/me', {}, adminToken);
+  it('PUT /api/student/me admin token -> 403', async () => {
+    const res = await request('PUT', '/api/student/me', {}, adminToken);
     expect(res.status).toBe(403);
   });
 
-  it('GET /students/me/mentor', async () => {
-    const res = await request('GET', '/students/me/mentor', undefined, studentToken);
+  it('GET /api/students/me/mentor', async () => {
+    const res = await request('GET', '/api/students/me/mentor', undefined, studentToken);
     expect([200, 404]).toContain(res.status);
   });
 
-  it('GET /students/me/mentoring-minutes no minutes yet -> 200 empty array', async () => {
-    const res = await request<any[]>('GET', '/students/me/mentoring-minutes', undefined, studentToken);
+  it('GET /api/students/me/mentoring-minutes no minutes yet -> 200 empty array', async () => {
+    const res = await request<any[]>('GET', '/api/students/me/mentoring-minutes', undefined, studentToken);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 
   it('after faculty adds minute, student sees it', async () => {
-    const me = await request<any>('GET', '/students/me', undefined, studentToken);
+    const me = await request<any>('GET', '/api/student/me', undefined, studentToken);
     const uid = unwrapStudentEnvelope<any>(me.body).uid;
 
     const add = await request(
       'POST',
-      `/faculty/me/mentees/${uid}/minutes`,
+      `/api/faculty/me/mentees/${uid}/minutes`,
       {
         semester: 3,
         date: '2025-01-15',
@@ -178,18 +178,18 @@ describe('student self APIs', () => {
     );
     expect([201, 404]).toContain(add.status);
 
-    const list = await request<any[]>('GET', '/students/me/mentoring-minutes', undefined, studentToken);
+    const list = await request<any[]>('GET', '/api/students/me/mentoring-minutes', undefined, studentToken);
     expect(list.status).toBe(200);
     expect(Array.isArray(list.body)).toBe(true);
   });
 
-  it('GET /students/me/mentoring-minutes no token -> 401', async () => {
-    const res = await request('GET', '/students/me/mentoring-minutes');
+  it('GET /api/students/me/mentoring-minutes no token -> 401', async () => {
+    const res = await request('GET', '/api/students/me/mentoring-minutes');
     expect(res.status).toBe(401);
   });
 
-  it('GET /students/me/mentoring-minutes admin token -> 403', async () => {
-    const res = await request('GET', '/students/me/mentoring-minutes', undefined, adminToken);
+  it('GET /api/students/me/mentoring-minutes admin token -> 403', async () => {
+    const res = await request('GET', '/api/students/me/mentoring-minutes', undefined, adminToken);
     expect(res.status).toBe(403);
   });
 });

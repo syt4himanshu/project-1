@@ -35,7 +35,7 @@ export default function LoginPage() {
             localStorage.setItem('role', res.role)
             localStorage.setItem('username', res.username)
             toast.success('Login successful')
-            navigate('/admin')
+            navigate('/dashboard')
         } catch (e: unknown) {
             toast.error(e instanceof Error ? e.message : 'Login failed')
         }

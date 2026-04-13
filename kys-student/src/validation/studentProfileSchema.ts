@@ -1,64 +1,57 @@
-import Joi from 'joi'
+import { z } from 'zod';
 
-const text200 = Joi.string().trim().max(200).allow('', null)
-const text255 = Joi.string().trim().max(255).allow('', null)
-const text500 = Joi.string().trim().max(500).allow('', null)
-const optionalEmail = Joi.string()
-  .trim()
-  .max(255)
-  .allow('', null)
-  .pattern(/^(|n\/a|na|-|[^\s@]+@[^\s@]+\.[^\s@]+)$/i)
-  .messages({
-    'string.pattern.base': 'must be a valid email',
-  })
+const text200 = z.string().trim().max(200).nullable().optional().or(z.literal(''));
+const text255 = z.string().trim().max(255).nullable().optional().or(z.literal(''));
+const text500 = z.string().trim().max(500).nullable().optional().or(z.literal(''));
+const optionalEmail = z.string().trim().max(255).email('must be a valid email').nullable().optional().or(z.literal(''));
 
-const studentProfileSchema = Joi.object({
-  full_name: Joi.string().trim().min(3).max(120).allow('', null),
-  section: Joi.string().trim().max(10).allow('', null),
-  semester: Joi.number().integer().min(1).max(8).allow(null),
-  year_of_admission: Joi.number().integer().min(1990).max(2100).allow(null),
-  admission_type: Joi.string().valid('hsc', 'diploma').allow('', null),
+export const studentProfileSchema = z.object({
+  full_name: z.string().trim().min(3).max(120).nullable().optional().or(z.literal('')),
+  section: z.string().trim().max(10).nullable().optional().or(z.literal('')),
+  semester: z.coerce.number().int().min(1).max(8).nullable().optional(),
+  year_of_admission: z.coerce.number().int().min(1990).max(2100).nullable().optional(),
+  admission_type: z.enum(['hsc', 'diploma']).nullable().optional().or(z.literal('')),
 
-  personal_info: Joi.object({
-    mobile_no: Joi.string().trim().max(20).allow('', null),
+  personal_info: z.object({
+    mobile_no: z.string().trim().max(20).nullable().optional().or(z.literal('')),
     personal_email: optionalEmail,
     college_email: optionalEmail,
-    linked_in_id: Joi.string().trim().max(255).allow('', null),
+    linked_in_id: z.string().trim().max(255).nullable().optional().or(z.literal('')),
     permanent_address: text500,
     present_address: text500,
-    dob: Joi.string().trim().max(20).allow('', null),
-    gender: Joi.string().trim().max(20).allow('', null),
-    father_name: Joi.string().trim().max(120).allow('', null),
-    father_mobile_no: Joi.string().trim().max(20).allow('', null),
+    dob: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    gender: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    father_name: z.string().trim().max(120).nullable().optional().or(z.literal('')),
+    father_mobile_no: z.string().trim().max(20).nullable().optional().or(z.literal('')),
     father_email: text255,
-    father_occupation: Joi.string().trim().max(255).allow('', null),
-    mother_name: Joi.string().trim().max(120).allow('', null),
-    mother_mobile_no: Joi.string().trim().max(20).allow('', null),
+    father_occupation: z.string().trim().max(255).nullable().optional().or(z.literal('')),
+    mother_name: z.string().trim().max(120).nullable().optional().or(z.literal('')),
+    mother_mobile_no: z.string().trim().max(20).nullable().optional().or(z.literal('')),
     mother_email: text255,
-    mother_occupation: Joi.string().trim().max(255).allow('', null),
-    emergency_contact_name: Joi.string().trim().max(120).allow('', null),
-    emergency_contact_number: Joi.string().trim().max(20).allow('', null),
-    blood_group: Joi.string().trim().max(5).allow('', null),
-    category: Joi.string().trim().max(20).allow('', null),
-    aadhar_number: Joi.string().trim().max(14).allow('', null),
-    mis_uid: Joi.string().trim().max(50).allow('', null),
-    github_id: Joi.string().trim().max(255).allow('', null),
-    guardian_name: Joi.string().trim().max(120).allow('', null),
-    guardian_mobile: Joi.string().trim().max(20).allow('', null),
+    mother_occupation: z.string().trim().max(255).nullable().optional().or(z.literal('')),
+    emergency_contact_name: z.string().trim().max(120).nullable().optional().or(z.literal('')),
+    emergency_contact_number: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    blood_group: z.string().trim().max(5).nullable().optional().or(z.literal('')),
+    category: z.string().trim().max(20).nullable().optional().or(z.literal('')),
+    aadhar_number: z.string().trim().max(14).nullable().optional().or(z.literal('')),
+    mis_uid: z.string().trim().max(50).nullable().optional().or(z.literal('')),
+    github_id: z.string().trim().max(255).nullable().optional().or(z.literal('')),
+    guardian_name: z.string().trim().max(120).nullable().optional().or(z.literal('')),
+    guardian_mobile: z.string().trim().max(20).nullable().optional().or(z.literal('')),
     guardian_email: text255,
-  }).unknown(true),
+  }).catchall(z.unknown()).optional(),
 
-  past_education_records: Joi.array().items(Joi.object({
-    exam_name: Joi.string().trim().max(100).allow('', null),
-    percentage: Joi.number().min(0).max(100).allow(null),
-    year_of_passing: Joi.number().integer().min(1990).max(2100).allow(null),
-    board: Joi.string().trim().max(100).allow('', null),
-    exam_type: Joi.string().trim().max(100).allow('', null),
-  }).unknown(true)),
+  past_education_records: z.array(z.object({
+    exam_name: z.string().trim().max(100).nullable().optional().or(z.literal('')),
+    percentage: z.coerce.number().min(0).max(100).nullable().optional(),
+    year_of_passing: z.coerce.number().int().min(1990).max(2100).nullable().optional(),
+    board: z.string().trim().max(100).nullable().optional().or(z.literal('')),
+    exam_type: z.string().trim().max(100).nullable().optional().or(z.literal('')),
+  }).catchall(z.unknown())).optional(),
 
-  post_admission_records: Joi.array().items(Joi.object({
-    semester: Joi.number().integer().min(1).max(8).allow(null),
-    sgpa: Joi.number().min(0).max(100).allow(null),
+  post_admission_records: z.array(z.object({
+    semester: z.coerce.number().int().min(1).max(8).nullable().optional(),
+    sgpa: z.coerce.number().min(0).max(100).nullable().optional(),
     backlog_subjects: text500,
     season: z.string().trim().max(20).nullable().optional().or(z.literal('')),
     year_of_passing: z.coerce.number().int().min(1990).max(2100).nullable().optional(),
@@ -133,30 +126,53 @@ const studentProfileSchema = Joi.object({
   }).catchall(z.unknown()).optional(),
 
   declaration_accepted: z.boolean().nullable().optional(),
-}).catchall(z.unknown())
+}).catchall(z.unknown());
 
-/** Alias matching common naming; same schema as `studentProfileSchema`. */
-export const studentSchema = studentProfileSchema
+export const studentSchema = studentProfileSchema;
 
-  const dynamicErrors: string[] = []
-  const records = ((data.past_education_records as Record<string, unknown>[]) || [])
-  const admissionType = String(data.admission_type || '').trim()
-  const hasHssc = records.some((record) => record.exam_name === 'HSSC')
-  const hasDiploma = records.some((record) => record.exam_name === 'DIPLOMA')
+export function formatZodFieldErrors(error: z.ZodError) {
+  const fieldErrors: Record<string, string> = {};
+  if (error && error.issues) {
+    error.issues.forEach(issue => {
+      const key = issue.path.join('.');
+      if (!fieldErrors[key]) fieldErrors[key] = issue.message;
+    });
+  }
+  return fieldErrors;
+}
+
+export const validateStudentProfileData = (data: any = {}) => {
+  const parsed = studentProfileSchema.safeParse(data);
+  const dynamicErrors: string[] = [];
+  const records = ((data.past_education_records as Record<string, unknown>[]) || []);
+  const admissionType = String(data.admission_type || '').trim();
+  const hasHssc = records.some((record) => record.exam_name === 'HSSC');
+  const hasDiploma = records.some((record) => record.exam_name === 'DIPLOMA');
 
   if (admissionType === 'hsc' && hasDiploma) {
-    dynamicErrors.push('Diploma details are not allowed for HSC admission type')
+    dynamicErrors.push('Diploma details are not allowed for HSC admission type');
   }
 
   if (admissionType === 'diploma' && hasHssc) {
-    dynamicErrors.push('HSC details are not allowed for Diploma admission type')
+    dynamicErrors.push('HSC details are not allowed for Diploma admission type');
   }
 
-  if (!error && dynamicErrors.length === 0) {
-    return { isValid: true, errors: [] as string[] }
+  const fieldErrors: Record<string, string> = {};
+  const zodErrors: string[] = [];
+
+  if (!parsed.success) {
+    parsed.error.issues.forEach((issue) => {
+      const key = issue.path.join('.');
+      if (!fieldErrors[key]) fieldErrors[key] = issue.message;
+      zodErrors.push(issue.message);
+    });
   }
 
-  const joiErrors = error ? error.details.map((detail) => detail.message.replace(/\"/g, '')) : []
-  const errors = [...new Set([...joiErrors, ...dynamicErrors])]
-  return { isValid: false, errors }
+  const errors = [...new Set([...zodErrors, ...dynamicErrors])];
+
+  if (parsed.success && dynamicErrors.length === 0) {
+    return { isValid: true, errors: [], fieldErrors: {} };
+  }
+
+  return { isValid: false, errors, fieldErrors };
 }

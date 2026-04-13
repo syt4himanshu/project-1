@@ -9,7 +9,7 @@ import RoleSelection from './pages/RoleSelection'
 export default function App() {
     return (
         <AuthProvider>
-            <BrowserRouter>
+            <BrowserRouter basename="/student" future={{ v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/" element={<RoleSelection />} />
                     <Route path="/login" element={<Login />} />

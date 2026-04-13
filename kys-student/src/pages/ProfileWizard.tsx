@@ -11,7 +11,7 @@ import Step7SWOC from '../components/wizard/Step7SWOC'
 import Step8CareerSkills from '../components/wizard/Step8CareerSkills'
 import Step9ReviewSubmit from '../components/wizard/Step9ReviewSubmit'
 import { useAuth } from '../context/AuthContext'
-import { formatZodFieldErrors, studentProfileSchema, validateStudentProfileData } from '../validation/studentProfileSchema'
+import { studentProfileSchema, validateStudentProfileData } from '../validation/studentProfileSchema'
 
 const STEPS = [
     'Student Personal Information',
@@ -292,10 +292,10 @@ export default function ProfileWizard() {
         setError('')
         setFieldErrors({})
         try {
-            const parsed = studentProfileSchema.safeParse(data)
-            if (!parsed.success) {
-                setFieldErrors(formatZodFieldErrors(parsed.error))
-                setError(parsed.error.issues[0]?.message || 'Please fix validation issues before submitting.')
+            const validation = validateStudentProfileData(data)
+            if (!validation.isValid) {
+                setFieldErrors(validation.fieldErrors || {})
+                setError(validation.errors[0] || 'Please fix validation issues before submitting.')
                 showToast('Please fix validation issues before submitting.', 'error')
                 return
             }

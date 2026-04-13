@@ -1,9 +1,20 @@
 {
-  "dependencies": {
-    "joi": "^18.1.2"
-  },
-  "engines": {
-    "node": ">=20 <21"
-  },
-  "packageManager": "npm@10"
+    "name": "kys",
+    "private": true,
+    "dependencies": {
+        "joi": "^18.1.2"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    },
+    "scripts": {
+        "dev": "concurrently -n backend,student,faculty,admin,nginx -c blue,green,yellow,red,white \"npm run dev --prefix kys-backend\" \"npm run dev --prefix kys-student\" \"npm run dev --prefix kys-faculty\" \"npm run dev --prefix kys-admin\" \"nginx -c $(pwd)/nginx/dev.conf -g 'daemon off;'\"",
+        "nginx:check": "nginx -c $(pwd)/nginx/dev.conf -t",
+        "nginx:stop": "nginx -s stop",
+        "nginx:reload": "nginx -s reload"
+    },
+    "engines": {
+        "node": ">=20 <21"
+    },
+    "packageManager": "npm@10"
 }

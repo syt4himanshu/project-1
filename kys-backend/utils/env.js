@@ -23,16 +23,20 @@ const getCorsSettings = () => {
   const legacyOrigin = (process.env.ALLOWED_ORIGIN || '').trim();
   if (legacyOrigin) allowedOrigins.push(legacyOrigin);
 
-  const allowLocalDev = String(process.env.ALLOW_LOCAL_DEV_ORIGINS || 'true').toLowerCase() === 'true';
-  if (allowLocalDev) {
-    allowedOrigins.push('http://localhost:\\d+', 'http://127\\.0\\.0\\.1:\\d+');
-  }
-
   if (!allowedOrigins.length) {
-    allowedOrigins.push('http://localhost:\\d+', 'http://127\\.0\\.0\\.1:\\d+');
+    if (String(process.env.NODE_ENV).toLowerCase() === 'production') {
+      allowedOrigins.push(
+        'http://117.239.42.27:8080',
+        'http://117.239.42.27:8081',
+        'http://117.239.42.27:8082',
+
+      );
+    } else {
+      allowedOrigins.push('http://localhost:3005');
+    }
   }
 
-  return { allowedOrigins, allowLocalDev };
+  return { allowedOrigins };
 };
 
 module.exports = {
