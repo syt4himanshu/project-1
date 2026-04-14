@@ -1093,6 +1093,330 @@ a:hover {
   justify-content: flex-end;
 }
 
+.student-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2f7;
+  padding: 2rem 0.75rem;
+}
+
+.student-login__card {
+  width: min(470px, 92vw);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.28);
+}
+
+.student-login__hero {
+  border-top: 4px solid #f5a623;
+  background: linear-gradient(145deg, #263c67 0%, #334a7a 55%, #3e588e 100%);
+  padding: 1.75rem;
+}
+
+.student-login__hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.student-login__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.student-login__brand-icon {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(74, 94, 142, 0.45);
+  display: grid;
+  place-items: center;
+}
+
+.student-login__brand-icon-svg {
+  width: 20px;
+  height: 20px;
+  color: #f5a623;
+}
+
+.student-login__brand-title {
+  margin: 0;
+  color: white;
+  font-weight: 700;
+  line-height: 1.1;
+  font-size: clamp(1.2rem, 2.3vw, 1.65rem);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.student-login__brand-subtitle {
+  margin: 0.2rem 0 0;
+  color: #9ba9c7;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.student-login__theme-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #d7ddf0;
+  display: grid;
+  place-items: center;
+}
+
+.student-login__theme-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.student-login__hero-body {
+  margin-top: 1.9rem;
+}
+
+.student-login__hero-caption {
+  margin: 0;
+  color: #9ba9c7;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.student-login__hero-title {
+  margin: 0.45rem 0 0;
+  color: white;
+  line-height: 1.05;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 500;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.student-login__hero-text {
+  margin: 0.3rem 0 0;
+  color: #c5d0e5;
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
+}
+
+.student-login__body {
+  background: #f5f7fb;
+  padding: 1.75rem;
+}
+
+.student-login__field-group {
+  margin-bottom: 1.4rem;
+}
+
+.student-login__label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #1e2d4e;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.student-login__required {
+  color: #ef4444;
+}
+
+.student-login__input-wrap {
+  position: relative;
+}
+
+.student-login__left-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: #7c8598;
+  pointer-events: none;
+}
+
+.student-login__input {
+  width: 100%;
+  height: 52px;
+  border-radius: 10px;
+  border: 1px solid #cad2df;
+  background: #f8fafd;
+  font-size: 15px;
+  color: #1e2d4e;
+  padding: 0 0.9rem;
+}
+
+.student-login__input::placeholder {
+  color: #99a3b5;
+}
+
+.student-login__input:focus {
+  outline: 2px solid rgba(30, 45, 78, 0.2);
+  border-color: #1e2d4e;
+}
+
+.student-login__input--with-left-icon {
+  padding-left: 2.75rem;
+}
+
+.student-login__input--with-icons {
+  padding-left: 2.75rem;
+  padding-right: 2.9rem;
+}
+
+.student-login__eye-btn {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #7c8598;
+}
+
+.student-login__divider {
+  border-top: 1px solid #d7dce6;
+  margin-top: 1.15rem;
+}
+
+.student-login__remember {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #5f6a7f;
+  font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+}
+
+.student-login__remember input {
+  accent-color: #1e2d4e;
+}
+
+.student-login__error {
+  margin: 0.95rem 0 0;
+  color: #dc2626;
+  font-size: 0.9rem;
+}
+
+.student-login__info {
+  margin: 0.6rem 0 0;
+  color: #1e2d4e;
+  font-size: 0.9rem;
+}
+
+.student-login__submit {
+  margin-top: 1.3rem;
+  width: 100%;
+  height: 52px;
+  border-radius: 10px;
+  border: 0;
+  background: #1e2d4e;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  box-shadow: 0 8px 20px rgba(30, 45, 78, 0.35);
+}
+
+.student-login__submit:hover:not(:disabled) {
+  background: #17253f;
+}
+
+.student-login__submit:disabled {
+  opacity: 0.55;
+}
+
+.role-select-kys {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #111a33 0%, #0d1630 100%);
+  color: #e2e8f0;
+  padding: 2.2rem 1rem;
+}
+
+.role-select-kys__shell {
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
+
+.role-select-kys__title {
+  margin: 0 0 0.35rem;
+  text-align: center;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  color: white;
+}
+
+.role-select-kys__subtitle {
+  margin: 0;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.role-select-kys__grid {
+  margin-top: 1.6rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+}
+
+.role-select-kys__card {
+  border: 1px solid rgba(100, 116, 139, 0.55);
+  border-radius: 16px;
+  background: rgba(30, 41, 59, 0.55);
+  color: #f8fafc;
+  text-align: left;
+  padding: 1.5rem;
+  transition: transform 0.18s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.role-select-kys__card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(148, 163, 184, 0.8);
+  background: rgba(30, 41, 59, 0.75);
+}
+
+.role-select-kys__badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 11px;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  margin-bottom: 1rem;
+}
+
+.role-select-kys__badge--admin {
+  background: #ef4444;
+}
+
+.role-select-kys__badge--student {
+  background: #10b981;
+}
+
+.role-select-kys__badge--teacher {
+  background: #8b5cf6;
+}
+
+.role-select-kys__card-title {
+  margin: 0;
+  font-size: 1.45rem;
+  color: #fff;
+}
+
+.role-select-kys__card-text {
+  margin: 0.7rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -1209,5 +1533,9 @@ a:hover {
 
   .reports-reset-wrap {
     justify-content: stretch;
+  }
+
+  .role-select-kys__grid {
+    grid-template-columns: 1fr;
   }
 }

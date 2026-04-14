@@ -3,6 +3,7 @@ export const ENDPOINTS = {
     login: '/api/auth/login',
     verify: '/api/auth/verify',
     logout: '/api/auth/logout',
+    changePassword: '/api/auth/change-password',
     registerBulkStudents: '/api/auth/register/bulk',
     registerBulkFaculty: '/api/auth/register/faculty/bulk',
   },
@@ -26,5 +27,11 @@ export const ENDPOINTS = {
   },
   students: {
     search: '/api/students',
+    mentor: '/api/students/me/mentor',
+    mentoringMinutes: '/api/students/me/mentoring-minutes',
+  },
+  student: {
+    me: '/api/student/me',
+    uploadPhoto: '/api/student/me/upload-photo',
   },
 } as const

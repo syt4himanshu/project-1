@@ -5,6 +5,8 @@ import type { UserRole } from '../../shared/auth/session'
 
 type RoleCard = {
   role: UserRole
+  letter: string
+  accentClass: string
   title: string
   description: string
 }
@@ -12,18 +14,24 @@ type RoleCard = {
 const ROLE_CARDS: RoleCard[] = [
   {
     role: 'admin',
+    letter: 'A',
+    accentClass: 'role-select-kys__badge--admin',
     title: 'Administrator',
     description: 'Manage users, reports, and mentoring allocation.',
   },
   {
     role: 'faculty',
-    title: 'Faculty',
-    description: 'Review mentees and monitor mentoring insights.',
+    letter: 'T',
+    accentClass: 'role-select-kys__badge--teacher',
+    title: 'Teacher',
+    description: 'Manage classes, review student performance, and guide learners with structured mentoring.',
   },
   {
     role: 'student',
+    letter: 'S',
+    accentClass: 'role-select-kys__badge--student',
     title: 'Student',
-    description: 'Access profile progress and mentoring journey.',
+    description: 'Streamline your academic journey with profile forms, mentoring, and progress tracking.',
   },
 ]
 
@@ -33,9 +41,11 @@ export function RoleSelectionPage() {
 
   if (status === 'bootstrapping') {
     return (
-      <section className="card role-selection">
-        <h1>Choose your role</h1>
-        <p className="subtext">Checking existing session...</p>
+      <section className="role-select-kys">
+        <div className="role-select-kys__shell">
+          <h1 className="role-select-kys__title">Choose Your Role</h1>
+          <p className="role-select-kys__subtitle">Checking existing session...</p>
+        </div>
       </section>
     )
   }
@@ -45,22 +55,23 @@ export function RoleSelectionPage() {
   }
 
   return (
-    <section className="card role-selection">
-      <h1>Choose your role</h1>
-      <p className="subtext">Phase 1 RBAC entrypoint for the unified KYS frontend.</p>
-
-      <div className="role-grid">
+    <section className="role-select-kys">
+      <div className="role-select-kys__shell">
+        <h1 className="role-select-kys__title">Choose Your Role</h1>
+        <div className="role-select-kys__grid">
         {ROLE_CARDS.map((card) => (
           <button
             key={card.role}
             type="button"
-            className="role-card"
+            className="role-select-kys__card"
             onClick={() => navigate(`/login?role=${card.role}`)}
           >
-            <h2>{card.title}</h2>
-            <p>{card.description}</p>
+            <div className={`role-select-kys__badge ${card.accentClass}`}>{card.letter}</div>
+            <h2 className="role-select-kys__card-title">{card.title}</h2>
+            <p className="role-select-kys__card-text">{card.description}</p>
           </button>
         ))}
+        </div>
       </div>
     </section>
   )
