@@ -18,11 +18,19 @@ export default function Login() {
         setError('')
         setLoading(true)
         try {
+            console.log('[LOGIN] attempt', { username })
             await login(username, password)
+            console.log('[LOGIN] success', {
+                access_token: localStorage.getItem('access_token'),
+                user: localStorage.getItem('user'),
+            })
+            console.log('[LOGIN] token stored', localStorage.getItem('access_token'))
             navigate('/dashboard')
         } catch (err: unknown) {
-            const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-            setError(msg || 'Invalid credentials')
+            console.log('[LOGIN] error', err)
+            const axiosMsg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+            const thrown = err instanceof Error ? err.message : ''
+            setError(axiosMsg || thrown || 'Invalid credentials')
         } finally {
             setLoading(false)
         }
@@ -74,7 +82,7 @@ export default function Login() {
                                 <input
                                     type="text"
                                     value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
+                                    onChange={(e) => { setUsername(e.target.value) }}
                                     required
                                     placeholder="Enter your username"
                                     className="h-[52px] w-full rounded-[10px] border border-[#CAD2DF] bg-[#F8FAFD] pl-11 pr-4 text-[15px] text-[#1E2D4E] placeholder:text-[#99A3B5] focus:outline-none focus:ring-2 focus:ring-[#1E2D4E]"

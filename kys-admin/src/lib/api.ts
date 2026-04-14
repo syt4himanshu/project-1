@@ -1,5 +1,6 @@
-const BASE_URL = import.meta.env.VITE_API_URL
-if (!BASE_URL) throw new Error('VITE_API_URL is not set')
+import { clearAuthStorage } from './authStorage'
+
+const BASE_URL = import.meta.env.VITE_API_URL || ''
 
 function getHeaders(): HeadersInit {
     return {
@@ -14,7 +15,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
         headers: { ...getHeaders(), ...(options?.headers ?? {}) },
     })
     if (res.status === 401) {
-        localStorage.clear()
+        clearAuthStorage()
         window.location.href = '/login'
         throw new Error('Unauthorized')
     }
@@ -32,7 +33,7 @@ async function authorizedFetch(path: string, options?: RequestInit) {
     })
 
     if (res.status === 401) {
-        localStorage.clear()
+        clearAuthStorage()
         window.location.href = '/login'
         throw new Error('Unauthorized')
     }

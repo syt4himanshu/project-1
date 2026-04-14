@@ -1,16 +1,14 @@
 import axios from 'axios'
-
-const baseURL = import.meta.env.VITE_API_URL
-if (!baseURL) throw new Error('VITE_API_URL is required (e.g. http://localhost:3005)')
+import { clearAuthStorage } from '../lib/authStorage'
 
 const api = axios.create({
-    baseURL,
+    baseURL: import.meta.env.VITE_API_URL || '',
 })
 
-// Clear tokens from a previous origin (e.g. :5174) when running under :3005
+// Clear tokens from a previous origin when the host changes
 const storedOrigin = localStorage.getItem('app_origin')
 if (storedOrigin && storedOrigin !== window.location.origin) {
-    localStorage.clear()
+    clearAuthStorage()
 }
 localStorage.setItem('app_origin', window.location.origin)
 
@@ -24,9 +22,7 @@ api.interceptors.response.use(
     (res) => res,
     (err) => {
         if (err.response?.status === 401) {
-            localStorage.clear()
-            const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || ''
-            window.location.href = `${base}/login`
+            // Auth state is managed by React; only propagate the error.
         }
         return Promise.reject(err)
     },

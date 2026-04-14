@@ -10,6 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { authApi } from '@/lib/api'
 import { toast } from 'sonner'
+import { clearAuthStorage } from '@/lib/authStorage'
 
 const schema = z.object({
     current_password: z.string().min(1, 'Required'),
@@ -45,7 +46,7 @@ export default function Header() {
     }
 
     const handleLogout = () => {
-        localStorage.clear()
+        clearAuthStorage()
         navigate('/login')
     }
 

@@ -13,14 +13,5 @@ export default defineConfig({
     server: {
         port: 5176,
         strictPort: true,
-        hmr: {
-            clientPort: 3005,
-        },
-        proxy: {
-            '/api': {
-                target: 'http://localhost:5002',
-                changeOrigin: true,
-            },
-        },
     },
 })

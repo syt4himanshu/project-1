@@ -7,6 +7,7 @@ import ProfileWizard from './pages/ProfileWizard'
 import RoleSelection from './pages/RoleSelection'
 
 export default function App() {
+    console.log('[ROUTE] current path', window.location.pathname)
     return (
         <AuthProvider>
             <BrowserRouter basename="/student" future={{ v7_relativeSplatPath: true }}>

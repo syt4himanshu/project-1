@@ -14,7 +14,7 @@ const validateEnv = () => {
 };
 
 const getCorsSettings = () => {
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  let allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map((v) => v.trim())
     .filter(Boolean)
@@ -34,6 +34,20 @@ const getCorsSettings = () => {
     } else {
       allowedOrigins.push('http://localhost:3005');
     }
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    const devOrigins = [
+      'http://localhost:3005',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5176',
+      'http://127.0.0.1:3005',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
+      'http://127.0.0.1:5176',
+    ];
+    allowedOrigins = [...new Set([...allowedOrigins, ...devOrigins])];
   }
 
   return { allowedOrigins };
