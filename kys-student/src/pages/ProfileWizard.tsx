@@ -235,7 +235,7 @@ export default function ProfileWizard() {
 
     const update = (patch: Record<string, unknown>) => setData(prev => ({ ...prev, ...patch }))
 
-    const next = () => {
+    const next = async () => {
         const missing = getMissingRequiredFields(step, data)
         if (missing.length > 0) {
             const message = `Please fill required fields: ${missing.join(', ')}`
@@ -252,17 +252,28 @@ export default function ProfileWizard() {
             return
         }
 
-        setError('')
-        const nextStep = Math.min(step + 1, STEPS.length - 1)
-        const saved = saveDraft(data, nextStep)
+        try {
+            setSaving(true)
+            await updateProfile(data)
+            setError('')
+            const nextStep = Math.min(step + 1, STEPS.length - 1)
+            const saved = saveDraft(data, nextStep)
 
-        if (saved) {
-            showToast(`Step saved.`, 'success')
-        } else {
-            showToast('Unable to save draft locally.', 'error')
+            if (saved) {
+                showToast('Step saved.', 'success')
+            } else {
+                showToast('Step saved on server. Unable to save local draft.', 'info')
+            }
+
+            setStep(nextStep)
+        } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+            const fallback = msg || 'Failed to save this step on server. Please try again.'
+            setError(fallback)
+            showToast(fallback, 'error')
+        } finally {
+            setSaving(false)
         }
-
-        setStep(nextStep)
     }
 
     const prev = () => setStep(s => Math.max(s - 1, 0))
@@ -394,9 +405,10 @@ export default function ProfileWizard() {
                         {step < STEPS.length - 1 ? (
                             <button
                                 onClick={next}
+                                disabled={saving}
                                 className="rounded-xl bg-[#1f355f] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(23,42,73,0.9)] transition hover:bg-[#172c4f]"
                             >
-                                Next
+                                {saving ? 'Saving...' : 'Next'}
                             </button>
                         ) : (
                             <button

@@ -13,6 +13,7 @@ function formatValue(v: unknown): string {
     if (typeof v === 'boolean') return v ? 'Yes' : 'No'
     if (typeof v === 'number' || typeof v === 'string') {
         const text = String(v)
+        if (!text.trim()) return '—'
         if (text === 'HSSC') return 'HSC'
         return text
     }

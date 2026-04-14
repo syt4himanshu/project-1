@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { sequelize, User, Student, Faculty, StudentPersonalInfo } = require('../models');
 const { splitFullName, buildFullName } = require('../utils/helpers');
+const { unpackText } = require('../utils/profileCodec');
 const { serializeStudent } = require('../utils/serializers');
 
 const verifyPassword = (password, hash) => {
@@ -65,7 +66,9 @@ const isBacklogPlaceholder = (value) => {
 const parseBacklogSubjects = (value) => {
   if (!value) return [];
 
-  const tokens = (Array.isArray(value) ? value.join(',') : String(value))
+  const decoded = unpackText(value);
+
+  const tokens = (Array.isArray(value) ? value.join(',') : String(decoded.base))
     .split(/[,\n;]+/)
     .map((s) => normalizeText(s))
     .filter((s) => !isBacklogPlaceholder(s));

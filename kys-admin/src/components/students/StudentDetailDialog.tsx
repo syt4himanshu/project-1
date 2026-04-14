@@ -57,7 +57,7 @@ function extractBacklogSubjects(record: AnyRecord) {
     return raw
         .split(/[,\n;]+/)
         .map((subject) => subject.trim())
-        .filter((subject) => !isEmpty(subject))
+        .filter((subject) => !isEmpty(subject) && subject !== '0')
 }
 
 function normalizeBacklogCount(record: AnyRecord) {
@@ -84,6 +84,10 @@ async function nextFrame() {
 
 function uniqueSorted(values: number[]) {
     return Array.from(new Set(values.map((v) => Math.round(v)))).sort((a, b) => a - b)
+}
+
+function fixedSlots(records: AnyRecord[] | undefined, count: number) {
+    return Array.from({ length: count }, (_, index) => records?.[index] ?? {})
 }
 
 export default function StudentDetailDialog({ studentId, onClose }: Props) {
@@ -237,6 +241,11 @@ export default function StudentDetailDialog({ studentId, onClose }: Props) {
     const skills = student?.skills as AnyRecord | undefined
     const swoc = student?.swoc as AnyRecord | undefined
     const careerObj = student?.career_objective as AnyRecord | undefined
+    const skillPrograms = (student?.skill_programs as AnyRecord[] | undefined) ?? []
+    const internshipSlots = fixedSlots((student?.internships as AnyRecord[] | undefined) ?? [], 2)
+    const participationSlots = fixedSlots((student?.co_curricular_participations as AnyRecord[] | undefined) ?? [], 3)
+    const organizationSlots = fixedSlots((student?.co_curricular_organizations as AnyRecord[] | undefined) ?? [], 3)
+    const programSlots = fixedSlots(skillPrograms, 3)
     const academicRecords = (student?.academic_records as AnyRecord[] | undefined) ?? []
     const latestAcademicRecord = [...academicRecords].sort((a, b) => Number(a.semester ?? 0) - Number(b.semester ?? 0)).at(-1)
     const backlogSubjects = latestAcademicRecord
@@ -378,16 +387,28 @@ export default function StudentDetailDialog({ studentId, onClose }: Props) {
 
                                 <CollapsibleSection title="Past Education" forceOpen={forceOpenForExport}>
                                     {student.past_education && student.past_education.length > 0 ? (
-                                        <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
-                                            <thead className="bg-slate-50"><tr><th className="px-4 py-2 text-left font-semibold text-slate-700">Exam</th><th className="px-4 py-2 text-left font-semibold text-slate-700">Percentage</th><th className="px-4 py-2 text-left font-semibold text-slate-700">Year of Passing</th></tr></thead>
-                                            <tbody>{student.past_education.map((e, i) => (
-                                                <tr key={i} className="border-t border-slate-100">
-                                                    <td className="px-4 py-2">{showValue(e.exam)}</td>
-                                                    <td className="px-4 py-2">{showValue(e.percentage)}</td>
-                                                    <td className="px-4 py-2">{showValue(e.year_of_passing)}</td>
-                                                </tr>
-                                            ))}</tbody>
-                                        </table>
+                                        <>
+                                            <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+                                                <thead className="bg-slate-50"><tr><th className="px-4 py-2 text-left font-semibold text-slate-700">Exam</th><th className="px-4 py-2 text-left font-semibold text-slate-700">Board</th><th className="px-4 py-2 text-left font-semibold text-slate-700">Percentage</th><th className="px-4 py-2 text-left font-semibold text-slate-700">Year of Passing</th></tr></thead>
+                                                <tbody>{[...student.past_education].sort((a, b) => {
+                                                    const getOrder = (record: any) => {
+                                                        const name = textValue(record?.exam ?? record?.exam_name).toUpperCase()
+                                                        if (name === 'SSC') return 1
+                                                        if (name === 'HSC' || name === 'HSSC' || name === 'DIPLOMA') return 2
+                                                        if (name.includes('ENTRANCE') || name.includes('CET') || name.includes('JEE')) return 3
+                                                        return 4
+                                                    }
+                                                    return getOrder(a) - getOrder(b)
+                                                }).map((e, i) => (
+                                                    <tr key={i} className="border-t border-slate-100">
+                                                        <td className="px-4 py-2">{showValue(e.exam)}</td>
+                                                        <td className="px-4 py-2">{showValue((e as AnyRecord).board)}</td>
+                                                        <td className="px-4 py-2">{showValue(e.percentage)}</td>
+                                                        <td className="px-4 py-2">{showValue(e.year_of_passing)}</td>
+                                                    </tr>
+                                                ))}</tbody>
+                                            </table>
+                                        </>
                                     ) : <p className="text-slate-400 italic text-sm">No records</p>}
                                 </CollapsibleSection>
 
@@ -395,19 +416,23 @@ export default function StudentDetailDialog({ studentId, onClose }: Props) {
                                     {student.academic_records && student.academic_records.length > 0 ? (
                                         <>
                                             <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
-                                                <thead className="bg-slate-50"><tr><th className="px-4 py-2 text-left font-semibold text-slate-700">Semester</th><th className="px-4 py-2 text-left font-semibold text-slate-700">SGPA</th><th className="px-4 py-2 text-left font-semibold text-slate-700">Backlogs</th></tr></thead>
+                                                <thead className="bg-slate-50"><tr><th className="px-4 py-2 text-left font-semibold text-slate-700">Semester</th><th className="px-4 py-2 text-left font-semibold text-slate-700">SGPA</th><th className="px-4 py-2 text-left font-semibold text-slate-700">Season</th><th className="px-4 py-2 text-left font-semibold text-slate-700">Year of Passing</th><th className="px-4 py-2 text-left font-semibold text-slate-700">Backlog Subjects</th></tr></thead>
                                                 <tbody>{student.academic_records.map((r, i) => (
                                                     <tr key={i} className="border-t border-slate-100">
                                                         <td className="px-4 py-2">{showValue(r.semester)}</td>
                                                         <td className="px-4 py-2">{showValue(r.sgpa)}</td>
-                                                        <td className="px-4 py-2">{String(normalizeBacklogCount(r as AnyRecord))}</td>
+                                                        <td className="px-4 py-2">{showValue((r as AnyRecord).season)}</td>
+                                                        <td className="px-4 py-2">{showValue((r as AnyRecord).year_of_passing)}</td>
+                                                        <td className="px-4 py-2">{showValue(r.backlog_subjects)}</td>
                                                     </tr>
                                                 ))}</tbody>
                                             </table>
                                             <div className="mt-3">
                                                 <InfoTable rows={[
                                                     { label: 'Number of Active Backlogs', value: String(totalBacklogs) },
-                                                    { label: 'Backlog Subject Names', value: backlogSubjects.length ? backlogSubjects.join(', ') : 'None' },
+                                                    { label: 'Backlog Subject Names', value: backlogSubjects.length ? backlogSubjects.join(', ') : showValue(latestAcademicRecord?.backlog_subjects) },
+                                                    { label: 'College Rank', value: showValue(latestAcademicRecord?.college_rank) },
+                                                    { label: 'Academic Awards', value: showValue(latestAcademicRecord?.academic_awards) },
                                                 ]} />
                                             </div>
                                         </>
@@ -415,63 +440,101 @@ export default function StudentDetailDialog({ studentId, onClose }: Props) {
                                 </CollapsibleSection>
 
                                 <CollapsibleSection title="Projects" forceOpen={forceOpenForExport}>
-                                    {student.projects && student.projects.length > 0 ? (
-                                        <div className="space-y-3">
-                                            {student.projects.map((p, i) => (
-                                                <div key={i} className="border border-slate-200 rounded-lg p-3">
-                                                    <p className="font-semibold text-slate-800">{String(p.title ?? 'Untitled')}</p>
-                                                    <p className="text-slate-500 text-sm mt-1">{String(p.description ?? '')}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : <p className="text-slate-400 italic text-sm">No projects</p>}
+                                    <div className="space-y-3">
+                                        {[
+                                            { label: 'Mini Project', record: (student.projects?.[0] as AnyRecord | undefined) ?? {} },
+                                            { label: 'Major Project', record: (student.projects?.[1] as AnyRecord | undefined) ?? {} },
+                                            { label: 'UBA / Collaborative Project', record: (student.projects?.[2] as AnyRecord | undefined) ?? {} },
+                                        ].map(({ label, record }) => (
+                                            <div key={label} className="border border-slate-200 rounded-lg p-3">
+                                                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+                                                <InfoTable rows={[
+                                                    { label: `${label} Title`, value: showValue(record.title) },
+                                                    { label: 'Project Guide', value: showValue(record.description) },
+                                                ]} />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </CollapsibleSection>
 
                                 <CollapsibleSection title="Internships" forceOpen={forceOpenForExport}>
-                                    {student.internships && student.internships.length > 0 ? (
-                                        <div className="space-y-3">
-                                            {student.internships.map((intern, i) => (
-                                                <div key={i} className="border border-slate-200 rounded-lg p-3">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <p className="font-semibold text-slate-800">{showValue(intern.company)}</p>
-                                                        <Badge className="bg-sky-100 text-sky-700 border-sky-200 text-xs">{String(intern.type ?? '')}</Badge>
-                                                        <Badge className={`text-xs ${intern.paid ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                                                            {intern.paid ? 'Paid' : 'Unpaid'}
-                                                        </Badge>
-                                                    </div>
-                                                    <p className="text-slate-500 text-sm mt-1">{`${showValue(intern.domain)} | ${showValue(intern.type)} | ${isEmpty(intern.start_date) ? 'N/A' : formatDate(textValue(intern.start_date))} to ${isEmpty(intern.end_date) ? 'N/A' : formatDate(textValue(intern.end_date))}`}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : <p className="text-slate-400 italic text-sm">No internships</p>}
+                                    <div className="space-y-3">
+                                        {internshipSlots.map((intern, i) => (
+                                            <div key={i} className="border border-slate-200 rounded-lg p-3">
+                                                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Internship {i + 1}</p>
+                                                <InfoTable rows={[
+                                                    { label: 'Company / Organization Name', value: showValue(intern.company_name ?? intern.company) },
+                                                    { label: 'Designation / Title', value: showValue(intern.designation) },
+                                                    { label: 'Domain', value: showValue(intern.domain) },
+                                                    { label: 'Description', value: showValue(intern.description) },
+                                                    { label: 'Internship Type', value: showValue(intern.internship_type ?? intern.type) },
+                                                    { label: 'Paid / Unpaid', value: showValue(intern.paid_unpaid) },
+                                                    { label: 'Start Date', value: isEmpty(intern.start_date) ? 'N/A' : formatDate(textValue(intern.start_date)) },
+                                                    { label: 'End Date', value: isEmpty(intern.end_date) ? 'N/A' : formatDate(textValue(intern.end_date)) },
+                                                ]} />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </CollapsibleSection>
 
-                                <CollapsibleSection title="Co-Curricular Participations" forceOpen={forceOpenForExport}>
-                                    {student.co_curricular_participations && student.co_curricular_participations.length > 0 ? (
-                                        <div className="space-y-2">
-                                            {student.co_curricular_participations.map((p, i) => (
-                                                <div key={i} className="border border-slate-100 rounded p-2 text-sm text-slate-700">{showValue(p.activity)} - {showValue(p.role)} ({showValue(p.year)})</div>
-                                            ))}
-                                        </div>
-                                    ) : <p className="text-slate-400 italic text-sm">No participations</p>}
+                                <CollapsibleSection title="Participation Activities" forceOpen={forceOpenForExport}>
+                                    <div className="space-y-3">
+                                        {participationSlots.map((p, i) => (
+                                            <div key={i} className="border border-slate-100 rounded p-3">
+                                                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Activity {i + 1}</p>
+                                                <InfoTable rows={[
+                                                    { label: 'Name of Activity', value: showValue(p.name) },
+                                                    { label: 'Date', value: isEmpty(p.date) ? 'N/A' : formatDate(textValue(p.date)) },
+                                                    { label: 'Level', value: showValue(p.level) },
+                                                    { label: 'Awards Received', value: showValue(p.awards) },
+                                                ]} />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </CollapsibleSection>
 
-                                <CollapsibleSection title="Co-Curricular Organizations" forceOpen={forceOpenForExport}>
-                                    {student.co_curricular_organizations && student.co_curricular_organizations.length > 0 ? (
-                                        <div className="space-y-2">
-                                            {student.co_curricular_organizations.map((o, i) => (
-                                                <div key={i} className="border border-slate-100 rounded p-2 text-sm text-slate-700">{showValue(o.organization)} - {showValue(o.position)} ({showValue(o.year)})</div>
-                                            ))}
-                                        </div>
-                                    ) : <p className="text-slate-400 italic text-sm">No organizations</p>}
+                                <CollapsibleSection title="Organized Activities" forceOpen={forceOpenForExport}>
+                                    <div className="space-y-3">
+                                        {organizationSlots.map((o, i) => (
+                                            <div key={i} className="border border-slate-100 rounded p-3">
+                                                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Activity {i + 1}</p>
+                                                <InfoTable rows={[
+                                                    { label: 'Name of Activity', value: showValue(o.name) },
+                                                    { label: 'Date', value: isEmpty(o.date) ? 'N/A' : formatDate(textValue(o.date)) },
+                                                    { label: 'Level', value: showValue(o.level) },
+                                                    { label: 'Remark / Role', value: showValue(o.remark) },
+                                                ]} />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </CollapsibleSection>
 
-                                <CollapsibleSection title="Skills & Interests" forceOpen={forceOpenForExport}>
+                                <CollapsibleSection title="Skill Development Program (SDP) / Training / MOOC" forceOpen={forceOpenForExport}>
+                                    <div className="space-y-3">
+                                        {programSlots.map((program, i) => (
+                                            <div key={i} className="border border-slate-100 rounded p-3">
+                                                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Program {i + 1}</p>
+                                                <InfoTable rows={[
+                                                    { label: 'Program / Course Title', value: showValue(program.course_title) },
+                                                    { label: 'Organizing Agency / Platform', value: showValue(program.platform) },
+                                                    { label: 'Duration (in Hours)', value: showValue(program.duration_hours) },
+                                                    { label: 'Date From', value: isEmpty(program.date_from) ? 'N/A' : formatDate(textValue(program.date_from)) },
+                                                    { label: 'Date To', value: isEmpty(program.date_to) ? 'N/A' : formatDate(textValue(program.date_to)) },
+                                                ]} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CollapsibleSection>
+
+                                <CollapsibleSection title="Skills and Areas of Interest" forceOpen={forceOpenForExport}>
                                     <InfoTable rows={[
                                         { label: 'Programming Languages', value: showValue(skills?.programming_languages) },
-                                        { label: 'Technologies', value: showValue(skills?.technologies) },
-                                        { label: 'Domains', value: showValue(skills?.domains) },
-                                        { label: 'Tools', value: showValue(skills?.tools) },
+                                        { label: 'Technologies & Frameworks', value: showValue(skills?.technologies_frameworks ?? skills?.technologies) },
+                                        { label: 'Domains of Interest', value: showValue(skills?.domains_of_interest ?? skills?.domains) },
+                                        { label: 'Familiar Tools & Platforms', value: showValue(skills?.familiar_tools_platforms ?? skills?.tools) },
+                                        { label: 'Technical & Soft Skills (Overall)', value: showValue(skills?.technical_soft_skills_overall) },
+                                        { label: 'Additional Technical Skills', value: showValue(skills?.additional_technical_skills) },
+                                        { label: 'Additional Soft Skills', value: showValue(skills?.additional_soft_skills) },
                                     ]} />
                                 </CollapsibleSection>
 
@@ -493,14 +556,13 @@ export default function StudentDetailDialog({ studentId, onClose }: Props) {
 
                                 <CollapsibleSection title="Career Objective" forceOpen={forceOpenForExport}>
                                     <InfoTable rows={[
-                                        { label: 'Goal', value: student.career_goal },
-                                        { label: 'Specific Details', value: showValue(careerObj?.specific_details) },
-                                        {
-                                            label: 'Clarity & Preparedness', value: careerObj?.clarity_score ? (
-                                                <Badge className="bg-sky-100 text-sky-700 border-sky-200">{String(careerObj.clarity_score)} / 5</Badge>
-                                            ) : 'N/A'
-                                        },
-                                        { label: 'Campus Placement', value: showValue(careerObj?.campus_placement) },
+                                        { label: 'Career Goal', value: showValue(careerObj?.career_goal ?? student.career_goal) },
+                                        { label: 'Specific Details / Notes', value: showValue(careerObj?.specific_details) },
+                                        { label: 'Clarity and Preparedness Level', value: showValue(careerObj?.clarity_preparedness ?? careerObj?.clarity_score) },
+                                        { label: 'Interested in Campus Placement?', value: typeof careerObj?.interested_in_campus_placement === 'boolean' ? (careerObj.interested_in_campus_placement ? 'Yes' : 'No') : showValue(careerObj?.campus_placement) },
+                                        { label: 'Areas of Interest (Other than Technical)', value: showValue(careerObj?.non_technical_areas) },
+                                        { label: 'Would you be interested in being a student mentor?', value: showValue(careerObj?.student_mentor_interest) },
+                                        { label: 'Expectations from the Institute', value: showValue(careerObj?.expectations_from_institute) },
                                     ]} />
                                 </CollapsibleSection>
 

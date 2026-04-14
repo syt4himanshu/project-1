@@ -23,6 +23,7 @@ const {
   validatePastEducationPayload,
   validatePostAdmissionRecords,
 } = require('../utils/helpers');
+const { encodeStudentProfilePayload, decodeStudentProfilePayload } = require('../utils/profileCodec');
 const { serializeStudent, serializeStudentSummary } = require('../utils/serializers');
 
 cloudinary.config({
@@ -139,24 +140,24 @@ const getStudentsMe = async (req, res, next) => {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
     if (!student) return res.status(404).json({ error: 'Profile not found' });
 
-    return res.status(200).json({
+    return res.status(200).json(decodeStudentProfilePayload({
       id: student.id,
       uid: student.uid,
       full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
       semester: student.semester,
       section: student.section,
       year_of_admission: student.year_of_admission,
-      personal_info: student.personal_info ? serializeModel(student.personal_info) : null,
+      personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
       past_education_records: (student.past_education_records || []).map(serializeModel),
       post_admission_records: (student.post_admission_records || []).map(serializeModel),
       projects: (student.projects || []).map(serializeModel),
       internships: (student.internships || []).map(serializeModel),
       cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
       cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
-      career_objective: student.career_objective ? serializeModel(student.career_objective) : null,
-      skills: student.skills ? serializeModel(student.skills) : null,
-      swoc: student.swoc ? serializeModel(student.swoc) : null,
-    });
+      career_objective: student.career_objective ? serializeModel(student.career_objective) : {},
+      skills: student.skills ? serializeModel(student.skills) : {},
+      swoc: student.swoc ? serializeModel(student.swoc) : {},
+    }));
   } catch (error) {
     return next(error);
   }
@@ -167,9 +168,10 @@ const putStudentsMe = async (req, res, next) => {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
     if (!student) return res.status(404).json({ error: 'Profile not found' });
 
-    const data = req.body || {};
+    const rawData = req.body || {};
+    const data = encodeStudentProfilePayload(rawData);
 
-    const names = splitFullName(data.full_name || '');
+    const names = splitFullName(rawData.full_name || '');
     student.first_name = names.first_name;
     student.middle_name = names.middle_name;
     student.last_name = names.last_name;
@@ -194,49 +196,66 @@ const putStudentsMe = async (req, res, next) => {
         }
       }
 
-      const peValidation = validatePastEducationPayload(data.past_education_records || []);
+      const pastEducationPayload = 'past_education_records' in rawData
+        ? (rawData.past_education_records || [])
+        : (student.past_education_records || []).map(serializeModel);
+      const peValidation = validatePastEducationPayload(pastEducationPayload);
       if (!peValidation.valid) {
         await tx.rollback();
         return res.status(400).json({ error: peValidation.error });
       }
 
-      const paValidation = validatePostAdmissionRecords(Number(student.semester || 0), data.post_admission_records || []);
+      const postAdmissionPayload = 'post_admission_records' in rawData
+        ? (rawData.post_admission_records || [])
+        : (student.post_admission_records || []).map(serializeModel);
+      const paValidation = validatePostAdmissionRecords(Number(student.semester || 0), postAdmissionPayload);
       if (!paValidation.valid) {
         await tx.rollback();
         return res.status(400).json({ error: paValidation.error });
       }
 
-      await syncRelatedRecords(
-        PastEducation,
-        student.id,
-        student.past_education_records,
-        data.past_education_records || [],
-        tx,
-      );
-      await syncRelatedRecords(
-        PostAdmissionAcademicRecord,
-        student.id,
-        student.post_admission_records,
-        data.post_admission_records || [],
-        tx,
-      );
-      await syncRelatedRecords(Project, student.id, student.projects, data.projects || [], tx);
-      await syncRelatedRecords(Internship, student.id, student.internships, data.internships || [], tx);
-      await syncRelatedRecords(
-        CoCurricularParticipation,
-        student.id,
-        student.cocurricular_participations,
-        data.cocurricular_participations || [],
-        tx,
-      );
-      await syncRelatedRecords(
-        CoCurricularOrganization,
-        student.id,
-        student.cocurricular_organizations,
-        data.cocurricular_organizations || [],
-        tx,
-      );
-
+      if ('past_education_records' in rawData) {
+        await syncRelatedRecords(
+          PastEducation,
+          student.id,
+          student.past_education_records,
+          data.past_education_records || [],
+          tx,
+        );
+      }
+      if ('post_admission_records' in rawData) {
+        await syncRelatedRecords(
+          PostAdmissionAcademicRecord,
+          student.id,
+          student.post_admission_records,
+          data.post_admission_records || [],
+          tx,
+        );
+      }
+      if ('projects' in rawData) {
+        await syncRelatedRecords(Project, student.id, student.projects, data.projects || [], tx);
+      }
+      if ('internships' in rawData) {
+        await syncRelatedRecords(Internship, student.id, student.internships, data.internships || [], tx);
+      }
+      if ('cocurricular_participations' in rawData) {
+        await syncRelatedRecords(
+          CoCurricularParticipation,
+          student.id,
+          student.cocurricular_participations,
+          data.cocurricular_participations || [],
+          tx,
+        );
+      }
+      if ('cocurricular_organizations' in rawData) {
+        await syncRelatedRecords(
+          CoCurricularOrganization,
+          student.id,
+          student.cocurricular_organizations,
+          data.cocurricular_organizations || [],
+          tx,
+        );
+      }
       const singleRels = [
         ['career_objective', CareerObjective],
         ['skills', Skills],
@@ -273,7 +292,7 @@ const getStudentMe = async (req, res, next) => {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
     if (!student) return res.status(404).json({ error: 'Student profile not found' });
 
-    return res.status(200).json({
+    return res.status(200).json(decodeStudentProfilePayload({
       id: student.id,
       uid: student.uid,
       first_name: student.first_name,
@@ -283,17 +302,17 @@ const getStudentMe = async (req, res, next) => {
       semester: student.semester,
       section: student.section,
       year_of_admission: student.year_of_admission,
-      personal_info: student.personal_info ? serializeModel(student.personal_info) : null,
+      personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
       past_education_records: (student.past_education_records || []).map(serializeModel),
       post_admission_records: (student.post_admission_records || []).map(serializeModel),
       projects: (student.projects || []).map(serializeModel),
       internships: (student.internships || []).map(serializeModel),
       cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
       cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
-      career_objective: student.career_objective ? serializeModel(student.career_objective) : null,
-      skills: student.skills ? serializeModel(student.skills) : null,
-      swoc: student.swoc ? serializeModel(student.swoc) : null,
-    });
+      career_objective: student.career_objective ? serializeModel(student.career_objective) : {},
+      skills: student.skills ? serializeModel(student.skills) : {},
+      swoc: student.swoc ? serializeModel(student.swoc) : {},
+    }));
   } catch (error) {
     return next(error);
   }
@@ -304,13 +323,22 @@ const putStudentMe = async (req, res, next) => {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
     if (!student) return res.status(404).json({ error: 'Student profile not found' });
 
-    const data = req.body || {};
+    const rawData = req.body || {};
+    const data = encodeStudentProfilePayload(rawData);
     if (!Object.keys(data).length) return res.status(400).json({ error: 'No data provided' });
 
     const tx = await sequelize.transaction();
     try {
+      if ('full_name' in rawData) {
+        const names = splitFullName(rawData.full_name || '');
+        student.first_name = names.first_name;
+        student.middle_name = names.middle_name;
+        student.last_name = names.last_name;
+      }
+
       if ('semester' in data) student.semester = data.semester;
       if ('section' in data) student.section = data.section;
+      if ('year_of_admission' in data) student.year_of_admission = data.year_of_admission;
       await student.save({ transaction: tx });
 
       const modelMappings = {

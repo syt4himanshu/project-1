@@ -13,9 +13,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
         headers: { ...getHeaders(), ...(options?.headers ?? {}) },
     })
     if (res.status === 401) {
-        localStorage.clear()
-        window.location.href = '/login'
-        throw new Error('Unauthorized')
+        if (!path.includes('/login')) {
+            localStorage.clear()
+            window.location.href = '/login'
+        }
+        throw new Error('Invalid Credentials')
     }
     if (!res.ok) {
         const err = await res.json().catch(() => ({ message: res.statusText }))
@@ -31,8 +33,10 @@ async function authorizedFetch(path: string, options?: RequestInit) {
     })
 
     if (res.status === 401) {
-        localStorage.clear()
-        window.location.href = '/login'
+        if (!path.includes('/login')) {
+            localStorage.clear()
+            window.location.href = '/login'
+        }
         throw new Error('Unauthorized')
     }
 
@@ -277,6 +281,7 @@ export interface Student {
     internships?: Record<string, unknown>[]
     co_curricular_participations?: Record<string, unknown>[]
     co_curricular_organizations?: Record<string, unknown>[]
+    skill_programs?: Record<string, unknown>[]
     skills?: Record<string, unknown>
     swoc?: Record<string, unknown>
     career_objective?: Record<string, unknown>
@@ -323,21 +328,28 @@ function normalizePersonalInfo(raw: Record<string, unknown>) {
 }
 
 function normalizePastEducationRecord(raw: Record<string, unknown>) {
+    const examName = String(raw.exam_name ?? raw.exam ?? '').trim()
+    const entranceExamName = String(raw.exam_type ?? '').trim()
+
+    let examLabel = examName
+    if (examName === 'HSSC') examLabel = 'HSC'
+    if (examName === 'ENTRANCE_EXAM') examLabel = entranceExamName || 'Entrance Exam'
+
     return {
         ...raw,
-        exam: raw.exam ?? raw.exam_name ?? '—',
+        exam: examLabel || '—',
         percentage: raw.percentage ?? '—',
     }
 }
 
 function normalizeAcademicRecord(raw: Record<string, unknown>) {
-    const backlogSubjects = String(raw.backlog_subjects ?? '').trim()
+    const backlogSubjectsRaw = String(raw.backlog_subjects ?? '').trim()
     const normalizedBacklogs = Number(raw.backlogs)
-    const parsedSubjects = backlogSubjects
-        ? backlogSubjects
+    const parsedSubjects = backlogSubjectsRaw
+        ? backlogSubjectsRaw
             .split(/[,\n;]+/)
             .map((value) => value.trim())
-            .filter((value) => !isPlaceholderValue(value))
+            .filter((value) => !isPlaceholderValue(value) && value !== '0')
         : []
     const computedBacklogs =
         Number.isFinite(normalizedBacklogs) && normalizedBacklogs >= 0
@@ -346,7 +358,8 @@ function normalizeAcademicRecord(raw: Record<string, unknown>) {
 
     return {
         ...raw,
-        backlog_subjects: parsedSubjects.join(', '),
+        backlog_subjects: backlogSubjectsRaw,
+        parsed_backlog_subjects: parsedSubjects,
         backlogs: parsedSubjects.length === 0 ? 0 : computedBacklogs,
     }
 }
@@ -395,6 +408,9 @@ function normalizeStudent(raw: StudentApiResponse): Student {
         co_curricular_organizations:
             (raw.co_curricular_organizations as Record<string, unknown>[] | undefined) ??
             ((raw as unknown as Record<string, unknown>).cocurricular_organizations as Record<string, unknown>[] | undefined) ??
+            [],
+        skill_programs:
+            (raw.skill_programs as Record<string, unknown>[] | undefined) ??
             [],
         skills: normalizeSkills(skills),
         career_objective: normalizeCareerObjective(careerObjective),

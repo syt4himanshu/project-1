@@ -14,8 +14,11 @@ api.interceptors.response.use(
     (res) => res,
     (err) => {
         if (err.response?.status === 401) {
-            localStorage.clear()
-            window.location.href = '/'
+            const isLogin = err.config?.url?.includes('/login')
+            if (!isLogin) {
+                localStorage.clear()
+                window.location.href = '/'
+            }
         }
         return Promise.reject(err)
     }

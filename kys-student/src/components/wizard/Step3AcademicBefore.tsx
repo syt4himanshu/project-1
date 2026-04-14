@@ -48,6 +48,19 @@ export default function Step3AcademicBefore({ data, update }: WizardStepProps) {
         update({ admission_type: value })
     }
 
+    const handlePercentageChange = (examKey: string, v: string) => {
+        if (v === '') {
+            upd(examKey, 'percentage', null)
+            return
+        }
+        if (/^\d*\.?\d{0,2}$/.test(v)) {
+            const num = v === '.' ? 0 : Number(v)
+            if (num <= 100) {
+                upd(examKey, 'percentage', v)
+            }
+        }
+    }
+
     const renderEducationSection = (
         title: string,
         examKey: string,
@@ -66,7 +79,7 @@ export default function Step3AcademicBefore({ data, update }: WizardStepProps) {
                             ? input('text', (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder)
                             : select(BOARDS, (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder),
                     )}
-                    {field('Percentage / Grade', input('number', String(rec.percentage || ''), v => upd(examKey, 'percentage', v === '' ? null : Number(v)), 'e.g. 85.50'))}
+                    {field('Percentage / Grade', input('text', rec.percentage != null ? String(rec.percentage) : '', v => handlePercentageChange(examKey, v), 'e.g. 85.50'))}
                     {field('Year of Passing', input('number', String(rec.year_of_passing || ''), v => upd(examKey, 'year_of_passing', v === '' ? null : Number(v)), 'e.g. 2024'))}
                 </div>
             </section>
@@ -104,7 +117,7 @@ export default function Step3AcademicBefore({ data, update }: WizardStepProps) {
                         <h3 className="mb-4 border-b-2 border-[#df981e] pb-2 text-3xl font-semibold text-[#223b60]">Entrance Exam & Admission Details</h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
                             {field('Entrance Exam Type', select(ENTRANCE_EXAMS, (entrance.exam_type as string) || '', v => upd('ENTRANCE_EXAM', 'exam_type', v), 'Select Exam'))}
-                            {field('Percentile', input('text', String(entrance.percentage || ''), v => upd('ENTRANCE_EXAM', 'percentage', v === '' ? null : Number(v)), 'Score / Percentile'))}
+                            {field('Percentile', input('text', entrance.percentage != null ? String(entrance.percentage) : '', v => handlePercentageChange('ENTRANCE_EXAM', v), 'Score / Percentile'))}
                             {field('Year of Passing', input('number', String(entrance.year_of_passing || ''), v => upd('ENTRANCE_EXAM', 'year_of_passing', v === '' ? null : Number(v)), 'Year of Passing'))}
                         </div>
                     </section>

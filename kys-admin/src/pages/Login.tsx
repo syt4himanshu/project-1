@@ -20,14 +20,17 @@ type FormData = z.infer<typeof schema>
 export default function LoginPage() {
     const navigate = useNavigate()
     const [showPwd, setShowPwd] = useState(false)
+    const [authError, setAuthError] = useState('')
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
         resolver: zodResolver(schema),
     })
 
     const onSubmit = async (data: FormData) => {
+        setAuthError('')
         try {
             const res = await authApi.login({ uid: data.uid, password: data.password })
             if (res.role !== 'admin') {
+                setAuthError('Access denied. Admin only.')
                 toast.error('Access denied. Admin only.')
                 return
             }
@@ -37,6 +40,7 @@ export default function LoginPage() {
             toast.success('Login successful')
             navigate('/admin')
         } catch (e: unknown) {
+            setAuthError(e instanceof Error ? e.message : 'Invalid credentials')
             toast.error(e instanceof Error ? e.message : 'Login failed')
         }
     }
@@ -68,6 +72,9 @@ export default function LoginPage() {
                         </div>
                         {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
                     </div>
+
+                    {authError && <p className="text-sm text-red-600 mt-2">{authError}</p>}
+
                     <Button type="submit" className="w-full" disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                         Login

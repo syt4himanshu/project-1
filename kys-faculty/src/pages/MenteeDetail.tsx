@@ -35,6 +35,7 @@ interface MenteePayload {
     internships?: unknown
     cocurricular_participations?: unknown
     cocurricular_organizations?: unknown
+    skill_programs?: unknown
     career_objective?: unknown
     skills?: unknown
     swoc?: unknown
@@ -209,13 +210,16 @@ export default function MenteeDetail() {
                     <ArraySection title="Projects" rows={mentee.projects} rowTitle={(row) => String(row.title || 'Project')} />
                 </div>
                 <div className="md:col-span-2">
-                    <ArraySection title="Internships" rows={mentee.internships} rowTitle={(row) => String(row.organization || 'Internship')} />
+                    <ArraySection title="Internships" rows={mentee.internships} rowTitle={(row) => String(row.company_name || row.organization || 'Internship')} />
                 </div>
                 <div className="md:col-span-2">
                     <ArraySection title="Co-curricular participation" rows={mentee.cocurricular_participations} />
                 </div>
                 <div className="md:col-span-2">
                     <ArraySection title="Co-curricular organizations" rows={mentee.cocurricular_organizations} />
+                </div>
+                <div className="md:col-span-2">
+                    <ArraySection title="Skill development programs" rows={mentee.skill_programs} rowTitle={(row, i) => String(row.course_title || `Program ${i + 1}`)} />
                 </div>
             </div>
         </div>
