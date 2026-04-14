@@ -14,8 +14,14 @@ export class HttpError extends Error {
   }
 }
 
+export const AUTH_EXPIRED_EVENT = 'kys:auth-expired'
+
 interface JsonRequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown
+  token?: string | null
+}
+
+interface BlobRequestOptions extends Omit<RequestInit, 'body'> {
   token?: string | null
 }
 
@@ -77,6 +83,10 @@ export async function requestJson<T>(path: string, options: JsonRequestOptions =
   const payload = await parsePayload(response)
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
+    }
+
     const message = extractErrorMessage(payload) || `Request failed with status ${response.status}`
     throw new HttpError(message, response.status, payload)
   }
@@ -87,4 +97,39 @@ export async function requestJson<T>(path: string, options: JsonRequestOptions =
   }
 
   return parsed.data
+}
+
+export async function requestBlob(
+  path: string,
+  options: BlobRequestOptions = {},
+): Promise<{ blob: Blob; headers: Headers; status: number }> {
+  const { token, headers: customHeaders, ...requestInit } = options
+  const headers = new Headers(customHeaders ?? undefined)
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const response = await fetch(buildUrl(path), {
+    ...requestInit,
+    headers,
+  })
+
+  if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
+    }
+
+    const errorText = await response.text().catch(() => '')
+    const message = errorText || `Request failed with status ${response.status}`
+    throw new HttpError(message, response.status, errorText)
+  }
+
+  const blob = await response.blob()
+
+  return {
+    blob,
+    headers: response.headers,
+    status: response.status,
+  }
 }

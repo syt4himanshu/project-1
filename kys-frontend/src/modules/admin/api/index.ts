@@ -1,0 +1,36 @@
+export { adminApi } from './client'
+export { adminQueryKeys } from './queryKeys'
+export {
+  normalizeArrayForDisplay,
+  normalizeForDisplay,
+  normalizeGeneralReportFilters,
+  normalizeStudentSummaryFilters,
+} from './normalizers'
+export type {
+  AdminAllocationEntry,
+  AdminAllocationStudent,
+  AdminAllocationUpdateInput,
+  AdminBacklogEntry,
+  AdminExportedFile,
+  AdminFacultyDetail,
+  AdminFacultySummary,
+  AdminGeneralReportFilters,
+  AdminGeneralReportRow,
+  AdminIncompleteProfile,
+  AdminMutationResult,
+  AdminReportStats,
+  AdminSemesterDistributionRow,
+  AdminStatistics,
+  AdminStudentDetail,
+  AdminStudentSummary,
+  AdminStudentSummaryFilters,
+  AdminTopper,
+  AdminUserSummary,
+  BulkFacultyRowInput,
+  BulkOperationItem,
+  BulkOperationResult,
+  BulkStudentRowInput,
+  CreateAdminUserInput,
+  NormalizedAdminStudentSummaryFilters,
+  ResetPasswordInput,
+} from './types'

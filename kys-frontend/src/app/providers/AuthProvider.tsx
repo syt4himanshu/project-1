@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from 'react'
 import { ENDPOINTS } from '../../shared/api/endpointRegistry'
-import { requestJson } from '../../shared/api/httpClient'
+import { AUTH_EXPIRED_EVENT, requestJson } from '../../shared/api/httpClient'
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../../shared/auth/storage'
 import { isUserRole, type AuthSession, type AuthUser } from '../../shared/auth/session'
 import { AuthContext, type AuthContextValue, type AuthStatus } from './auth-context'
@@ -102,6 +102,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false
     }
   }, [refreshSession])
+
+  useEffect(() => {
+    const onAuthExpired = () => {
+      applyAnonymousState()
+    }
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, onAuthExpired)
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onAuthExpired)
+  }, [applyAnonymousState])
 
   const login = useCallback(async (identifier: string, password: string) => {
     const payload = await requestJson<LoginResponse>(ENDPOINTS.auth.login, {
