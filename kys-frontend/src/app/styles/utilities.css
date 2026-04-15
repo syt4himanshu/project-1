@@ -283,8 +283,20 @@ a:hover {
   color: var(--text);
 }
 
+.admin-field textarea {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.52rem 0.68rem;
+  min-width: 150px;
+  background: white;
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
 .admin-field input:focus,
-.admin-field select:focus {
+.admin-field select:focus,
+.admin-field textarea:focus {
   outline: 2px solid rgba(37, 99, 235, 0.2);
   border-color: #2563eb;
 }
@@ -843,7 +855,7 @@ a:hover {
   overflow: hidden;
 }
 
-.detail-section > h4 {
+.detail-section>h4 {
   margin: 0;
   padding: 0.62rem 0.8rem;
   border-bottom: 1px solid #e2e8f0;
@@ -902,6 +914,22 @@ a:hover {
   margin: 0.26rem 0 0;
   color: #475569;
   font-size: 0.8rem;
+}
+
+.faculty-json {
+  margin: 0;
+  padding: 0.72rem;
+  max-height: 280px;
+  overflow: auto;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.faculty-prewrap {
+  white-space: pre-wrap;
 }
 
 .toast-stack {
@@ -1537,5 +1565,514 @@ a:hover {
 
   .role-select-kys__grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Faculty Dashboard ──────────────────────────────────────────────────── */
+
+.faculty-dashboard {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.faculty-dashboard__banner {
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+  color: white;
+  padding: 1.4rem 1.6rem;
+}
+
+.faculty-dashboard__title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.faculty-dashboard__subtitle {
+  margin: 0.3rem 0 0;
+  opacity: 0.82;
+  font-size: 0.9rem;
+}
+
+.faculty-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 0.85rem;
+}
+
+.faculty-stat-card {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: white;
+  padding: 1.1rem 1.2rem;
+  text-decoration: none;
+  color: var(--text);
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+
+.faculty-stat-card:hover {
+  text-decoration: none;
+  border-color: #93c5fd;
+  box-shadow: 0 8px 24px rgba(29, 78, 216, 0.12);
+  transform: translateY(-2px);
+}
+
+.faculty-stat-card--primary {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.faculty-stat-card--accent {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.faculty-stat-card__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.faculty-stat-card__label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.faculty-stat-card__value {
+  margin: 0.2rem 0 0;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #1d4ed8;
+}
+
+.faculty-stat-card__value--md {
+  font-size: 1.25rem;
+  color: var(--text);
+}
+
+.faculty-stat-card__cta {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.faculty-dashboard__hint {
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: #1e3a8a;
+}
+
+/* ─── Faculty Chatbot Layout ─────────────────────────────────────────────── */
+
+.faculty-chat {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: calc(100vh - 4rem);
+  min-height: 560px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: white;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+}
+
+.faculty-chat__sidebar {
+  border-right: 1px solid var(--border);
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.2s ease;
+}
+
+.faculty-chat__sidebar--collapsed {
+  width: 48px;
+}
+
+.faculty-chat__sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: white;
+  gap: 0.5rem;
+}
+
+.faculty-chat__sidebar-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.faculty-chat__sidebar-toggle {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.faculty-chat__sidebar-loading {
+  height: 120px;
+  margin: 0.75rem;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #e2e8f0, #f1f5f9, #e2e8f0);
+  background-size: 190% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+.faculty-chat__main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.faculty-chat__header {
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  background: white;
+  flex-shrink: 0;
+}
+
+.faculty-chat__heading {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.faculty-chat__subheading {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.faculty-chat__window {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  background: #fafbfd;
+}
+
+.faculty-chat__skeleton {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.faculty-chat__skeleton-row {
+  height: 72px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #e2e8f0, #f1f5f9, #e2e8f0);
+  background-size: 190% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+/* ─── Chat messages ──────────────────────────────────────────────────────── */
+
+.faculty-chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 88%;
+}
+
+.faculty-chat-msg--user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.faculty-chat-msg--assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.faculty-chat-msg__context {
+  margin: 0 0 0.28rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.faculty-chat-msg__bubble {
+  border-radius: 14px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.faculty-chat-msg__bubble--user {
+  background: #1d4ed8;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.faculty-chat-msg__bubble--assistant {
+  background: white;
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+  width: 100%;
+}
+
+.faculty-chat-msg__error {
+  color: #b91c1c;
+}
+
+/* ─── Response cards ─────────────────────────────────────────────────────── */
+
+.faculty-response-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.faculty-response-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.faculty-response-card--skeleton {
+  height: 90px;
+  background: linear-gradient(90deg, #e2e8f0, #f1f5f9, #e2e8f0);
+  background-size: 190% 100%;
+  animation: shimmer 1.2s linear infinite;
+  border: none;
+}
+
+.faculty-response-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.42rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  background: white;
+  gap: 0.5rem;
+}
+
+.faculty-response-card__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.faculty-response-card__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.faculty-response-card__btn {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 0.74rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.faculty-response-card__btn:hover {
+  text-decoration: underline;
+}
+
+.faculty-response-card__body {
+  padding: 0.5rem 0.6rem;
+}
+
+.faculty-response-card__body p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+/* ─── Chat loading state ─────────────────────────────────────────────────── */
+
+.faculty-chat__loading {
+  padding: 0.25rem 0;
+}
+
+.faculty-chat__loading-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.faculty-chat__loading-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ─── Chat empty state ───────────────────────────────────────────────────── */
+
+.faculty-chat__empty {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 1.1rem;
+  background: white;
+  max-width: 560px;
+}
+
+.faculty-chat__empty-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.faculty-chat__empty-sub {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.faculty-chat__prompts {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.faculty-chat__prompt-btn {
+  text-align: left;
+  font-size: 0.82rem;
+  white-space: normal;
+}
+
+/* ─── Chat input area ────────────────────────────────────────────────────── */
+
+.faculty-chat__input-area {
+  border-top: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  background: white;
+  flex-shrink: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.faculty-chat__context-label {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.faculty-chat__input-error {
+  /* inherits query-state styles */
+}
+
+.faculty-chat__warn {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+}
+
+.faculty-chat__form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.faculty-chat__textarea-label {
+  width: 100%;
+}
+
+.faculty-chat__form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.faculty-chat__char-count {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* ─── Student selector ───────────────────────────────────────────────────── */
+
+.faculty-selector {
+  padding: 0.85rem;
+  display: grid;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+.faculty-selector__group {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.faculty-selector__label {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.faculty-selector__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.faculty-selector__hint--warn {
+  color: #92400e;
+}
+
+.faculty-selector__future {
+  border: 1px dashed #cbd5e1;
+  border-radius: 9px;
+  padding: 0.6rem 0.75rem;
+}
+
+.faculty-selector__future-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .faculty-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .faculty-chat {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height: auto;
+    min-height: 80vh;
+  }
+
+  .faculty-chat__sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .faculty-response-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1080px) {
+  .faculty-stat-grid {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
 }

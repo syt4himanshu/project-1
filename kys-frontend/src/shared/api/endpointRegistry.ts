@@ -34,4 +34,11 @@ export const ENDPOINTS = {
     me: '/api/student/me',
     uploadPhoto: '/api/student/me/upload-photo',
   },
+  faculty: {
+    me: '/api/faculty/me',
+    mentees: '/api/faculty/me/mentees',
+    mentee: (uid: string) => `/api/faculty/me/mentees/${encodeURIComponent(uid)}`,
+    menteeMinutes: (uid: string) => `/api/faculty/me/mentees/${encodeURIComponent(uid)}/minutes`,
+    chatbot: '/api/faculty/chatbot',
+  },
 } as const

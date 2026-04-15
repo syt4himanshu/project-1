@@ -86,6 +86,28 @@ describe('Route guards integration', () => {
     expect(screen.queryByText('Admin dashboard')).not.toBeInTheDocument()
   })
 
+  it('RequireRole redirects non-faculty user away from faculty route', () => {
+    const authValue = createAuthValue({
+      status: 'authenticated',
+      session: createSession('student'),
+    })
+
+    renderWithAuth(
+      authValue,
+      <MemoryRouter initialEntries={['/faculty/dashboard']}>
+        <Routes>
+          <Route element={<RequireRole role="faculty" />}>
+            <Route path="/faculty/dashboard" element={<p>Faculty dashboard</p>} />
+          </Route>
+          <Route path="/student/dashboard" element={<p>Student dashboard</p>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Student dashboard')).toBeInTheDocument()
+    expect(screen.queryByText('Faculty dashboard')).not.toBeInTheDocument()
+  })
+
   it('RequireRole allows matching role through to outlet', () => {
     const authValue = createAuthValue({
       status: 'authenticated',
