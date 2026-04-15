@@ -249,6 +249,11 @@ export default function ProfileWizard() {
 
     const update = (patch: Record<string, unknown>) => setData(prev => ({ ...prev, ...patch }))
 
+    useEffect(() => {
+        setError('')
+        setFieldErrors({})
+    }, [step])
+
     const next = () => {
         const missing = getMissingRequiredFields(step, data)
         if (missing.length > 0) {
@@ -259,13 +264,17 @@ export default function ProfileWizard() {
             return
         }
 
-        const validation = validateStudentProfileData(data)
-        if (!validation.isValid) {
-            setFieldErrors(validation.fieldErrors)
-            const message = validation.errors[0] || 'Please correct invalid values in the form.'
-            setError(message)
-            showToast('Please fix highlighted validation issues before proceeding.', 'error')
-            return
+        // Only run full-profile validation when the current step includes academic records
+        // or when submitting, to avoid unrelated validation errors on earlier steps.
+        if (step >= 2) {
+            const validation = validateStudentProfileData(data)
+            if (!validation.isValid) {
+                setFieldErrors(validation.fieldErrors)
+                const message = validation.errors[0] || 'Please correct invalid values in the form.'
+                setError(message)
+                showToast('Please fix highlighted validation issues before proceeding.', 'error')
+                return
+            }
         }
 
         setFieldErrors({})
@@ -284,6 +293,7 @@ export default function ProfileWizard() {
 
     const prev = () => {
         setFieldErrors({})
+        setError('')
         setStep(s => Math.max(s - 1, 0))
     }
 

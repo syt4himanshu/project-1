@@ -146,6 +146,10 @@ export default function ProfileWizard() {
     const [error, setError] = useState('')
     const [toast, setToast] = useState<{ message: string, tone: ToastTone } | null>(null)
 
+    useEffect(() => {
+        setError('')
+    }, [step])
+
     const toastTimerRef = useRef<number | null>(null)
 
     const draftKey = useMemo(() => {
@@ -235,6 +239,61 @@ export default function ProfileWizard() {
 
     const update = (patch: Record<string, unknown>) => setData(prev => ({ ...prev, ...patch }))
 
+    const getPayloadForStep = (step: number, data: Record<string, unknown>) => {
+        const payload: Record<string, unknown> = {}
+        const personalInfo = data.personal_info as Record<string, unknown> | undefined
+
+        if (step === 0) {
+            if ('full_name' in data) payload.full_name = data.full_name
+            if ('section' in data) payload.section = data.section
+            if ('semester' in data) payload.semester = data.semester
+            if ('year_of_admission' in data) payload.year_of_admission = data.year_of_admission
+            if (personalInfo) payload.personal_info = personalInfo
+            return payload
+        }
+
+        if (step === 1) {
+            if (personalInfo) payload.personal_info = personalInfo
+            return payload
+        }
+
+        if (step === 2) {
+            if ('admission_type' in data) payload.admission_type = data.admission_type
+            if ('past_education_records' in data) payload.past_education_records = data.past_education_records
+            return payload
+        }
+
+        if (step === 3) {
+            if ('post_admission_records' in data) payload.post_admission_records = data.post_admission_records
+            return payload
+        }
+
+        if (step === 4) {
+            if ('projects' in data) payload.projects = data.projects
+            if ('internships' in data) payload.internships = data.internships
+            return payload
+        }
+
+        if (step === 5) {
+            if ('cocurricular_participations' in data) payload.cocurricular_participations = data.cocurricular_participations
+            if ('cocurricular_organizations' in data) payload.cocurricular_organizations = data.cocurricular_organizations
+            return payload
+        }
+
+        if (step === 6) {
+            if ('swoc' in data) payload.swoc = data.swoc
+            return payload
+        }
+
+        if (step === 7) {
+            if ('career_objective' in data) payload.career_objective = data.career_objective
+            if ('skills' in data) payload.skills = data.skills
+            return payload
+        }
+
+        return data
+    }
+
     const next = async () => {
         const missing = getMissingRequiredFields(step, data)
         if (missing.length > 0) {
@@ -244,17 +303,21 @@ export default function ProfileWizard() {
             return
         }
 
-        const validation = validateStudentProfileData(data)
-        if (!validation.isValid) {
-            const message = validation.errors[0] || 'Please correct invalid values in the form.'
-            setError(message)
-            showToast('Please fix highlighted validation issues before proceeding.', 'error')
-            return
+        if (step >= 2) {
+            const validation = validateStudentProfileData(data)
+            if (!validation.isValid) {
+                const message = validation.errors[0] || 'Please correct invalid values in the form.'
+                setError(message)
+                showToast('Please fix highlighted validation issues before proceeding.', 'error')
+                return
+            }
         }
+
+        const payload = getPayloadForStep(step, data)
 
         try {
             setSaving(true)
-            await updateProfile(data)
+            await updateProfile(payload)
             setError('')
             const nextStep = Math.min(step + 1, STEPS.length - 1)
             const saved = saveDraft(data, nextStep)
@@ -276,7 +339,10 @@ export default function ProfileWizard() {
         }
     }
 
-    const prev = () => setStep(s => Math.max(s - 1, 0))
+    const prev = () => {
+        setError('')
+        setStep(s => Math.max(s - 1, 0))
+    }
 
     const submit = async () => {
         setSaving(true)
