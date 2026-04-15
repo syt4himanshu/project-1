@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const { sequelize } = require('./models');
 const { globalRateLimiter } = require('./middleware/rateLimiter');
 const logger = require('./utils/logger');
-const { validateEnv, getCorsSettings } = require('./utils/env');
+const { validateEnv } = require('./utils/env');
 
 const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
@@ -16,8 +16,13 @@ const { studentsRouter, studentRouter, apiStudentsRouter } = require('./routes/s
 validateEnv();
 
 const app = express();
-app.set('trust proxy', 1); // PROD-FIX: trust reverse proxy X-Forwarded-* headers
-const { allowedOrigins } = getCorsSettings();
+app.set('trust proxy', 1);
+const corsOptions = {
+  origin: ['https://kys.stvincentngp.edu.in'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
 const forceHttps = String(process.env.FORCE_HTTPS || 'false').toLowerCase() === 'true';
 
 if (forceHttps) {
@@ -28,18 +33,8 @@ if (forceHttps) {
 }
 
 app.use(helmet());
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  }),
-);
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 app.use(express.json({ limit: "50kb" }));
 app.use(globalRateLimiter);
