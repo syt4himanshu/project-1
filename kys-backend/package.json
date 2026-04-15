@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "build": "node scripts/build-check.js",
     "start": "node server.js",
     "dev": "node --watch server.js",
     "migrate": "sequelize-cli db:migrate",
