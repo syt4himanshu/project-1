@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { WizardStepProps } from './shared'
 
 function valueOrNA(value: unknown) {

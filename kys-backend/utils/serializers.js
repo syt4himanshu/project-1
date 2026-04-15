@@ -1,4 +1,5 @@
 const { serializeModel, buildFullName } = require('./helpers');
+const { decodeStudentProfilePayload } = require('./profileCodec');
 
 const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
 
@@ -62,7 +63,7 @@ const serializeStudent = (student, { includeIds = false } = {}) => {
     payload.last_name = student.last_name;
   }
 
-  return payload;
+  return decodeStudentProfilePayload(payload);
 };
 
 const serializeStudentSummary = (student) => ({

@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { env } from '../../../app/config/env'
 import { useAuth } from '../../../app/providers/auth-context'
 import { useToast } from '../../../app/providers/toast-context'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
-import { ConfirmDialog, DataTable, QueryState, SectionShell, type TableColumn } from '../../../shared/ui'
+import { ConfirmDialog, DataTable, QueryState, type TableColumn } from '../../../shared/ui'
 import type {
   AdminUserSummary,
   BulkFacultyRowInput,
@@ -100,15 +100,18 @@ export function AdminUsersPage() {
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<AdminUserSummary | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminUserSummary | null>(null)
-
   const [studentBulkRows, setStudentBulkRows] = useState<BulkOperationItem[]>([])
   const [facultyBulkRows, setFacultyBulkRows] = useState<BulkOperationItem[]>([])
 
-  const studentInputRef = useRef<HTMLInputElement | null>(null)
-  const facultyInputRef = useRef<HTMLInputElement | null>(null)
+  const studentInputRef = useRef<HTMLInputElement>(null)
+  const facultyInputRef = useRef<HTMLInputElement>(null)
 
   const { user } = useAuth()
   const toast = useToast()
+
+  useEffect(() => {
+    document.title = 'User Management - KYS'
+  }, [])
 
   const usersQuery = useAdminUsersQuery()
   const deleteMutation = useDeleteAdminUserMutation()
@@ -244,7 +247,11 @@ export function AdminUsersPage() {
 
   if (usersQuery.isError) {
     return (
-      <SectionShell title="Users" subtitle="Directory of all platform users.">
+      <div className="admin-page">
+        <div className="admin-page__header">
+          <h3 className="admin-page__title">User Management</h3>
+          <p className="admin-page__subtitle">Create, delete, reset passwords, and run bulk registration uploads.</p>
+        </div>
         <QueryState
           tone="error"
           title="Unable to load users"
@@ -252,128 +259,109 @@ export function AdminUsersPage() {
           actionLabel="Retry"
           onAction={() => void usersQuery.refetch()}
         />
-      </SectionShell>
+      </div>
     )
   }
 
   return (
-    <SectionShell
-      title="Users"
-      subtitle="Create, delete, reset passwords, and run bulk registration uploads."
-      actions={(
-        <div className="admin-filter-grid">
-          <label className="admin-field" htmlFor="users-search">
-            <span>Search</span>
+    <div className="admin-page">
+      <div className="admin-page__header">
+        <h3 className="admin-page__title">User Management</h3>
+        <p className="admin-page__subtitle">Create, delete, reset passwords, and run bulk registration uploads.</p>
+      </div>
+
+      <div className="admin-toolbar-grid admin-toolbar-grid--users">
+        <div className="role-toolbar__card role-toolbar__card--filters admin-toolbar-block">
+          <div className="role-field role-field--icon">
+            <span className="material-symbols-outlined">search</span>
             <input
-              id="users-search"
+              className="role-input role-input--with-icon"
+              placeholder="Search by name, email or ID"
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="Username or name"
-              autoComplete="off"
+              type="text"
             />
-          </label>
-
-          <label className="admin-field" htmlFor="users-role-filter">
-            <span>Role</span>
+          </div>
+          <div className="role-toolbar__inline">
+            <span className="role-toolbar__label">Role Filter:</span>
             <select
-              id="users-role-filter"
+              className="role-select"
               value={roleFilter}
               onChange={(event) => setRoleFilter(event.target.value as UserRoleFilter)}
             >
               {USER_ROLE_FILTERS.map((role) => (
                 <option key={role} value={role}>
-                  {role === 'all' ? 'All roles' : role}
+                  {role === 'all' ? 'All Roles' : role}
                 </option>
               ))}
             </select>
-          </label>
+          </div>
+        </div>
 
-          <div className="admin-toolbar">
-            <button type="button" className="button button--primary" onClick={() => setIsAddOpen(true)}>
-              Create User
-            </button>
+        <div className="role-toolbar__card role-toolbar__card--cta admin-toolbar-cta">
+          <div className="admin-toolbar-cta__head">
+            <span className="material-symbols-outlined" aria-hidden="true">person_add</span>
+            <span className="admin-toolbar-cta__badge">New</span>
+          </div>
+          <button
+            className="admin-toolbar-cta__button"
+            onClick={() => setIsAddOpen(true)}
+          >
+            Create User
+          </button>
+        </div>
 
+        <div className="role-toolbar__card role-toolbar__card--bulk admin-toolbar-block">
+          <h4 className="role-toolbar__label role-toolbar__label--tight">Bulk Operations</h4>
+          <div className="admin-toolbar-buttons-grid">
             <button
-              type="button"
-              className="button button--ghost"
+              className="button button--ghost button--icon"
               onClick={() => downloadCsvTemplate(
                 'students_bulk_template.csv',
                 ['uid', 'full_name', 'semester', 'section', 'year_of_admission'],
                 ['24003001', 'John A Doe', '6', 'A', '2024'],
               )}
             >
-              Student CSV Template
+              <span className="material-symbols-outlined" aria-hidden="true">download</span> Student CSV Template
             </button>
-
             <button
-              type="button"
-              className="button button--ghost"
+              className="button button--ghost button--icon"
               onClick={() => downloadCsvTemplate(
                 'faculty_bulk_template.csv',
                 ['email', 'first_name', 'last_name', 'contact_number', 'password'],
                 ['faculty@stvincentngp.edu.in', 'John', 'Doe', '9999999999', 'Pass@1234'],
               )}
             >
-              Faculty CSV Template
+              <span className="material-symbols-outlined" aria-hidden="true">download</span> Faculty CSV Template
             </button>
-
             <button
-              type="button"
-              className="button button--ghost"
+              className="button button--ghost button--icon"
               onClick={() => studentInputRef.current?.click()}
               disabled={bulkStudentsMutation.isPending}
             >
-              {bulkStudentsMutation.isPending ? 'Uploading...' : 'Upload Students CSV'}
+              <span className="material-symbols-outlined" aria-hidden="true">upload</span> {bulkStudentsMutation.isPending ? 'Uploading...' : 'Upload Students CSV'}
             </button>
-
             <button
-              type="button"
-              className="button button--ghost"
+              className="button button--ghost button--icon"
               onClick={() => facultyInputRef.current?.click()}
               disabled={bulkFacultyMutation.isPending}
             >
-              {bulkFacultyMutation.isPending ? 'Uploading...' : 'Upload Faculty CSV'}
+              <span className="material-symbols-outlined" aria-hidden="true">upload</span> {bulkFacultyMutation.isPending ? 'Uploading...' : 'Upload Faculty CSV'}
             </button>
-
-            <input
-              ref={studentInputRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden-input"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) {
-                  void handleBulkStudentFile(file)
-                }
-                event.target.value = ''
-              }}
-            />
-
-            <input
-              ref={facultyInputRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden-input"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) {
-                  void handleBulkFacultyFile(file)
-                }
-                event.target.value = ''
-              }}
-            />
           </div>
         </div>
-      )}
-    >
-      <DataTable
-        columns={columns}
-        data={filteredRows}
-        keyExtractor={(row) => row.id}
-        isLoading={usersQuery.isPending}
-        pageSize={12}
-        emptyLabel="No users matched the current filter."
-      />
+      </div>
+
+      <div className="admin-surface">
+        <DataTable
+          columns={columns}
+          data={filteredRows}
+          keyExtractor={(row) => row.id}
+          isLoading={usersQuery.isPending}
+          pageSize={12}
+          emptyLabel="No users matched the current filter."
+        />
+      </div>
 
       <BulkUploadReport title="Student Bulk Upload" rows={studentBulkRows} />
       <BulkUploadReport title="Faculty Bulk Upload" rows={facultyBulkRows} />
@@ -397,6 +385,34 @@ export function AdminUsersPage() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void handleDelete()}
       />
-    </SectionShell>
+
+      <input
+        ref={studentInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden-input"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) {
+            void handleBulkStudentFile(file)
+          }
+          event.target.value = ''
+        }}
+      />
+
+      <input
+        ref={facultyInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden-input"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) {
+            void handleBulkFacultyFile(file)
+          }
+          event.target.value = ''
+        }}
+      />
+    </div>
   )
 }

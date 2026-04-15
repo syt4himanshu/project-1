@@ -94,16 +94,18 @@ export function FacultyMenteesPage() {
       title="My Mentees"
       subtitle="Read assigned mentees and open individual details."
       actions={(
-        <label className="admin-field" htmlFor="faculty-mentees-search">
-          <span>Search</span>
-          <input
-            id="faculty-mentees-search"
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="UID, name, section"
-            autoComplete="off"
-          />
-        </label>
+        <div className="role-toolbar__actions">
+          <label className="admin-field role-field role-field--wide" htmlFor="faculty-mentees-search">
+            <span>Search</span>
+            <input
+              id="faculty-mentees-search"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder="UID, name, section"
+              autoComplete="off"
+            />
+          </label>
+        </div>
       )}
     >
       <DataTable

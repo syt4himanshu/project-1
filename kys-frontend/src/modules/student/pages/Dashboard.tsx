@@ -68,12 +68,12 @@ export default function Dashboard() {
             .finally(() => setLoadingProfile(false))
 
         getMentoringMinutes()
-            .then(r => setMinutes(r.data))
+            .then(r => setMinutes(r.data as unknown as MentoringMinute[]))
             .catch(() => { })
             .finally(() => setLoadingMinutes(false))
 
         getMentor()
-            .then(r => setMentor(r.data))
+            .then(r => setMentor(r.data as unknown as Mentor))
             .catch(() => { })
             .finally(() => setLoadingMentor(false))
     }, [])

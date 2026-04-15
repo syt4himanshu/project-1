@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { toApiErrorMessage } from '../../../../shared/api/errorMapper'
-import { DataTable, QueryState, SectionShell, type TableColumn } from '../../../../shared/ui'
+import { DataTable, QueryState, type TableColumn } from '../../../../shared/ui'
 import type { AdminAllocationEntry } from '../../api'
 import { useAdminAllocationQuery } from '../../hooks'
 import { AllocationAssignModal } from './AllocationAssignModal'
@@ -72,7 +72,11 @@ export function AllocationPageContent() {
 
   if (allocationQuery.isError) {
     return (
-      <SectionShell title="Allocation" subtitle="Generate and manage mentor assignments.">
+      <div className="admin-page">
+        <div className="admin-page__header">
+          <h3 className="admin-page__title">Student-Faculty Allocation</h3>
+          <p className="admin-page__subtitle">Generate and manage mentor assignments.</p>
+        </div>
         <QueryState
           tone="error"
           title="Unable to load allocation records"
@@ -80,23 +84,27 @@ export function AllocationPageContent() {
           actionLabel="Retry"
           onAction={() => void allocationQuery.refetch()}
         />
-      </SectionShell>
+      </div>
     )
   }
 
   return (
-    <SectionShell
-      title="Allocation"
-      subtitle="Generate, confirm, and remove student-faculty allocations."
-    >
-      <DataTable
-        columns={columns}
-        data={allocationQuery.data ?? []}
-        keyExtractor={(row) => row.facultyId}
-        isLoading={allocationQuery.isPending}
-        pageSize={12}
-        emptyLabel="No faculty records available for allocation."
-      />
+    <div className="admin-page">
+      <div className="admin-page__header">
+        <h3 className="admin-page__title">Student-Faculty Allocation</h3>
+        <p className="admin-page__subtitle">Generate, confirm, and remove student-faculty allocations.</p>
+      </div>
+
+      <div className="admin-surface">
+        <DataTable
+          columns={columns}
+          data={allocationQuery.data ?? []}
+          keyExtractor={(row) => row.facultyId}
+          isLoading={allocationQuery.isPending}
+          pageSize={12}
+          emptyLabel="No faculty records available for allocation."
+        />
+      </div>
 
       <AllocationAssignModal
         open={panelState?.type === 'assign'}
@@ -109,7 +117,7 @@ export function AllocationPageContent() {
         faculty={panelState?.type === 'remove' ? panelState.faculty : null}
         onClose={() => setPanelState(null)}
       />
-    </SectionShell>
+    </div>
   )
 }
 

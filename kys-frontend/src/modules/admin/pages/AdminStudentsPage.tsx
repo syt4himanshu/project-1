@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
-import { DataTable, QueryState, SectionShell, type TableColumn } from '../../../shared/ui'
+import { DataTable, QueryState, type TableColumn } from '../../../shared/ui'
 import type { AdminStudentSummary, AdminStudentSummaryFilters } from '../api'
 import { StudentDetailModal } from '../components/students/StudentDetailModal'
 import { useAdminStudentSummaryQuery } from '../hooks'
@@ -36,6 +36,10 @@ export function AdminStudentsPage() {
     careerGoal: '',
   })
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null)
+
+  useEffect(() => {
+    document.title = 'Students Directory - KYS'
+  }, [])
 
   const studentsQuery = useAdminStudentSummaryQuery(filters)
 
@@ -100,7 +104,11 @@ export function AdminStudentsPage() {
 
   if (studentsQuery.isError) {
     return (
-      <SectionShell title="Students" subtitle="Summary view from /api/students?view=summary.">
+      <div className="admin-page">
+        <div className="admin-page__header">
+          <h3 className="admin-page__title">Students Directory</h3>
+          <p className="admin-page__subtitle">Summary view from /api/students?view=summary.</p>
+        </div>
         <QueryState
           tone="error"
           title="Unable to load student summary"
@@ -108,31 +116,32 @@ export function AdminStudentsPage() {
           actionLabel="Retry"
           onAction={() => void studentsQuery.refetch()}
         />
-      </SectionShell>
+      </div>
     )
   }
 
   return (
-    <SectionShell
-      title="Students"
-      subtitle="Filter, inspect details, and export profile snapshots."
-      actions={(
-        <div className="admin-filter-grid">
-          <label className="admin-field" htmlFor="students-search">
-            <span>Search</span>
+    <div className="admin-page">
+      <div className="admin-page__header">
+        <h3 className="admin-page__title">Students Directory</h3>
+        <p className="admin-page__subtitle">Filter, inspect details, and export profile snapshots.</p>
+      </div>
+
+      <div className="admin-toolbar-grid admin-toolbar-grid--students">
+        <div className="role-toolbar__card role-toolbar__card--filters admin-toolbar-block">
+          <div className="role-field role-field--icon">
+            <span className="material-symbols-outlined">search</span>
             <input
-              id="students-search"
+              className="role-input role-input--with-icon"
+              placeholder="Search by UID, name or email"
               value={filters.search}
               onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
-              placeholder="UID or name"
-              autoComplete="off"
+              type="text"
             />
-          </label>
-
-          <label className="admin-field" htmlFor="students-semester">
-            <span>Semester</span>
+          </div>
+          <div className="admin-toolbar-fields-grid admin-toolbar-fields-grid--two">
             <select
-              id="students-semester"
+              className="role-select"
               value={filters.semester}
               onChange={(event) => setFilters((current) => ({ ...current, semester: event.target.value }))}
             >
@@ -142,46 +151,31 @@ export function AdminStudentsPage() {
                 </option>
               ))}
             </select>
-          </label>
-
-          <label className="admin-field" htmlFor="students-section">
-            <span>Section</span>
             <input
-              id="students-section"
+              className="role-input"
+              placeholder="Section"
               value={filters.section}
               onChange={(event) => setFilters((current) => ({ ...current, section: event.target.value }))}
-              placeholder="e.g. A"
-              autoComplete="off"
             />
-          </label>
+          </div>
+        </div>
 
-          <label className="admin-field" htmlFor="students-year">
-            <span>Admission Year</span>
+        <div className="role-toolbar__card role-toolbar__card--bulk admin-toolbar-block">
+          <div className="admin-toolbar-fields-grid admin-toolbar-fields-grid--three">
             <input
-              id="students-year"
+              className="role-input"
+              placeholder="Admission Year"
               value={filters.yearOfAdmission}
               onChange={(event) => setFilters((current) => ({ ...current, yearOfAdmission: event.target.value }))}
-              placeholder="e.g. 2024"
-              autoComplete="off"
-              inputMode="numeric"
             />
-          </label>
-
-          <label className="admin-field" htmlFor="students-domain">
-            <span>Domain</span>
             <input
-              id="students-domain"
+              className="role-input"
+              placeholder="Domain"
               value={filters.domain}
               onChange={(event) => setFilters((current) => ({ ...current, domain: event.target.value }))}
-              placeholder="AI, Web, Data..."
-              autoComplete="off"
             />
-          </label>
-
-          <label className="admin-field" htmlFor="students-goal">
-            <span>Career Goal</span>
             <select
-              id="students-goal"
+              className="role-select"
               value={filters.careerGoal}
               onChange={(event) => setFilters((current) => ({ ...current, careerGoal: event.target.value }))}
             >
@@ -191,23 +185,33 @@ export function AdminStudentsPage() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
+          <div className="role-toolbar__inline">
+            <button className="button button--ghost button--icon role-chip-button">
+              <span className="material-symbols-outlined" aria-hidden="true">filter_list</span> Advanced Filters
+            </button>
+            <button className="button button--ghost button--icon role-chip-button">
+              <span className="material-symbols-outlined" aria-hidden="true">download</span> Export Data
+            </button>
+          </div>
         </div>
-      )}
-    >
-      <DataTable
-        columns={columns}
-        data={studentsQuery.data ?? []}
-        keyExtractor={(row) => row.id || row.uid}
-        isLoading={studentsQuery.isPending}
-        pageSize={15}
-        emptyLabel="No students matched the current filters."
-      />
+      </div>
+
+      <div className="admin-surface">
+        <DataTable
+          columns={columns}
+          data={studentsQuery.data ?? []}
+          keyExtractor={(row) => row.id || row.uid}
+          isLoading={studentsQuery.isPending}
+          pageSize={15}
+          emptyLabel="No students matched the current filters."
+        />
+      </div>
 
       <StudentDetailModal
         studentId={selectedStudentId}
         onClose={() => setSelectedStudentId(null)}
       />
-    </SectionShell>
+    </div>
   )
 }

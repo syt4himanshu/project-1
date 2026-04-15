@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../providers/auth-context'
 
 const FACULTY_TABS = [
@@ -10,18 +10,22 @@ const FACULTY_TABS = [
 
 export default function FacultyLayout() {
   const { user, logout } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
+  const activeTab = FACULTY_TABS.find((tab) => location.pathname.startsWith(tab.to))
 
   const handleLogout = async () => {
     await logout()
-    navigate('/login', { replace: true })
+    navigate('/', { replace: true })
   }
 
   return (
-    <div className="dashboard-shell">
+    <div className="dashboard-shell role-shell role-shell--faculty">
       <aside className="dashboard-nav">
-        <h1 className="dashboard-nav__title">KYS Faculty</h1>
-        <p className="dashboard-nav__user">Signed in as {user?.username}</p>
+        <div className="dashboard-nav__brand">
+          <h1 className="dashboard-nav__title">KYS Faculty</h1>
+          <p className="dashboard-nav__tag">Mentoring Workspace</p>
+        </div>
 
         <nav className="dashboard-nav__links" aria-label="Faculty navigation">
           {FACULTY_TABS.map((tab) => (
@@ -41,6 +45,14 @@ export default function FacultyLayout() {
       </aside>
 
       <main className="dashboard-main">
+        <header className="dashboard-topbar">
+          <div>
+            <h2 className="dashboard-topbar__title">{activeTab?.label ?? 'Faculty'}</h2>
+            <p className="dashboard-topbar__subtitle">
+              Signed in as {user?.username ?? 'faculty'}
+            </p>
+          </div>
+        </header>
         <Outlet />
       </main>
     </div>

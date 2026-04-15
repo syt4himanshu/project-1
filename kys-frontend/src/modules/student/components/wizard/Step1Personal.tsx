@@ -1,4 +1,5 @@
-import { ChangeEvent, useState } from 'react'
+import { useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { uploadProfilePhoto } from '../../api/student'
 import { WizardStepProps, field, input, inputCls, select, textareaCls } from './shared'
 

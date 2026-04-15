@@ -2,28 +2,30 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../providers/auth-context'
 
 const ADMIN_TABS = [
-  { to: '/admin/dashboard', label: 'Overview' },
-  { to: '/admin/users', label: 'Users' },
-  { to: '/admin/teachers', label: 'Teachers' },
-  { to: '/admin/students', label: 'Students' },
-  { to: '/admin/allocation', label: 'Allocation' },
-  { to: '/admin/reports', label: 'Reports' },
+  { to: '/admin/dashboard', label: 'Overview', icon: 'dashboard' },
+  { to: '/admin/users', label: 'Users', icon: 'group' },
+  { to: '/admin/teachers', label: 'Teachers', icon: 'school' },
+  { to: '/admin/students', label: 'Students', icon: 'person_book' },
+  { to: '/admin/allocation', label: 'Allocation', icon: 'assignment_ind' },
+  { to: '/admin/reports', label: 'Reports', icon: 'assessment' },
 ] as const
 
 export default function AdminLayout() {
-  const { user, logout } = useAuth()
+  const { logout } = useAuth()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
     await logout()
-    navigate('/login', { replace: true })
+    navigate('/', { replace: true })
   }
 
   return (
-    <div className="dashboard-shell">
+    <div className="dashboard-shell role-shell role-shell--admin">
       <aside className="dashboard-nav">
-        <h1 className="dashboard-nav__title">KYS Admin</h1>
-        <p className="dashboard-nav__user">Signed in as {user?.username}</p>
+        <div className="dashboard-nav__brand">
+          <h1 className="dashboard-nav__title">KYS Admin</h1>
+          <p className="dashboard-nav__tag">Academic Management</p>
+        </div>
 
         <nav className="dashboard-nav__links" aria-label="Admin navigation">
           {ADMIN_TABS.map((tab) => (
@@ -32,12 +34,18 @@ export default function AdminLayout() {
               to={tab.to}
               className={({ isActive }) => `dashboard-nav__link${isActive ? ' active' : ''}`}
             >
-              {tab.label}
+              <span className="material-symbols-outlined dashboard-nav__icon" aria-hidden="true">
+                {tab.icon}
+              </span>
+              <span>{tab.label}</span>
             </NavLink>
           ))}
         </nav>
 
         <button type="button" className="dashboard-nav__logout" onClick={handleLogout}>
+          <span className="material-symbols-outlined dashboard-nav__icon" aria-hidden="true">
+            logout
+          </span>
           Logout
         </button>
       </aside>

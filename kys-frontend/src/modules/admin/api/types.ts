@@ -82,6 +82,7 @@ export interface AdminStudentDetail {
   internships: JsonRecord[]
   coCurricularParticipations: JsonRecord[]
   coCurricularOrganizations: JsonRecord[]
+  skillPrograms: JsonRecord[]
   skills: JsonRecord
   swoc: JsonRecord
   careerObjective: JsonRecord
@@ -287,6 +288,8 @@ export interface AdminStudentDetailApiResponse {
   cocurricular_participations?: unknown
   co_curricular_organizations?: unknown
   cocurricular_organizations?: unknown
+  skill_programs?: unknown
+  skillPrograms?: unknown
   skills?: unknown
   swoc?: unknown
   career_objective?: unknown

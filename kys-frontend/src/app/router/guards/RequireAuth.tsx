@@ -18,7 +18,7 @@ export default function RequireAuth() {
   if (!session) {
     const nextPath = `${location.pathname}${location.search}`
     const next = encodeURIComponent(nextPath)
-    return <Navigate to={`${APP_ROUTES.login}?next=${next}`} replace />
+    return <Navigate to={`/?next=${next}`} replace />
   }
 
   return <Outlet />

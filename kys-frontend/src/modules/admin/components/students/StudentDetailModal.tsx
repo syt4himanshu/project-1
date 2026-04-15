@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { toApiErrorMessage } from '../../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../../shared/ui'
-import { normalizeArrayForDisplay, normalizeForDisplay } from '../../api'
+import { normalizeForDisplay } from '../../api'
 import { useAdminStudentDetailQuery } from '../../hooks'
 
 interface StudentDetailModalProps {
@@ -14,8 +14,10 @@ interface InfoRow {
   value: string
 }
 
+type AnyRecord = Record<string, unknown>
+
 function formatDate(value: unknown): string {
-  const text = normalizeForDisplay(value, '')
+  const text = String(value ?? '').trim()
   if (!text) return 'N/A'
 
   const parsed = new Date(text)
@@ -28,14 +30,40 @@ function formatDate(value: unknown): string {
   }).format(parsed)
 }
 
-function pickFirst(record: Record<string, unknown>, ...keys: string[]): unknown {
-  for (const key of keys) {
-    if (record[key] !== undefined && record[key] !== null && String(record[key]).trim() !== '') {
-      return record[key]
-    }
-  }
+function toText(value: unknown): string {
+  if (value == null) return ''
+  if (typeof value === 'string') return value.trim()
+  return String(value).trim()
+}
 
+function isEmpty(value: unknown): boolean {
+  const text = toText(value).toLowerCase()
+  return text === '' || text === 'n/a' || text === 'na' || text === 'none' || text === '-' || text === '--' || text === 'null' || text === 'undefined'
+}
+
+function showValue(value: unknown): string {
+  return isEmpty(value) ? 'N/A' : toText(value)
+}
+
+function pick(record: AnyRecord | undefined, ...keys: string[]): unknown {
+  if (!record) return undefined
+  for (const key of keys) {
+    if (!isEmpty(record[key])) return record[key]
+  }
   return undefined
+}
+
+function fixedSlots(records: AnyRecord[] | undefined, count: number): AnyRecord[] {
+  return Array.from({ length: count }, (_, index) => records?.[index] ?? {})
+}
+
+function extractBacklogSubjects(record: AnyRecord): string[] {
+  const raw = toText(record.backlog_subjects)
+  if (!raw) return []
+  return raw
+    .split(/[\n,;]+/)
+    .map((item) => item.trim())
+    .filter((item) => !isEmpty(item) && item !== '0')
 }
 
 function InfoTable({ rows }: { rows: InfoRow[] }) {
@@ -74,23 +102,60 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
   const swoc = useMemo(() => student?.swoc ?? {}, [student?.swoc])
   const careerObjective = useMemo(() => student?.careerObjective ?? {}, [student?.careerObjective])
 
+  const academicRecords = useMemo<AnyRecord[]>(() => {
+    return (student?.academicRecords as AnyRecord[] | undefined) ?? []
+  }, [student?.academicRecords])
+
+  const latestAcademicRecord = useMemo<AnyRecord | undefined>(() => {
+    if (!academicRecords.length) return undefined
+    return [...academicRecords].sort((a, b) => Number(a.semester ?? 0) - Number(b.semester ?? 0)).at(-1)
+  }, [academicRecords])
+
+  const backlogSubjects = useMemo(() => {
+    if (latestAcademicRecord) return extractBacklogSubjects(latestAcademicRecord)
+    return Array.from(new Set(academicRecords.flatMap((record) => extractBacklogSubjects(record))))
+  }, [latestAcademicRecord, academicRecords])
+
+  const activeBacklogs = useMemo(() => {
+    const direct = Number(
+      pick(
+        latestAcademicRecord,
+        'number_of_active_backlogs',
+        'active_backlogs',
+        'current_backlogs',
+        'backlogs',
+      ),
+    )
+    if (Number.isFinite(direct) && direct >= 0) return direct
+    return backlogSubjects.length
+  }, [latestAcademicRecord, backlogSubjects])
+
   const personalRows = useMemo<InfoRow[]>(() => {
     if (!student) return []
 
     return [
-      { label: 'Full Name', value: normalizeForDisplay(student.name) },
-      { label: 'UID', value: normalizeForDisplay(student.uid) },
-      { label: 'Semester', value: normalizeForDisplay(student.semester) },
-      { label: 'Section', value: normalizeForDisplay(student.section) },
-      { label: 'Year of Admission', value: normalizeForDisplay(student.yearOfAdmission) },
-      { label: 'Mentor', value: normalizeForDisplay(student.mentorName) },
-      { label: 'Mobile', value: normalizeForDisplay(pickFirst(personalInfo, 'mobile', 'mobile_no')) },
-      { label: 'Personal Email', value: normalizeForDisplay(personalInfo.personal_email) },
-      { label: 'College Email', value: normalizeForDisplay(personalInfo.college_email) },
+      { label: 'Full Name', value: showValue(student.name) },
+      { label: 'UID', value: showValue(student.uid) },
+      { label: 'Semester', value: showValue(student.semester) },
+      { label: 'Section', value: showValue(student.section) },
+      { label: 'Year of Admission', value: showValue(student.yearOfAdmission) },
+      { label: 'Mentor', value: showValue(student.mentorName) },
+      { label: 'Roll No. / MIS UID', value: showValue(pick(personalInfo, 'roll_no', 'roll_number', 'mis_uid', 'uid', 'misid')) },
       { label: 'Date of Birth', value: formatDate(personalInfo.dob) },
-      { label: 'Gender', value: normalizeForDisplay(personalInfo.gender) },
-      { label: 'Blood Group', value: normalizeForDisplay(personalInfo.blood_group) },
-      { label: 'Address', value: normalizeForDisplay(pickFirst(personalInfo, 'permanent_address', 'address')) },
+      { label: 'Gender', value: showValue(personalInfo.gender) },
+      { label: 'Blood Group', value: showValue(personalInfo.blood_group) },
+      { label: 'Category', value: showValue(personalInfo.category) },
+      { label: 'Aadhar Number', value: showValue(pick(personalInfo, 'aadhar', 'aadhar_number')) },
+      { label: 'Mobile', value: showValue(pick(personalInfo, 'mobile', 'mobile_no')) },
+      { label: 'Personal Email', value: showValue(personalInfo.personal_email) },
+      { label: 'College Email', value: showValue(personalInfo.college_email) },
+      { label: 'LinkedIn', value: showValue(pick(personalInfo, 'linkedin', 'linked_in_id')) },
+      { label: 'GitHub', value: showValue(pick(personalInfo, 'github', 'github_id')) },
+      { label: 'Permanent Address', value: showValue(pick(personalInfo, 'permanent_address', 'address')) },
+      { label: 'Present Address', value: showValue(personalInfo.present_address) },
+      { label: 'Local Guardian Name', value: showValue(personalInfo.local_guardian_name) },
+      { label: 'Local Guardian Mobile', value: showValue(personalInfo.local_guardian_mobile) },
+      { label: 'Local Guardian Email', value: showValue(personalInfo.local_guardian_email) },
     ]
   }, [student, personalInfo])
 
@@ -98,13 +163,22 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
     if (!student) return []
 
     return [
-      { label: "Father's Name", value: normalizeForDisplay(personalInfo.father_name) },
-      { label: "Father's Mobile", value: normalizeForDisplay(pickFirst(personalInfo, 'father_mobile', 'father_mobile_no')) },
-      { label: "Mother's Name", value: normalizeForDisplay(personalInfo.mother_name) },
-      { label: "Mother's Mobile", value: normalizeForDisplay(pickFirst(personalInfo, 'mother_mobile', 'mother_mobile_no')) },
-      { label: 'Emergency Contact', value: normalizeForDisplay(pickFirst(personalInfo, 'emergency_contact', 'emergency_contact_number')) },
+      { label: "Father's Name", value: showValue(personalInfo.father_name) },
+      { label: "Father's Mobile", value: showValue(pick(personalInfo, 'father_mobile', 'father_mobile_no')) },
+      { label: "Father's Email", value: showValue(personalInfo.father_email) },
+      { label: "Father's Occupation", value: showValue(personalInfo.father_occupation) },
+      { label: "Mother's Name", value: showValue(personalInfo.mother_name) },
+      { label: "Mother's Mobile", value: showValue(pick(personalInfo, 'mother_mobile', 'mother_mobile_no')) },
+      { label: "Mother's Email", value: showValue(personalInfo.mother_email) },
+      { label: "Mother's Occupation", value: showValue(personalInfo.mother_occupation) },
+      { label: 'Emergency Contact', value: showValue(pick(personalInfo, 'emergency_contact', 'emergency_contact_number')) },
     ]
   }, [student, personalInfo])
+
+  const participationRows = useMemo(() => fixedSlots(student?.coCurricularParticipations as AnyRecord[] | undefined, 3), [student?.coCurricularParticipations])
+  const organizationRows = useMemo(() => fixedSlots(student?.coCurricularOrganizations as AnyRecord[] | undefined, 3), [student?.coCurricularOrganizations])
+  const programRows = useMemo(() => fixedSlots(student?.skillPrograms as AnyRecord[] | undefined, 3), [student?.skillPrograms])
+  const internshipRows = useMemo(() => fixedSlots(student?.internships as AnyRecord[] | undefined, 2), [student?.internships])
 
   const handlePrint = async () => {
     if (!contentRef.current || !student) return
@@ -247,6 +321,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                 <thead>
                   <tr>
                     <th>Exam</th>
+                    <th>Board</th>
                     <th>Percentage</th>
                     <th>Year</th>
                   </tr>
@@ -254,9 +329,10 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                 <tbody>
                   {student.pastEducation.map((record, index) => (
                     <tr key={`past-${index}`}>
-                      <td>{normalizeForDisplay(record.exam ?? record.exam_name)}</td>
-                      <td>{normalizeForDisplay(record.percentage)}</td>
-                      <td>{normalizeForDisplay(record.year_of_passing)}</td>
+                      <td>{showValue(record.exam ?? record.exam_name)}</td>
+                      <td>{showValue((record as AnyRecord).board)}</td>
+                      <td>{showValue(record.percentage)}</td>
+                      <td>{showValue(record.year_of_passing)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -268,26 +344,40 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
 
           <DetailSection title="Academic Records">
             {student.academicRecords.length > 0 ? (
-              <table className="table detail-list-table">
-                <thead>
-                  <tr>
-                    <th>Semester</th>
-                    <th>SGPA</th>
-                    <th>Backlogs</th>
-                    <th>Subjects</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {student.academicRecords.map((record, index) => (
-                    <tr key={`academic-${index}`}>
-                      <td>{normalizeForDisplay(record.semester)}</td>
-                      <td>{normalizeForDisplay(record.sgpa)}</td>
-                      <td>{normalizeForDisplay(record.backlogs)}</td>
-                      <td>{normalizeForDisplay(record.backlog_subjects)}</td>
+              <>
+                <table className="table detail-list-table">
+                  <thead>
+                    <tr>
+                      <th>Semester</th>
+                      <th>SGPA</th>
+                      <th>Season</th>
+                      <th>Year</th>
+                      <th>Backlogs</th>
+                      <th>Subjects</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {student.academicRecords.map((record, index) => (
+                      <tr key={`academic-${index}`}>
+                        <td>{showValue(record.semester)}</td>
+                        <td>{showValue(record.sgpa)}</td>
+                        <td>{showValue((record as AnyRecord).season)}</td>
+                        <td>{showValue((record as AnyRecord).year_of_passing)}</td>
+                        <td>{showValue(record.backlogs)}</td>
+                        <td>{showValue(record.backlog_subjects)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <InfoTable
+                  rows={[
+                    { label: 'Number of Active Backlogs', value: String(activeBacklogs) },
+                    { label: 'Backlog Subject Names', value: backlogSubjects.length > 0 ? backlogSubjects.join(', ') : 'N/A' },
+                    { label: 'College Rank', value: showValue(latestAcademicRecord?.college_rank) },
+                    { label: 'Academic Awards', value: showValue(latestAcademicRecord?.academic_awards) },
+                  ]}
+                />
+              </>
             ) : (
               <p className="detail-empty">No academic records.</p>
             )}
@@ -298,8 +388,8 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
               <div className="detail-card-list">
                 {student.projects.map((project, index) => (
                   <article key={`project-${index}`} className="detail-card">
-                    <h5>{normalizeForDisplay(project.title, 'Untitled project')}</h5>
-                    <p>{normalizeForDisplay(project.description)}</p>
+                    <h5>{showValue(project.title)}</h5>
+                    <p>{showValue(project.description)}</p>
                   </article>
                 ))}
               </div>
@@ -309,54 +399,101 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
           </DetailSection>
 
           <DetailSection title="Internships">
-            {student.internships.length > 0 ? (
-              <div className="detail-card-list">
-                {student.internships.map((internship, index) => (
-                  <article key={`internship-${index}`} className="detail-card">
-                    <h5>{normalizeForDisplay(internship.company, 'Unknown company')}</h5>
-                    <p>
-                      {normalizeForDisplay(internship.domain)} | {normalizeForDisplay(internship.type)} | {formatDate(internship.start_date)} to {formatDate(internship.end_date)}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="detail-empty">No internships submitted.</p>
-            )}
+            <div className="detail-card-list">
+              {internshipRows.map((internship, index) => (
+                <article key={`internship-${index}`} className="detail-card">
+                  <h5>Internship {index + 1}</h5>
+                  <p>{showValue(internship.company_name ?? internship.company)}</p>
+                  <p>{showValue(internship.designation)}</p>
+                  <p>{showValue(internship.domain)}</p>
+                  <p>{showValue(internship.description)}</p>
+                  <p>{formatDate(internship.start_date)} to {formatDate(internship.end_date)}</p>
+                </article>
+              ))}
+            </div>
           </DetailSection>
 
-          <DetailSection title="Co-Curricular">
-            <InfoTable
-              rows={[
-                {
-                  label: 'Participations',
-                  value: normalizeArrayForDisplay(student.coCurricularParticipations.map((entry) => entry.activity ?? entry.role ?? entry.year)),
-                },
-                {
-                  label: 'Organizations',
-                  value: normalizeArrayForDisplay(student.coCurricularOrganizations.map((entry) => entry.organization ?? entry.position ?? entry.year)),
-                },
-              ]}
-            />
+          <DetailSection title="Participation Activities">
+            <div className="detail-card-list">
+              {participationRows.map((entry, index) => (
+                <article key={`participation-${index}`} className="detail-card">
+                  <h5>Activity {index + 1}</h5>
+                  <p>Name: {showValue(entry.name ?? entry.activity)}</p>
+                  <p>Date: {formatDate(entry.date)}</p>
+                  <p>Level: {showValue(entry.level)}</p>
+                  <p>Awards: {showValue(entry.awards)}</p>
+                </article>
+              ))}
+            </div>
+          </DetailSection>
+
+          <DetailSection title="Organized Activities">
+            <div className="detail-card-list">
+              {organizationRows.map((entry, index) => (
+                <article key={`organization-${index}`} className="detail-card">
+                  <h5>Activity {index + 1}</h5>
+                  <p>Name: {showValue(entry.name ?? entry.organization)}</p>
+                  <p>Date: {formatDate(entry.date)}</p>
+                  <p>Level: {showValue(entry.level)}</p>
+                  <p>Remark / Role: {showValue(entry.remark ?? entry.role ?? entry.position)}</p>
+                </article>
+              ))}
+            </div>
+          </DetailSection>
+
+          <DetailSection title="Skill Development Program (SDP) / Training / MOOC">
+            <div className="detail-card-list">
+              {programRows.map((program, index) => (
+                <article key={`program-${index}`} className="detail-card">
+                  <h5>Program {index + 1}</h5>
+                  <p>Title: {showValue(program.course_title)}</p>
+                  <p>Platform: {showValue(program.platform)}</p>
+                  <p>Duration (Hours): {showValue(program.duration_hours)}</p>
+                  <p>From: {formatDate(program.date_from)}</p>
+                  <p>To: {formatDate(program.date_to)}</p>
+                </article>
+              ))}
+            </div>
           </DetailSection>
 
           <DetailSection title="Skills and Career">
             <InfoTable
               rows={[
-                { label: 'Career Goal', value: normalizeForDisplay(student.careerGoal) },
-                { label: 'Domain of Interest', value: normalizeForDisplay(student.domainOfInterest) },
-                { label: 'Programming Languages', value: normalizeForDisplay(skills.programming_languages) },
-                { label: 'Technologies', value: normalizeForDisplay(skills.technologies ?? skills.technologies_frameworks) },
-                { label: 'Domains', value: normalizeForDisplay(skills.domains ?? skills.domains_of_interest) },
-                { label: 'Tools', value: normalizeForDisplay(skills.tools ?? skills.familiar_tools_platforms) },
-                { label: 'SWOC - Strengths', value: normalizeForDisplay(swoc.strengths) },
-                { label: 'SWOC - Weaknesses', value: normalizeForDisplay(swoc.weaknesses) },
-                { label: 'SWOC - Opportunities', value: normalizeForDisplay(swoc.opportunities) },
-                { label: 'SWOC - Challenges', value: normalizeForDisplay(swoc.challenges) },
-                { label: 'Clarity Score', value: normalizeForDisplay(careerObjective.clarity_score ?? careerObjective.clarity_preparedness) },
-                { label: 'Campus Placement', value: normalizeForDisplay(careerObjective.campus_placement) },
+                { label: 'Career Goal', value: showValue(student.careerGoal) },
+                { label: 'Domain of Interest', value: showValue(student.domainOfInterest) },
+                { label: 'Programming Languages', value: showValue(skills.programming_languages) },
+                { label: 'Technologies & Frameworks', value: showValue(skills.technologies ?? skills.technologies_frameworks) },
+                { label: 'Domains of Interest', value: showValue(skills.domains ?? skills.domains_of_interest) },
+                { label: 'Familiar Tools & Platforms', value: showValue(skills.tools ?? skills.familiar_tools_platforms) },
+                { label: 'Technical & Soft Skills (Overall)', value: showValue(skills.technical_soft_skills_overall) },
+                { label: 'Additional Technical Skills', value: showValue(skills.additional_technical_skills) },
+                { label: 'Additional Soft Skills', value: showValue(skills.additional_soft_skills) },
+                { label: 'SWOC - Strengths', value: showValue(swoc.strengths) },
+                { label: 'SWOC - Weaknesses', value: showValue(swoc.weaknesses) },
+                { label: 'SWOC - Opportunities', value: showValue(swoc.opportunities) },
+                { label: 'SWOC - Challenges', value: showValue(swoc.challenges) },
+                {
+                  label: 'Clarity and Preparedness Level',
+                  value: showValue(careerObjective.clarity_preparedness ?? careerObjective.clarity_score),
+                },
+                {
+                  label: 'Interested in Campus Placement?',
+                  value:
+                    typeof careerObjective.interested_in_campus_placement === 'boolean'
+                      ? careerObjective.interested_in_campus_placement
+                        ? 'Yes'
+                        : 'No'
+                      : showValue(careerObjective.campus_placement),
+                },
+                { label: 'Areas of Interest (Non-Technical)', value: showValue(careerObjective.non_technical_areas) },
+                { label: 'Student Mentor Interest', value: showValue(careerObjective.student_mentor_interest) },
+                { label: 'Expectations from Institute', value: showValue(careerObjective.expectations_from_institute) },
               ]}
             />
+          </DetailSection>
+
+          <DetailSection title="Assigned Mentor">
+            <InfoTable rows={[{ label: 'Mentor Name', value: normalizeForDisplay(student.mentorName) }]} />
           </DetailSection>
         </div>
       ) : null}

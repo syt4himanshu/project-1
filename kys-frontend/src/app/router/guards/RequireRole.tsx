@@ -20,7 +20,7 @@ export default function RequireRole({ role }: RequireRoleProps) {
   }
 
   if (!session) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/" replace />
   }
 
   if (session.user.role !== role) {

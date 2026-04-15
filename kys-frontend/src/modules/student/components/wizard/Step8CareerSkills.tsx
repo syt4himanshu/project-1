@@ -1,4 +1,4 @@
-import { WizardStepProps, field, input, sectionCardCls, select, textareaCls } from './shared'
+import { WizardStepProps, field, sectionCardCls, select, textareaCls } from './shared'
 
 const DOMAINS = ['Web Development', 'Machine Learning', 'Artificial Intelligence', 'Data Science', 'Cyber Security', 'Cloud Computing', 'Mobile Development', 'Other']
 const NON_TECH_AREAS = ['Cultural Activities', 'Sports', 'Literary / Debate', 'Social Service / NSS', 'Other']

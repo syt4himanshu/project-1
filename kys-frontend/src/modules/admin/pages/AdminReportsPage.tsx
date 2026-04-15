@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { QueryState, SectionShell } from '../../../shared/ui'
+import { useEffect, useMemo } from 'react'
+import { QueryState } from '../../../shared/ui'
 import { useAdminReportStatsQuery, useExportAllReportsMutation, useExportBacklogsMutation } from '../hooks'
 import { ReportBacklogList } from '../components/reports/ReportBacklogList'
 import { ReportDistributionCard } from '../components/reports/ReportDistributionCard'
@@ -18,6 +18,10 @@ export function AdminReportsPage() {
   const statsQuery = useAdminReportStatsQuery()
   const exportAllMutation = useExportAllReportsMutation()
   const exportBacklogMutation = useExportBacklogsMutation()
+
+  useEffect(() => {
+    document.title = 'Reports & Analytics - KYS'
+  }, [])
 
   const metricCards = useMemo(() => {
     const stats = statsQuery.data
@@ -42,30 +46,33 @@ export function AdminReportsPage() {
   }, [statsQuery.data])
 
   return (
-    <SectionShell
-      title="Reports"
-      subtitle="Analytics, exports, and profile completeness insights."
-      actions={(
-        <div className="reports-actions">
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => void exportAllMutation.mutateAsync()}
-            disabled={exportAllMutation.isPending}
-          >
-            {exportAllMutation.isPending ? 'Exporting...' : 'Export All CSV'}
-          </button>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => void exportBacklogMutation.mutateAsync()}
-            disabled={exportBacklogMutation.isPending}
-          >
-            {exportBacklogMutation.isPending ? 'Exporting...' : 'Export Backlog CSV'}
-          </button>
-        </div>
-      )}
-    >
+    <div className="admin-page">
+      <div className="admin-page__header">
+        <h3 className="admin-page__title">Reports & Analytics</h3>
+        <p className="admin-page__subtitle">Analytics, exports, and profile completeness insights.</p>
+      </div>
+
+      <div className="role-toolbar__inline">
+        <button
+          type="button"
+          className="button button--ghost button--icon role-chip-button"
+          onClick={() => void exportAllMutation.mutateAsync()}
+          disabled={exportAllMutation.isPending}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">download</span>
+          {exportAllMutation.isPending ? 'Exporting...' : 'Export All Reports'}
+        </button>
+        <button
+          type="button"
+          className="button button--ghost button--icon role-chip-button"
+          onClick={() => void exportBacklogMutation.mutateAsync()}
+          disabled={exportBacklogMutation.isPending}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">download</span>
+          {exportBacklogMutation.isPending ? 'Exporting...' : 'Export Backlogs'}
+        </button>
+      </div>
+
       {statsQuery.isError ? (
         <QueryState
           tone="error"
@@ -75,12 +82,16 @@ export function AdminReportsPage() {
           onAction={() => void statsQuery.refetch()}
         />
       ) : (
-        <div className="reports-metric-grid" aria-live="polite">
+        <div className="admin-stats-grid" aria-live="polite">
           {metricCards.map((card) => (
-            <article key={card.label} className="reports-metric-card">
-              <p>{card.label}</p>
-              {statsQuery.isPending ? <div className="reports-metric-skeleton" /> : <strong>{card.value}</strong>}
-            </article>
+            <div key={card.label} className="admin-stat-card admin-stat-card--primary">
+              <p className="admin-stat-card__label">{card.label}</p>
+              {statsQuery.isPending ? (
+                <div className="admin-stat-card__value-skeleton" />
+              ) : (
+                <h3 className="admin-stat-card__value">{card.value}</h3>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -93,6 +104,6 @@ export function AdminReportsPage() {
       <ReportBacklogList />
       <ReportGeneralTable />
       <ReportIncompleteProfilesTable />
-    </SectionShell>
+    </div>
   )
 }

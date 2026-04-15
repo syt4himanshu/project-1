@@ -202,6 +202,7 @@ export function normalizeAdminStudentDetail(raw: AdminStudentDetailApiResponse):
     internships: asJsonRecordArray(raw.internships),
     coCurricularParticipations: asJsonRecordArray(raw.co_curricular_participations ?? raw.cocurricular_participations),
     coCurricularOrganizations: asJsonRecordArray(raw.co_curricular_organizations ?? raw.cocurricular_organizations),
+    skillPrograms: asJsonRecordArray(raw.skill_programs ?? raw.skillPrograms),
     skills: asJsonRecord(raw.skills),
     swoc: asJsonRecord(raw.swoc),
     careerObjective: asJsonRecord(raw.career_objective),
