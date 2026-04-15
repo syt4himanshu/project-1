@@ -1,6 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../providers/auth-context'
-import { APP_ROUTES } from '../../config/routes'
 
 export default function RequireAuth() {
   const { status, session } = useAuth()
