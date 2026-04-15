@@ -1,5 +1,5 @@
-import type { FormEvent } from 'react'
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { changePassword } from '../api/auth'
 
 function EyeIcon({ open }: { open: boolean }) {

@@ -114,12 +114,12 @@ DB_MAX_OVERFLOW=5
 LOG_LEVEL=info
 
 # Cloudinary (for file uploads)
-CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
-CLOUDINARY_API_KEY=your-cloudinary-api-key
-CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+CLOUDINARY_CLOUD_NAME=dmjig83kx
+CLOUDINARY_API_KEY=644792468176615
+CLOUDINARY_API_SECRET=JZ-7sWk4rmkCAElZnM_iDddIw5o
 
 # AI Service (Groq)
-GROQ_API_KEY=your-groq-api-key
+GROQ_API_KEY=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
 GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
