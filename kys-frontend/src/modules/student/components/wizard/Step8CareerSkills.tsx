@@ -172,4 +172,3 @@ export default function Step8CareerSkills({ data, update }: WizardStepProps) {
         </div>
     )
 }
-

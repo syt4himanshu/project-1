@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+=======
+import type { FormEvent } from 'react'
+import { useState } from 'react'
+>>>>>>> f6aeb48 (production build changes are done.)
 import { changePassword } from '../api/auth'
 
 function EyeIcon({ open }: { open: boolean }) {
