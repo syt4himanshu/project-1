@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../app/providers/auth-context'
@@ -78,6 +78,15 @@ export function LoginPage() {
 
   const nextParam = searchParams.get('next')
 
+  useEffect(() => {
+    setIdentifier('')
+    setPassword('')
+    setError('')
+    setInfo('')
+    setShowPassword(false)
+    setRememberMe(true)
+  }, [requestedRole])
+
   if (status === 'bootstrapping') {
     return (
       <section className="card auth-card">
@@ -113,7 +122,7 @@ export function LoginPage() {
     }
   }
 
-  if (requestedRole === 'student') {
+  if (requestedRole) {
     return (
       <section className="student-login">
         <div className="student-login__card">
@@ -254,7 +263,7 @@ export function LoginPage() {
       </form>
 
       <p className="back-link">
-        <Link to="/">Back to role selection</Link>
+        <Link to="/roles">Back to role selection</Link>
       </p>
     </section>
   )

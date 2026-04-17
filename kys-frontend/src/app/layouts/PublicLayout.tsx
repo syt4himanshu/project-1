@@ -2,11 +2,12 @@ import { Outlet, useLocation } from 'react-router-dom'
 
 export default function PublicLayout() {
   const location = useLocation()
-  const role = new URLSearchParams(location.search).get('role')
-  const isRoleSelection = location.pathname === '/'
-  const isStudentLogin = location.pathname === '/login' && role === 'student'
+  const isLanding = location.pathname === '/'
+  const isLogin = location.pathname === '/login'
+  const isDeveloperPage = location.pathname === '/developers'
+  const isRoles = location.pathname === '/roles'
 
-  if (isRoleSelection || isStudentLogin) {
+  if (isLanding || isLogin || isDeveloperPage || isRoles) {
     return <Outlet />
   }
 

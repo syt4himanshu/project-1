@@ -7,7 +7,6 @@ import RequireRole from './guards/RequireRole'
 import {
   FacultyDashboardPage,
   FacultyMenteeDetailPage,
-  FacultyMenteesPage,
   FacultyProfilePage,
 } from '../../modules/faculty/routes'
 
@@ -35,7 +34,7 @@ export const facultyRoutes: RouteObject = {
           children: [
             { index: true, element: <Navigate to="dashboard" replace /> },
             { path: 'dashboard', element: <FacultyDashboardPage /> },
-            { path: 'mentees', element: <FacultyMenteesPage /> },
+            { path: 'mentees', element: <Navigate to="/faculty/dashboard" replace /> },
             { path: 'mentees/:uid', element: <FacultyMenteeDetailPage /> },
             { path: 'profile', element: <FacultyProfilePage /> },
             {

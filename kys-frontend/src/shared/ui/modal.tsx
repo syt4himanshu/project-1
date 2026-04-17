@@ -29,6 +29,17 @@ export function Modal({
   useEffect(() => {
     if (!open) return
 
+    const originalOverflow = document.body.style.overflow
+    const originalPaddingRight = document.body.style.paddingRight
+
+    // Calculate scrollbar width so layout doesn't shift when scrollbar disappears
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`
+    }
+    
+    document.body.style.overflow = 'hidden'
+
     const onKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose()
@@ -36,7 +47,11 @@ export function Modal({
     }
 
     window.addEventListener('keydown', onKeydown)
-    return () => window.removeEventListener('keydown', onKeydown)
+    return () => {
+      window.removeEventListener('keydown', onKeydown)
+      document.body.style.overflow = originalOverflow
+      document.body.style.paddingRight = originalPaddingRight
+    }
   }, [open, onClose])
 
   if (!open) return null

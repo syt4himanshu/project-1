@@ -70,19 +70,16 @@ export function FacultyChatbotPage() {
 
   return (
     <div className="faculty-chat" data-testid="chatbot-page">
-      {/* Sidebar */}
       <aside className={`faculty-chat__sidebar${sidebarOpen ? '' : ' faculty-chat__sidebar--collapsed'}`}>
         <div className="faculty-chat__sidebar-header">
-          {sidebarOpen && (
-            <span className="faculty-chat__sidebar-title">Student Context</span>
-          )}
+          {sidebarOpen && <span className="faculty-chat__sidebar-title">Student Context</span>}
           <button
             type="button"
             className="button button--ghost faculty-chat__sidebar-toggle"
             onClick={() => setSidebarOpen((p) => !p)}
             aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
           >
-            {sidebarOpen ? '← Hide' : '→'}
+            {sidebarOpen ? 'Hide' : 'Show'}
           </button>
         </div>
 
@@ -105,13 +102,12 @@ export function FacultyChatbotPage() {
         )}
       </aside>
 
-      {/* Main chat area */}
       <section className="faculty-chat__main">
         <div className="faculty-chat__header">
           <div>
-            <h1 className="faculty-chat__heading">Faculty Insights Chatbot</h1>
+            <h1 className="faculty-chat__heading">Teacher Insights Chatbot</h1>
             <p className="faculty-chat__subheading">
-              Ask mentoring questions and get structured student insights.
+              Ask mentoring questions and get clear, structured student insights.
             </p>
           </div>
         </div>

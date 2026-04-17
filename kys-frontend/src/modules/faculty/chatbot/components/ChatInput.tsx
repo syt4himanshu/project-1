@@ -31,7 +31,7 @@ export function ChatInput({
     return (
         <div className="faculty-chat__input-area">
             <p className="faculty-chat__context-label">
-                Context: <strong>{contextLabel}</strong>
+                Active context: <strong>{contextLabel}</strong>
             </p>
 
             {requestError && (
@@ -48,12 +48,12 @@ export function ChatInput({
 
             <form onSubmit={onSubmit} className="faculty-chat__form">
                 <label className="admin-field faculty-chat__textarea-label" htmlFor="faculty-chat-query">
-                    <span className="sr-only">Your question</span>
+                    <span>Your question</span>
                     <textarea
                         id="faculty-chat-query"
                         value={query}
                         onChange={(e) => onQueryChange(e.target.value)}
-                        rows={3}
+                        rows={4}
                         maxLength={2000}
                         placeholder="Ask for mentoring insights, trends, concerns, or actionable suggestions..."
                     />
@@ -83,7 +83,7 @@ export function ChatInput({
                             className="button button--primary"
                             disabled={!canSend}
                         >
-                            {isLoading ? 'Generating...' : 'Send'}
+                            {isLoading ? 'Generating...' : 'Send Query'}
                         </button>
                     </div>
                 </div>

@@ -17,21 +17,21 @@ const ROLE_CARDS: RoleCard[] = [
     letter: 'A',
     accentClass: 'role-select-kys__badge--admin',
     title: 'Administrator',
-    description: 'Manage users, reports, and mentoring allocation.',
-  },
-  {
-    role: 'faculty',
-    letter: 'T',
-    accentClass: 'role-select-kys__badge--teacher',
-    title: 'Teacher',
-    description: 'Manage classes, review student performance, and guide learners with structured mentoring.',
+    description: 'Comprehensive system management with full access to user administration, system settings, and advanced analytics.',
   },
   {
     role: 'student',
     letter: 'S',
     accentClass: 'role-select-kys__badge--student',
     title: 'Student',
-    description: 'Streamline your academic journey with profile forms, mentoring, and progress tracking.',
+    description: 'Streamline your acadamic journey with our comprehensive system. Form Submission, Mentoring, and more.',
+  },
+  {
+    role: 'faculty',
+    letter: 'T',
+    accentClass: 'role-select-kys__badge--teacher',
+    title: 'Teacher',
+    description: 'Manage your classes, track student performance, create assessments, and communicate with students and parents.',
   },
 ]
 
@@ -42,8 +42,15 @@ export function RoleSelectionPage() {
   if (status === 'bootstrapping') {
     return (
       <section className="role-select-kys">
+        <div style={{ display: 'flex', alignItems: 'center', position: 'relative', marginBottom: '4rem', padding: '0 2rem' }}>
+          <button onClick={() => navigate(-1)} className="kys-landing__footer-btn" style={{ zIndex: 10, borderRadius: '6px' }}>
+            &larr; Back
+          </button>
+          <h1 className="role-select-kys__title" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', margin: 0, width: '100%', textAlign: 'center' }}>
+            Choose Your Role
+          </h1>
+        </div>
         <div className="role-select-kys__shell">
-          <h1 className="role-select-kys__title">Choose Your Role</h1>
           <p className="role-select-kys__subtitle">Checking existing session...</p>
         </div>
       </section>
@@ -55,15 +62,24 @@ export function RoleSelectionPage() {
   }
 
   return (
-    <section className="role-select-kys">
-      <div className="role-select-kys__shell">
-        <h1 className="role-select-kys__title">Choose Your Role</h1>
+    <section className="role-select-kys" style={{ overflow: 'hidden', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'center', position: 'relative', marginBottom: '4rem', padding: '0 2rem', maxWidth: '1200px', margin: '0 auto 4rem auto', width: '100%', flexShrink: 0 }}>
+        <button onClick={() => navigate(-1)} className="kys-landing__footer-btn" style={{ zIndex: 10, borderRadius: '6px' }}>
+          &larr; Back
+        </button>
+        <h1 className="role-select-kys__title" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', margin: 0, width: '100%', textAlign: 'center' }}>
+          Choose Your Role
+        </h1>
+      </div>
+
+      <div className="role-select-kys__shell" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="role-select-kys__grid">
         {ROLE_CARDS.map((card) => (
           <button
             key={card.role}
             type="button"
             className="role-select-kys__card"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
             onClick={() => navigate(`/login?role=${card.role}`)}
           >
             <div className={`role-select-kys__badge ${card.accentClass}`}>{card.letter}</div>

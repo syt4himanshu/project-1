@@ -1,7 +1,7 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useMemo, useState, type FormEvent } from 'react'
+import { useParams } from 'react-router-dom'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
-import { QueryState, SectionShell } from '../../../shared/ui'
+import { Modal, QueryState } from '../../../shared/ui'
 import { useAddMentoringMinute, useMentee, useMenteeMinutes } from '../hooks'
 
 function formatDate(value: string): string {
@@ -15,25 +15,11 @@ function formatDate(value: string): string {
   }).format(date)
 }
 
-function prettyJson(value: unknown): string {
-  if (value == null) return ''
-
-  try {
-    return JSON.stringify(value, null, 2)
-  } catch {
-    return String(value)
-  }
-}
-
-function renderJsonPanel(title: string, value: unknown) {
-  const text = prettyJson(value)
-
-  return (
-    <section className="detail-section">
-      <h4>{title}</h4>
-      {!text ? <p className="detail-empty">No data available.</p> : <pre className="faculty-json">{text}</pre>}
-    </section>
-  )
+function initials(name: string): string {
+  const parts = name.split(' ').filter(Boolean)
+  if (parts.length === 0) return ''
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
 export function FacultyMenteeDetailPage() {
@@ -44,174 +30,189 @@ export function FacultyMenteeDetailPage() {
   const minutesQuery = useMenteeMinutes(uid)
   const addMinuteMutation = useAddMentoringMinute(uid)
 
+  const [remarksOpen, setRemarksOpen] = useState(false)
   const [remarks, setRemarks] = useState('')
   const [suggestion, setSuggestion] = useState('')
-  const [action, setAction] = useState('')
-  const [formMessage, setFormMessage] = useState('')
-  const [formMessageIntent, setFormMessageIntent] = useState<'success' | 'error'>('success')
+  const [actionPlan, setActionPlan] = useState('')
+  const [formError, setFormError] = useState('')
+
+  const student = menteeQuery.data
+  const personalInfo = (student?.personal_info && typeof student.personal_info === 'object'
+    ? (student.personal_info as Record<string, unknown>)
+    : {})
+  const program = String(
+    personalInfo.department ??
+    personalInfo.program ??
+    personalInfo.branch ??
+    'N/A',
+  )
+  const minutes = useMemo(() => minutesQuery.data?.mentoring_minutes ?? [], [minutesQuery.data?.mentoring_minutes])
+
+  const closeRemarksModal = () => {
+    setRemarksOpen(false)
+    setRemarks('')
+    setSuggestion('')
+    setActionPlan('')
+    setFormError('')
+  }
+
+  const handleSubmitRemarks = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setFormError('')
+
+    if (!remarks.trim()) {
+      setFormError('Remarks are required.')
+      return
+    }
+
+    try {
+      await addMinuteMutation.mutateAsync({
+        remarks: remarks.trim(),
+        suggestion: suggestion.trim() || undefined,
+        action: actionPlan.trim() || undefined,
+      })
+
+      closeRemarksModal()
+      await minutesQuery.refetch()
+    } catch (error) {
+      setFormError(toApiErrorMessage(error, 'Unable to submit remarks.'))
+    }
+  }
 
   if (!uid) {
     return (
-      <SectionShell title="Mentee Detail" subtitle="Mentee identifier is missing from the route.">
-        <QueryState tone="error" title="Invalid route" description="A mentee UID is required for this page." />
-      </SectionShell>
-    )
-  }
-
-  const isLoading = menteeQuery.isPending || minutesQuery.isPending
-  const hasError = menteeQuery.isError || minutesQuery.isError
-
-  if (isLoading) {
-    return (
-      <SectionShell title="Mentee Detail" subtitle="Loading mentee profile and mentoring records.">
-        <QueryState title="Loading mentee data" description="Fetching profile and mentoring minutes..." />
-      </SectionShell>
-    )
-  }
-
-  if (hasError || !menteeQuery.data) {
-    return (
-      <SectionShell title="Mentee Detail" subtitle="Unable to read mentee data for the requested UID.">
+      <div className="faculty-mentoring-page">
         <QueryState
           tone="error"
-          title="Unable to load mentee detail"
-          description={toApiErrorMessage(
-            menteeQuery.error ?? minutesQuery.error,
-            'Please confirm the UID belongs to your assigned mentees.',
-          )}
+          title="Invalid student route"
+          description="Student UID is missing."
+        />
+      </div>
+    )
+  }
+
+  if (menteeQuery.isPending || minutesQuery.isPending) {
+    return (
+      <div className="faculty-mentoring-page">
+        <QueryState title="Loading mentoring panel" description="Fetching student data and previous records..." />
+      </div>
+    )
+  }
+
+  if (menteeQuery.isError || minutesQuery.isError || !student) {
+    return (
+      <div className="faculty-mentoring-page">
+        <QueryState
+          tone="error"
+          title="Unable to load mentoring panel"
+          description={toApiErrorMessage(menteeQuery.error ?? minutesQuery.error, 'Please retry in a moment.')}
           actionLabel="Retry"
           onAction={() => {
             void Promise.all([menteeQuery.refetch(), minutesQuery.refetch()])
           }}
         />
-      </SectionShell>
+      </div>
     )
   }
 
-  const mentee = menteeQuery.data
-  const minuteRows = minutesQuery.data?.mentoring_minutes ?? []
-  const studentBanner = minutesQuery.data?.student
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!remarks.trim()) {
-      setFormMessageIntent('error')
-      setFormMessage('Remarks are required before saving a mentoring minute.')
-      return
-    }
-
-    setFormMessage('')
-
-    try {
-      const result = await addMinuteMutation.mutateAsync({
-        remarks: remarks.trim(),
-        suggestion: suggestion.trim() || undefined,
-        action: action.trim() || undefined,
-      })
-
-      setRemarks('')
-      setSuggestion('')
-      setAction('')
-      setFormMessageIntent('success')
-      setFormMessage(result.message || 'Mentoring minute saved successfully.')
-      await minutesQuery.refetch()
-    } catch (error) {
-      setFormMessageIntent('error')
-      setFormMessage(toApiErrorMessage(error, 'Unable to save mentoring minute.'))
-    }
-  }
-
   return (
-    <SectionShell
-      title={`Mentee: ${studentBanner?.full_name || mentee.full_name}`}
-      subtitle={`UID ${mentee.uid} • Semester ${studentBanner?.semester ?? mentee.semester}${studentBanner?.section || mentee.section ? ` • Section ${studentBanner?.section ?? mentee.section}` : ''}`}
-      actions={<Link to="/faculty/mentees">Back to mentees</Link>}
-    >
-      <div className="reports-grid-2">
-        <section className="detail-section">
-          <h4>Add mentoring minute</h4>
-          <form className="detail-card-list" onSubmit={handleSubmit}>
-            <label className="admin-field" htmlFor="faculty-minute-remarks">
-              <span>Remarks *</span>
-              <textarea
-                id="faculty-minute-remarks"
-                rows={4}
-                value={remarks}
-                onChange={(event) => setRemarks(event.target.value)}
-                placeholder="Session notes, concerns, and progress"
-                required
-              />
-            </label>
+    <div className="faculty-mentoring-page">
+      <header className="faculty-mentoring-page__banner">
+        <h1>Faculty Mentoring Portal</h1>
+        <p>Manage student mentoring records and provide guidance</p>
+      </header>
 
-            <label className="admin-field" htmlFor="faculty-minute-suggestion">
-              <span>Suggestion</span>
-              <textarea
-                id="faculty-minute-suggestion"
-                rows={3}
-                value={suggestion}
-                onChange={(event) => setSuggestion(event.target.value)}
-                placeholder="Suggested next focus area"
-              />
-            </label>
+      <section className="faculty-mentoring-page__student-card">
+        <div className="faculty-mentoring-page__student-left">
+          <div className="faculty-mentoring-page__avatar">{initials(student.full_name)}</div>
+          <div>
+            <h2>{student.full_name}</h2>
+            <p><strong>UID:</strong> {student.uid}</p>
+            <p><strong>Program:</strong> {program}</p>
+            <p><strong>Current Semester:</strong> {student.semester}</p>
+          </div>
+        </div>
 
-            <label className="admin-field" htmlFor="faculty-minute-action">
-              <span>Action</span>
-              <textarea
-                id="faculty-minute-action"
-                rows={3}
-                value={action}
-                onChange={(event) => setAction(event.target.value)}
-                placeholder="Action items agreed during session"
-              />
-            </label>
+        <button type="button" className="button button--primary" onClick={() => setRemarksOpen(true)}>
+          Give Remarks
+        </button>
+      </section>
 
-            {formMessage ? (
-              <p className={formMessageIntent === 'error' ? 'form-error' : 'query-state__description'}>
-                {formMessage}
-              </p>
-            ) : null}
+      <section className="faculty-mentoring-page__history">
+        <h3>Previous Mentoring Records</h3>
+        {minutes.length === 0 ? (
+          <p className="faculty-mentoring-page__empty">No mentoring records found for this student yet.</p>
+        ) : (
+          <div className="faculty-mentoring-page__history-list">
+            {minutes.map((minute) => (
+              <article key={minute.id} className="faculty-mentoring-page__history-item">
+                <div className="faculty-mentoring-page__history-head">
+                  <span>{formatDate(minute.date)}</span>
+                  <span>Semester {minute.semester}</span>
+                </div>
+                <p><strong>Remarks:</strong> {minute.remarks || 'N/A'}</p>
+                {minute.suggestion ? <p><strong>Suggestions:</strong> {minute.suggestion}</p> : null}
+                {minute.action ? <p><strong>Action Plan:</strong> {minute.action}</p> : null}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
-            <button type="submit" className="button button--primary" disabled={addMinuteMutation.isPending}>
-              {addMinuteMutation.isPending ? 'Saving...' : 'Save minute'}
+      <Modal
+        open={remarksOpen}
+        title="Add Mentoring Remarks"
+        subtitle={`Name: ${student.full_name} | UID: ${student.uid} | Semester: ${student.semester}`}
+        onClose={closeRemarksModal}
+        size="lg"
+      >
+        <form className="faculty-remarks-form" onSubmit={handleSubmitRemarks}>
+          <label className="admin-field" htmlFor="faculty-remarks-page-input">
+            <span>Remarks *</span>
+            <textarea
+              id="faculty-remarks-page-input"
+              rows={4}
+              value={remarks}
+              onChange={(event) => setRemarks(event.target.value)}
+              placeholder="Enter your observations and comments about the student"
+              required
+            />
+          </label>
+
+          <label className="admin-field" htmlFor="faculty-suggestion-page-input">
+            <span>Suggestions</span>
+            <textarea
+              id="faculty-suggestion-page-input"
+              rows={3}
+              value={suggestion}
+              onChange={(event) => setSuggestion(event.target.value)}
+              placeholder="Provide suggestions for improvement"
+            />
+          </label>
+
+          <label className="admin-field" htmlFor="faculty-action-page-input">
+            <span>Action Plan</span>
+            <textarea
+              id="faculty-action-page-input"
+              rows={3}
+              value={actionPlan}
+              onChange={(event) => setActionPlan(event.target.value)}
+              placeholder="Outline specific actions to be taken"
+            />
+          </label>
+
+          {formError ? <p className="form-error">{formError}</p> : null}
+
+          <div className="faculty-remarks-form__actions">
+            <button type="button" className="button button--ghost" onClick={closeRemarksModal}>
+              Cancel
             </button>
-          </form>
-        </section>
-
-        <section className="detail-section">
-          <h4>Mentoring history</h4>
-          {minuteRows.length === 0 ? (
-            <p className="detail-empty">No mentoring minutes recorded yet.</p>
-          ) : (
-            <div className="detail-card-list">
-              {minuteRows.map((minute) => (
-                <article key={minute.id} className="detail-card">
-                  <h5>{formatDate(minute.date)}</h5>
-                  <p>
-                    Sem {minute.semester}
-                    {minute.created_by_faculty ? ' • Added by you' : ''}
-                  </p>
-                  <p>{minute.remarks}</p>
-                  {minute.suggestion ? <p>Suggestion: {minute.suggestion}</p> : null}
-                  {minute.action ? <p>Action: {minute.action}</p> : null}
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-
-      <div className="reports-grid-2">
-        {renderJsonPanel('Personal information', mentee.personal_info)}
-        {renderJsonPanel('Career objective', mentee.career_objective)}
-        {renderJsonPanel('Skills', mentee.skills)}
-        {renderJsonPanel('SWOC', mentee.swoc)}
-        {renderJsonPanel('Past education', mentee.past_education_records)}
-        {renderJsonPanel('Post-admission academics', mentee.post_admission_records)}
-        {renderJsonPanel('Projects', mentee.projects)}
-        {renderJsonPanel('Internships', mentee.internships)}
-        {renderJsonPanel('Co-curricular participation', mentee.cocurricular_participations)}
-        {renderJsonPanel('Co-curricular organizations', mentee.cocurricular_organizations)}
-      </div>
-    </SectionShell>
+            <button type="submit" className="button button--primary" disabled={addMinuteMutation.isPending}>
+              {addMinuteMutation.isPending ? 'Submitting...' : 'Submit Remarks'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </div>
   )
 }

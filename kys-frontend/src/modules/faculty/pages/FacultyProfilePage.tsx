@@ -115,112 +115,118 @@ export function FacultyProfilePage() {
       title="My Profile"
       subtitle="Manage faculty profile fields and account password."
     >
-      <section className="detail-section">
-        <h4>Profile details</h4>
-        <form className="detail-card-list" onSubmit={handleProfileSubmit}>
-          <label className="admin-field" htmlFor="faculty-profile-email">
-            <span>Email (read-only)</span>
-            <input id="faculty-profile-email" value={profileQuery.data.email} readOnly disabled />
-          </label>
+      <div className="faculty-profile-grid">
+        <section className="faculty-profile-card">
+          <h4>Profile details</h4>
+          <form className="faculty-profile-form" onSubmit={handleProfileSubmit}>
+            <label className="admin-field" htmlFor="faculty-profile-email">
+              <span>Email (read-only)</span>
+              <input id="faculty-profile-email" value={profileQuery.data.email} readOnly disabled />
+            </label>
 
-          <div className="form-grid">
-            <label className="admin-field" htmlFor="faculty-profile-first-name">
-              <span>First name</span>
+            <div className="faculty-profile-form__split">
+              <label className="admin-field" htmlFor="faculty-profile-first-name">
+                <span>First name</span>
+                <input
+                  id="faculty-profile-first-name"
+                  value={firstName}
+                  onChange={(event) => setDraftValue('first_name', event.target.value)}
+                  autoComplete="given-name"
+                />
+              </label>
+
+              <label className="admin-field" htmlFor="faculty-profile-last-name">
+                <span>Last name</span>
+                <input
+                  id="faculty-profile-last-name"
+                  value={lastName}
+                  onChange={(event) => setDraftValue('last_name', event.target.value)}
+                  autoComplete="family-name"
+                />
+              </label>
+            </div>
+
+            <label className="admin-field" htmlFor="faculty-profile-contact-number">
+              <span>Contact number</span>
               <input
-                id="faculty-profile-first-name"
-                value={firstName}
-                onChange={(event) => setDraftValue('first_name', event.target.value)}
-                autoComplete="given-name"
+                id="faculty-profile-contact-number"
+                value={contactNumber}
+                onChange={(event) => setDraftValue('contact_number', event.target.value)}
+                autoComplete="tel"
               />
             </label>
 
-            <label className="admin-field" htmlFor="faculty-profile-last-name">
-              <span>Last name</span>
+            {profileMessage ? (
+              <p className={profileMessageIntent === 'error' ? 'form-error' : 'query-state__description'}>
+                {profileMessage}
+              </p>
+            ) : null}
+
+            <div className="faculty-profile-form__actions">
+              <button type="submit" className="button button--primary" disabled={updateProfileMutation.isPending}>
+                {updateProfileMutation.isPending ? 'Saving...' : 'Save profile'}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section className="faculty-profile-card" id="change-password">
+          <h4>Change password</h4>
+          <form className="faculty-profile-form" onSubmit={handlePasswordSubmit}>
+            <label className="admin-field" htmlFor="faculty-profile-old-password">
+              <span>Current password</span>
               <input
-                id="faculty-profile-last-name"
-                value={lastName}
-                onChange={(event) => setDraftValue('last_name', event.target.value)}
-                autoComplete="family-name"
-              />
-            </label>
-          </div>
-
-          <label className="admin-field" htmlFor="faculty-profile-contact-number">
-            <span>Contact number</span>
-            <input
-              id="faculty-profile-contact-number"
-              value={contactNumber}
-              onChange={(event) => setDraftValue('contact_number', event.target.value)}
-              autoComplete="tel"
-            />
-          </label>
-
-          {profileMessage ? (
-            <p className={profileMessageIntent === 'error' ? 'form-error' : 'query-state__description'}>
-              {profileMessage}
-            </p>
-          ) : null}
-
-          <button type="submit" className="button button--primary" disabled={updateProfileMutation.isPending}>
-            {updateProfileMutation.isPending ? 'Saving...' : 'Save profile'}
-          </button>
-        </form>
-      </section>
-
-      <section className="detail-section">
-        <h4>Change password</h4>
-        <form className="detail-card-list" onSubmit={handlePasswordSubmit}>
-          <label className="admin-field" htmlFor="faculty-profile-old-password">
-            <span>Current password</span>
-            <input
-              id="faculty-profile-old-password"
-              type="password"
-              value={oldPassword}
-              onChange={(event) => setOldPassword(event.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </label>
-
-          <div className="form-grid">
-            <label className="admin-field" htmlFor="faculty-profile-new-password">
-              <span>New password</span>
-              <input
-                id="faculty-profile-new-password"
+                id="faculty-profile-old-password"
                 type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
+                value={oldPassword}
+                onChange={(event) => setOldPassword(event.target.value)}
                 required
-                minLength={8}
-                autoComplete="new-password"
+                autoComplete="current-password"
               />
             </label>
 
-            <label className="admin-field" htmlFor="faculty-profile-confirm-password">
-              <span>Confirm new password</span>
-              <input
-                id="faculty-profile-confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </label>
-          </div>
+            <div className="faculty-profile-form__split">
+              <label className="admin-field" htmlFor="faculty-profile-new-password">
+                <span>New password</span>
+                <input
+                  id="faculty-profile-new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </label>
 
-          {passwordMessage ? (
-            <p className={passwordMessageIntent === 'error' ? 'form-error' : 'query-state__description'}>
-              {passwordMessage}
-            </p>
-          ) : null}
+              <label className="admin-field" htmlFor="faculty-profile-confirm-password">
+                <span>Confirm new password</span>
+                <input
+                  id="faculty-profile-confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </label>
+            </div>
 
-          <button type="submit" className="button button--primary" disabled={changePasswordMutation.isPending}>
-            {changePasswordMutation.isPending ? 'Updating...' : 'Change password'}
-          </button>
-        </form>
-      </section>
+            {passwordMessage ? (
+              <p className={passwordMessageIntent === 'error' ? 'form-error' : 'query-state__description'}>
+                {passwordMessage}
+              </p>
+            ) : null}
+
+            <div className="faculty-profile-form__actions">
+              <button type="submit" className="button button--primary" disabled={changePasswordMutation.isPending}>
+                {changePasswordMutation.isPending ? 'Updating...' : 'Change password'}
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
     </SectionShell>
   )
 }

@@ -40,9 +40,9 @@ export function StudentSelector({
             </div>
 
             <div className="faculty-selector__group">
-                <p className="faculty-selector__label">Select student</p>
+                <p className="faculty-selector__label">Student selection</p>
                 <label className="admin-field" htmlFor="faculty-student-search">
-                    <span className="sr-only">Search students</span>
+                    <span>Search</span>
                     <input
                         id="faculty-student-search"
                         value={studentSearch}
@@ -51,7 +51,7 @@ export function StudentSelector({
                     />
                 </label>
                 <label className="admin-field" htmlFor="faculty-student-select">
-                    <span className="sr-only">Select student</span>
+                    <span>Student</span>
                     <select
                         id="faculty-student-select"
                         value={scopeMode === 'all' ? '__all__' : selectedStudentUid}
@@ -64,7 +64,7 @@ export function StudentSelector({
                         <option value="__all__">All assigned students</option>
                         {filteredMentees.map((r) => (
                             <option key={r.id} value={r.uid}>
-                                {r.full_name} · {r.uid} · Sem {r.semester}
+                                {r.full_name} | {r.uid} | Sem {r.semester}
                             </option>
                         ))}
                     </select>
@@ -84,8 +84,8 @@ export function StudentSelector({
             </div>
 
             <div className="faculty-selector__future">
-                <p className="faculty-selector__future-title">Future filters</p>
-                <p className="faculty-selector__hint">Semester, backlog, SGPA range, risk category.</p>
+                <p className="faculty-selector__future-title">Tip</p>
+                <p className="faculty-selector__hint">Use student scope when you need individual guidance.</p>
             </div>
         </div>
     )

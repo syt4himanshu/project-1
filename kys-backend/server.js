@@ -18,7 +18,11 @@ validateEnv();
 const app = express();
 app.set('trust proxy', 1);
 const corsOptions = {
-  origin: ['https://kys.stvincentngp.edu.in'],
+  origin: [
+    'https://kys.stvincentngp.edu.in',
+    /http:\/\/localhost:\d+$/,
+    /http:\/\/127\.0\.0\.1:\d+$/
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
