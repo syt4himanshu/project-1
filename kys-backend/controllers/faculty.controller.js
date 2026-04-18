@@ -222,6 +222,9 @@ const facultyChatbot = async (req, res) => {
     logger.info({ reqId: req.id, message: "Chatbot Request Initiated", queryLength: req.body?.query?.length, studentId: req.body?.studentId });
     const query = sanitizeFacultyQuery(req.body?.query);
     const studentId = typeof req.body?.studentId === 'string' ? req.body.studentId.trim().slice(0, 32) : '';
+    if (!query) {
+      return sendResponse(res, { success: false, status: 400, error: 'Query must contain visible text' });
+    }
 
     const faculty = await getFacultyByUserId(req.currentUser.id);
     if (!faculty) return sendResponse(res, { success: false, status: 404, error: 'Faculty profile not found' });

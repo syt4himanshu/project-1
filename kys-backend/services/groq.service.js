@@ -7,9 +7,11 @@ Use the provided context to answer questions. Summarize the insights effectively
 Output format should be structured and concise:
 Summary:
 ...
-Performance Overview:
+Key Observations:
 ...
-Actionable Advice:
+Concerns:
+...
+Suggestions:
 ...`;
 
 const buildUserMessage = ({ facultyQuery, studentDataset }) => {

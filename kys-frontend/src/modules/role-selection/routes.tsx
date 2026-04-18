@@ -42,13 +42,14 @@ export function RoleSelectionPage() {
   if (status === 'bootstrapping') {
     return (
       <section className="role-select-kys">
-        <div style={{ display: 'flex', alignItems: 'center', position: 'relative', marginBottom: '4rem', padding: '0 2rem' }}>
-          <button onClick={() => navigate(-1)} className="kys-landing__footer-btn" style={{ zIndex: 10, borderRadius: '6px' }}>
+        <div className="role-select-kys__header">
+          <button onClick={() => navigate(-1)} className="kys-landing__footer-btn" style={{ borderRadius: '6px' }}>
             &larr; Back
           </button>
-          <h1 className="role-select-kys__title" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', margin: 0, width: '100%', textAlign: 'center' }}>
+          <h1 className="role-select-kys__title">
             Choose Your Role
           </h1>
+          <div className="role-select-kys__spacer" aria-hidden="true" />
         </div>
         <div className="role-select-kys__shell">
           <p className="role-select-kys__subtitle">Checking existing session...</p>
@@ -63,13 +64,14 @@ export function RoleSelectionPage() {
 
   return (
     <section className="role-select-kys" style={{ overflow: 'hidden', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', position: 'relative', marginBottom: '4rem', padding: '0 2rem', maxWidth: '1200px', margin: '0 auto 4rem auto', width: '100%', flexShrink: 0 }}>
-        <button onClick={() => navigate(-1)} className="kys-landing__footer-btn" style={{ zIndex: 10, borderRadius: '6px' }}>
+      <div className="role-select-kys__header">
+        <button onClick={() => navigate(-1)} className="kys-landing__footer-btn" style={{ borderRadius: '6px' }}>
           &larr; Back
         </button>
-        <h1 className="role-select-kys__title" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', margin: 0, width: '100%', textAlign: 'center' }}>
+        <h1 className="role-select-kys__title">
           Choose Your Role
         </h1>
+        <div className="role-select-kys__spacer" aria-hidden="true" />
       </div>
 
       <div className="role-select-kys__shell" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -54,6 +54,25 @@ describe('parseStructuredResponse', () => {
         expect(result['Key Observations']).toBe('Attendance is low.')
     })
 
+    it('maps backend heading aliases into expected UI sections', () => {
+        const text = [
+            'Summary:',
+            'Overall class momentum is positive.',
+            'Performance Overview:',
+            'Semester 5 students improved attendance.',
+            'Risk Areas:',
+            'Two students show repeated backlog risk.',
+            'Actionable Advice:',
+            'Schedule focused remediation for those two students.',
+        ].join('\n')
+        const result = parseStructuredResponse(text)
+
+        expect(result.Summary).toBe('Overall class momentum is positive.')
+        expect(result['Key Observations']).toBe('Semester 5 students improved attendance.')
+        expect(result.Concerns).toBe('Two students show repeated backlog risk.')
+        expect(result.Suggestions).toBe('Schedule focused remediation for those two students.')
+    })
+
     it('returns empty sections for empty input', () => {
         const result = parseStructuredResponse('')
 

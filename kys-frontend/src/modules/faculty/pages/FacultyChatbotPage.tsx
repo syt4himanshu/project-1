@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useFacultyChat } from '../hooks'
 
 const ChatWindow = lazy(() =>
@@ -25,6 +25,13 @@ export function FacultyChatbotPage() {
   useFacultyChat()
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
+
+  useEffect(() => {
+    document.body.classList.add('faculty-chatbot-mode')
+    return () => {
+      document.body.classList.remove('faculty-chatbot-mode')
+    }
+  }, [])
 
   return (
     <div className="faculty-chat" data-testid="chatbot-page">

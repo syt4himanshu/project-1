@@ -1719,11 +1719,60 @@ a:hover {
   margin: 0 auto;
 }
 
+.role-select-kys__header {
+  display: grid;
+  grid-template-columns: 120px 1fr 120px;
+  align-items: center;
+  margin-bottom: 4rem;
+  padding: 0 2rem;
+  max-width: 1200px;
+  margin: 0 auto 4rem auto;
+  width: 100%;
+}
+
 .role-select-kys__title {
-  margin: 0 0 0.35rem;
+  margin: 0;
   text-align: center;
-  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-size: clamp(1.4rem, 5vw, 2.4rem);
   color: white;
+}
+
+.role-select-kys__spacer {
+  width: 120px;
+  visibility: hidden;
+}
+
+@media (max-width: 768px) {
+  .role-select-kys__header {
+    grid-template-columns: auto 1fr;
+    margin-bottom: 2.5rem;
+    padding: 0 1rem;
+    gap: 1rem;
+  }
+  
+  .role-select-kys__spacer {
+    display: none;
+  }
+
+  .role-select-kys__title {
+    font-size: 1.5rem;
+    text-align: left;
+    padding-right: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .role-select-kys__header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .role-select-kys__title {
+    font-size: 1.35rem;
+    padding: 0;
+  }
 }
 
 .role-select-kys__subtitle {
@@ -2404,6 +2453,46 @@ a:hover {
   color: #92400e;
 }
 
+.faculty-selector__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.faculty-selector__list-wrap {
+  border: 1px solid #d8e2f0;
+  border-radius: 10px;
+  background: #ffffff;
+  max-height: 220px;
+  overflow: auto;
+  display: grid;
+}
+
+.faculty-selector__item {
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: transparent;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  color: #1f355f;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.faculty-selector__item:last-child {
+  border-bottom: 0;
+}
+
+.faculty-selector__item:hover {
+  background: #f8fafc;
+}
+
+.faculty-selector__item--active {
+  background: #eef2ff;
+  color: #312e81;
+  font-weight: 700;
+}
+
 .faculty-selector__future {
   border: 1px dashed #cbd5e1;
   border-radius: 9px;
@@ -2583,11 +2672,47 @@ a:hover {
   font-size: 1.15rem;
 }
 
+.role-shell--admin .admin-mobile-nav-toggle,
+.role-shell--admin .admin-mobile-nav-backdrop,
+.role-shell--admin .admin-mobile-nav-close {
+  display: none;
+}
+
+.role-shell--admin .admin-mobile-nav-toggle {
+  border: 0;
+  border-radius: 10px;
+  width: 2.6rem;
+  height: 2.6rem;
+  align-items: center;
+  justify-content: center;
+  background: #312e81;
+  color: #f8fafc;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+}
+
+.role-shell--admin .admin-mobile-nav-toggle .material-symbols-outlined {
+  font-size: 1.3rem;
+}
+
+.role-shell--admin .admin-mobile-nav-close {
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 10px;
+  width: 2.2rem;
+  height: 2.2rem;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.18);
+  color: #f8fafc;
+  cursor: pointer;
+}
+
 .role-shell--admin .admin-page {
   width: min(1180px, 100%);
   margin: 0 auto;
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .role-shell--admin .admin-page__header {
@@ -2614,11 +2739,13 @@ a:hover {
   overflow: hidden;
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  min-width: 0;
 }
 
 .role-shell--admin .admin-toolbar-grid {
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .role-shell--admin .admin-toolbar-grid--users {
@@ -2633,6 +2760,7 @@ a:hover {
   padding: 1rem;
   display: grid;
   gap: 0.7rem;
+  min-width: 0;
 }
 
 .role-shell--admin .admin-toolbar-fields-grid {
@@ -2652,6 +2780,7 @@ a:hover {
   display: grid;
   gap: 0.65rem;
   grid-template-columns: repeat(2, minmax(160px, 1fr));
+  min-width: 0;
 }
 
 .role-shell--admin .admin-toolbar-cta {
@@ -2694,6 +2823,7 @@ a:hover {
 .role-shell--admin .button--icon {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.35rem;
 }
 
@@ -2888,6 +3018,18 @@ a:hover {
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+  width: 100%;
+  max-width: 100%;
+}
+
+.role-shell--admin .table-scroll {
+  max-width: 100%;
+}
+
+.role-shell--admin .table th,
+.role-shell--admin .table td {
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .role-shell--admin .table th,
@@ -3013,6 +3155,7 @@ a:hover {
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border-radius: 16px;
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+  min-width: 0;
 }
 
 .role-shell--admin .role-toolbar__card--inline,
@@ -3038,6 +3181,7 @@ a:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.7rem;
+  min-width: 0;
 }
 
 .role-shell--admin .role-toolbar__label,
@@ -3134,9 +3278,83 @@ a:hover {
 }
 
 @media (max-width: 860px) {
+  .dashboard-shell.role-shell--admin {
+    display: block;
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .role-shell--admin .admin-mobile-nav-toggle {
+    display: inline-flex;
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 92;
+  }
+
+  .role-shell--admin .admin-mobile-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 88;
+    border: 0;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.24s ease;
+  }
+
+  .role-shell--admin .dashboard-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(84vw, 320px);
+    max-width: 320px;
+    height: 100dvh;
+    padding: 0.9rem;
+    border-bottom: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    overflow-y: auto;
+    transform: translateX(-110%);
+    transition: transform 0.24s ease;
+    z-index: 90;
+  }
+
+  .role-shell--admin .admin-mobile-nav-close {
+    display: inline-flex;
+    margin-left: auto;
+    margin-bottom: 0.4rem;
+  }
+
+  .role-shell--admin.is-admin-nav-open .dashboard-nav {
+    transform: translateX(0);
+  }
+
+  .role-shell--admin.is-admin-nav-open .admin-mobile-nav-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .role-shell--admin .dashboard-main,
   .role-shell--faculty .dashboard-main {
     padding: 1rem;
+  }
+
+  .role-shell--admin .dashboard-main {
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+    padding: 4rem 0.8rem 1rem;
+  }
+
+  .role-shell--admin .admin-page__title {
+    font-size: 1.55rem;
+  }
+
+  .role-shell--admin .admin-page__subtitle {
+    font-size: 0.9rem;
   }
 
   .role-shell--admin .dashboard-topbar,
@@ -3155,6 +3373,10 @@ a:hover {
     margin: 1rem;
   }
 
+  .role-shell--admin .admin-section {
+    margin: 0;
+  }
+
   .role-shell--admin .role-toolbar--inline,
   .role-shell--faculty .role-toolbar--inline {
     align-items: stretch;
@@ -3171,6 +3393,51 @@ a:hover {
   .role-shell--admin .admin-toolbar-fields-grid--three,
   .role-shell--admin .admin-toolbar-buttons-grid {
     grid-template-columns: 1fr;
+  }
+
+  .role-shell--admin .reports-card__controls,
+  .role-shell--admin .reports-card__header,
+  .role-shell--admin .bulk-report__header,
+  .role-shell--admin .table-pagination__label {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .role-shell--admin .admin-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-shell--admin .table th,
+  .role-shell--admin .table td {
+    padding: 0.62rem 0.66rem;
+    font-size: 0.78rem;
+  }
+
+  .role-shell--admin .detail-table th,
+  .role-shell--admin .detail-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .role-shell--admin .detail-table th {
+    border-bottom: 0;
+    padding-bottom: 0.25rem;
+  }
+
+  .role-shell--admin .detail-table td {
+    padding-top: 0.25rem;
+  }
+
+  .role-shell--admin .modal__header,
+  .role-shell--admin .modal__body,
+  .role-shell--admin .modal__footer {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .role-shell--admin .modal__footer .button {
+    width: 100%;
   }
 }
 
@@ -3707,6 +3974,64 @@ a:hover {
   min-height: 32px;
   padding: 0.35rem 0.65rem;
   font-size: 0.76rem;
+}
+
+body.faculty-chatbot-mode {
+  overflow: hidden;
+}
+
+body.faculty-chatbot-mode .faculty-shell {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+body.faculty-chatbot-mode .faculty-shell__main {
+  height: 100dvh;
+  min-height: 100dvh;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  padding-bottom: 1rem;
+}
+
+body.faculty-chatbot-mode .faculty-shell__content {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body.faculty-chatbot-mode .faculty-chat {
+  height: 100%;
+  min-height: 0;
+}
+
+body.faculty-chatbot-mode .faculty-chat__main,
+body.faculty-chatbot-mode .faculty-chat__window {
+  min-height: 0;
+}
+
+body.faculty-chatbot-mode .faculty-chat__window {
+  overflow-y: auto;
+}
+
+body.faculty-chatbot-mode .faculty-chat__form-footer {
+  align-items: flex-start;
+}
+
+body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+@media (max-width: 860px) {
+  body.faculty-chatbot-mode .faculty-shell__main {
+    padding: 0.85rem 0.7rem 1rem;
+  }
+
+  body.faculty-chatbot-mode .faculty-chat {
+    height: 100%;
+    min-height: 0;
+  }
 }
 
 /* Student preview modal */
