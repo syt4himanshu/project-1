@@ -1,5 +1,15 @@
 const { generateFacultyInsights } = require('../services/groq.service');
-const { Student, MentoringMinute, Faculty, PostAdmissionAcademicRecord } = require('../models');
+const { 
+    Student, 
+    MentoringMinute, 
+    Faculty, 
+    PostAdmissionAcademicRecord,
+    Project,
+    Internship,
+    CareerObjective,
+    Skills,
+    SWOC
+} = require('../models');
 const { sendResponse } = require('../utils/responseWrapper');
 const logger = require('../utils/logger');
 
@@ -52,6 +62,21 @@ const generateAIRemarks = async (req, res) => {
             attributes: ['semester', 'sgpa', 'backlog_subjects'],
         });
 
+        // Fetch additional student details in parallel
+        const [
+            projects,
+            internships,
+            careerObjective,
+            skills,
+            swoc
+        ] = await Promise.all([
+            Project.findAll({ where: { student_id: student.id } }),
+            Internship.findAll({ where: { student_id: student.id } }),
+            CareerObjective.findOne({ where: { student_id: student.id } }),
+            Skills.findOne({ where: { student_id: student.id } }),
+            SWOC.findOne({ where: { student_id: student.id } })
+        ]);
+
         // Calculate CGPA
         const sgpas = academicRecords.map(r => parseFloat(r.sgpa)).filter(val => !isNaN(val) && val > 0);
         let calculatedCgpa = 'N/A';
@@ -70,6 +95,25 @@ const generateAIRemarks = async (req, res) => {
                 sgpa: r.sgpa,
                 backlogs: r.backlog_subjects || 'None'
             })),
+            projects: projects.map(p => ({ title: p.title, description: p.description })),
+            internships: internships.map(i => i.title ? { title: i.title, description: i.description || '' } : i),
+            careerObjective: careerObjective ? {
+                goal: careerObjective.career_goal,
+                details: careerObjective.specific_details,
+                placement_interest: careerObjective.interested_in_campus_placement ? 'Yes' : 'No'
+            } : null,
+            skills: skills ? {
+                programming: skills.programming_languages,
+                technologies: skills.technologies_frameworks,
+                domains: skills.domains_of_interest,
+                tools: skills.familiar_tools_platforms
+            } : null,
+            swoc: swoc ? {
+                strengths: swoc.strengths,
+                weaknesses: swoc.weaknesses,
+                opportunities: swoc.opportunities,
+                challenges: swoc.challenges
+            } : null,
             program: studentContext.program || 'N/A',
             recentMinutes: recentMinutes.map(m => ({
                 date: m.date,
