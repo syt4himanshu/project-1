@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { WizardStepProps } from './shared'
+import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
 
 function valueOrNA(value: unknown) {
     if (value === null || value === undefined || value === '') return 'N/A'
@@ -24,7 +24,8 @@ function Row({ label, value }: { label: string, value: unknown }) {
     )
 }
 
-export default function Step9ReviewSubmit({ data, update }: WizardStepProps) {
+export default function Step9ReviewSubmit() {
+    const { data, update } = useStudentProfileDraft()
     const pi = (data.personal_info as Record<string, unknown>) || {}
     const past = (data.past_education_records as Record<string, unknown>[]) || []
     const post = (data.post_admission_records as Record<string, unknown>[]) || []

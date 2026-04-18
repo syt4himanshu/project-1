@@ -1,8 +1,11 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { StoreProvider } from '../../app/store/StoreProvider'
 import { useFacultyChat } from '../../modules/faculty/hooks/useFacultyChat'
 import { facultyClient } from '../../modules/faculty/api/client'
 import { HttpError } from '../../shared/api/httpClient'
+import { createAppStore } from '../../app/store'
 
 // Mock the faculty API client
 vi.mock('../../modules/faculty/api/client', () => ({
@@ -17,6 +20,14 @@ const mockMentees = [
     { id: 2, uid: 'S002', full_name: 'Bob Jones', semester: 5 },
 ]
 
+function createWrapper() {
+    const store = createAppStore()
+
+    return function Wrapper({ children }: { children: ReactNode }) {
+        return <StoreProvider store={store}>{children}</StoreProvider>
+    }
+}
+
 describe('useFacultyChat', () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -24,7 +35,7 @@ describe('useFacultyChat', () => {
     })
 
     it('loads mentees on mount', async () => {
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
 
         expect(result.current.menteeLoading).toBe(true)
 
@@ -35,7 +46,7 @@ describe('useFacultyChat', () => {
     })
 
     it('starts with all-scope mode', async () => {
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         expect(result.current.scopeMode).toBe('all')
@@ -43,7 +54,7 @@ describe('useFacultyChat', () => {
     })
 
     it('switches scope to student when uid is selected', async () => {
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         act(() => { result.current.setSelectedStudentUid('S001') })
@@ -53,7 +64,7 @@ describe('useFacultyChat', () => {
     })
 
     it('clears student uid when scope set back to all', async () => {
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         act(() => { result.current.setSelectedStudentUid('S001') })
@@ -63,7 +74,7 @@ describe('useFacultyChat', () => {
     })
 
     it('filters mentees by search query', async () => {
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         act(() => { result.current.setStudentSearch('alice') })
@@ -75,7 +86,7 @@ describe('useFacultyChat', () => {
     it('submits a payload and appends user + assistant messages', async () => {
         vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: 'Summary\nAll good.' })
 
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         await act(async () => {
@@ -92,7 +103,7 @@ describe('useFacultyChat', () => {
     it('sets contextLabel to "All assigned students" for all-scope', async () => {
         vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: 'OK' })
 
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         await act(async () => {
@@ -105,7 +116,7 @@ describe('useFacultyChat', () => {
     it('sets contextLabel to student name for student-scope', async () => {
         vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: 'OK' })
 
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         act(() => { result.current.setSelectedStudentUid('S001') })
@@ -122,7 +133,7 @@ describe('useFacultyChat', () => {
             new HttpError('Forbidden', 403, null),
         )
 
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         await act(async () => {
@@ -140,7 +151,7 @@ describe('useFacultyChat', () => {
             new HttpError('Too many requests', 429, null),
         )
 
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         await act(async () => {
@@ -154,7 +165,7 @@ describe('useFacultyChat', () => {
     it('marks lastPayloadExists after first submit', async () => {
         vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: 'OK' })
 
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         expect(result.current.lastPayloadExists).toBe(false)
@@ -169,7 +180,7 @@ describe('useFacultyChat', () => {
     it('sets menteeError when mentee load fails', async () => {
         vi.mocked(facultyClient.getMentees).mockRejectedValue(new Error('Network error'))
 
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         expect(result.current.menteeError).toBe('Could not load assigned students.')
@@ -177,7 +188,7 @@ describe('useFacultyChat', () => {
     })
 
     it('analysisText reflects scope mode', async () => {
-        const { result } = renderHook(() => useFacultyChat())
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         expect(result.current.analysisText).toMatch(/Analyzing 2 student/)

@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getProfile, updateProfile } from '../api/student'
 import Step1Personal from '../components/wizard/Step1Personal'
 import Step2Parents from '../components/wizard/Step2Parents'
 import Step3AcademicBefore from '../components/wizard/Step3AcademicBefore'
@@ -10,8 +8,7 @@ import Step6CoCurricular from '../components/wizard/Step6CoCurricular'
 import Step7SWOC from '../components/wizard/Step7SWOC'
 import Step8CareerSkills from '../components/wizard/Step8CareerSkills'
 import Step9ReviewSubmit from '../components/wizard/Step9ReviewSubmit'
-import { useAuth } from '../context/AuthContext'
-import { validateStudentProfileData } from '../validation/studentProfileSchema'
+import { useStudentProfileWizard } from '../hooks/useStudentProfileWizard'
 
 const STEPS = [
     'Student Personal Information',
@@ -37,337 +34,9 @@ const STEP_SUBTEXT = [
     'Please review your information before submitting',
 ]
 
-const DRAFT_RETENTION_DAYS = 180
-const DRAFT_VERSION = 1
-
-type ToastTone = 'success' | 'info' | 'error'
-
-interface DraftPayload {
-    version: number
-    savedAt: number
-    expiresAt: number
-    step: number
-    data: Record<string, unknown>
-}
-
-function isBlank(value: unknown) {
-    return value === null || value === undefined || String(value).trim() === ''
-}
-
-function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
-    const pi = (data.personal_info as Record<string, unknown>) || {}
-    const past = (data.past_education_records as Record<string, unknown>[]) || []
-    const swoc = (data.swoc as Record<string, unknown>) || {}
-    const co = (data.career_objective as Record<string, unknown>) || {}
-    const sk = (data.skills as Record<string, unknown>) || {}
-    const admissionType = (data.admission_type as string) || (past.some(r => r.exam_name === 'DIPLOMA') ? 'diploma' : past.some(r => r.exam_name === 'HSSC' || r.exam_name === 'ENTRANCE_EXAM') ? 'hsc' : '')
-
-    const getPast = (examName: string) => past.find(record => record.exam_name === examName) || {}
-
-    if (step === 0) {
-        const missing: string[] = []
-        if (isBlank(data.full_name)) missing.push('Full Name')
-        if (isBlank(pi.dob)) missing.push('Date of Birth')
-        if (isBlank(pi.gender)) missing.push('Gender')
-        if (isBlank(pi.mobile_no)) missing.push('WhatsApp Mobile No.')
-        if (isBlank(pi.personal_email)) missing.push('Personal Email')
-        if (isBlank(pi.college_email)) missing.push('College Email (Professional)')
-        if (isBlank(pi.permanent_address)) missing.push('Permanent Address')
-        return missing
-    }
-
-    if (step === 1) {
-        const missing: string[] = []
-        if (isBlank(pi.father_name)) missing.push("Father's Name")
-        if (isBlank(pi.father_mobile_no)) missing.push("Father's WhatsApp Mobile No.")
-        if (isBlank(pi.father_occupation)) missing.push("Father's Occupation")
-        if (isBlank(pi.mother_name)) missing.push("Mother's Name")
-        if (isBlank(pi.mother_mobile_no)) missing.push("Mother's WhatsApp Mobile No.")
-        if (isBlank(pi.mother_occupation)) missing.push("Mother's Occupation")
-        return missing
-    }
-
-    if (step === 2) {
-        const missing: string[] = []
-        const ssc = getPast('SSC')
-        if (isBlank(ssc.percentage)) missing.push('SSC Percentage / Grade')
-        if (isBlank(ssc.year_of_passing)) missing.push('SSC Year of Passing')
-        if (isBlank(admissionType)) missing.push('Admission Type (after 10th)')
-
-        if (admissionType === 'hsc') {
-            const hssc = getPast('HSSC')
-            const entrance = getPast('ENTRANCE_EXAM')
-            if (isBlank(hssc.percentage)) missing.push('HSC Percentage / Grade')
-            if (isBlank(hssc.year_of_passing)) missing.push('HSC Year of Passing')
-            if (isBlank(entrance.exam_type)) missing.push('Entrance Exam Type')
-            if (isBlank(entrance.percentage)) missing.push('Entrance Percentile')
-        }
-
-        if (admissionType === 'diploma') {
-            const diploma = getPast('DIPLOMA')
-            if (isBlank(diploma.percentage)) missing.push('Diploma Percentage / Grade')
-            if (isBlank(diploma.year_of_passing)) missing.push('Diploma Year of Passing')
-        }
-
-        return missing
-    }
-
-    if (step === 6) {
-        const missing: string[] = []
-        if (isBlank(swoc.strengths)) missing.push('Strengths')
-        if (isBlank(swoc.weaknesses)) missing.push('Weaknesses / Areas of Improvement')
-        if (isBlank(swoc.opportunities)) missing.push('Opportunities')
-        if (isBlank(swoc.challenges)) missing.push('Challenges')
-        return missing
-    }
-
-    if (step === 7) {
-        const missing: string[] = []
-        if (isBlank(co.career_goal)) missing.push('Career Goal')
-        if (isBlank(co.clarity_preparedness)) missing.push('Clarity and Preparedness Level')
-        if (co.interested_in_campus_placement !== true && co.interested_in_campus_placement !== false) {
-            missing.push('Interested in Campus Placement?')
-        }
-        if (isBlank(sk.domains_of_interest)) missing.push('Domains of Interest')
-        return missing
-    }
-
-    return []
-}
-
 export default function ProfileWizard() {
     const navigate = useNavigate()
-    const { user } = useAuth()
-
-    const [step, setStep] = useState(0)
-    const [data, setData] = useState<Record<string, unknown>>({})
-    const [loading, setLoading] = useState(true)
-    const [saving, setSaving] = useState(false)
-    const [error, setError] = useState('')
-    const [toast, setToast] = useState<{ message: string, tone: ToastTone } | null>(null)
-
-    useEffect(() => {
-        setError('')
-    }, [step])
-
-    const toastTimerRef = useRef<number | null>(null)
-
-    const draftKey = useMemo(() => {
-        let fallbackId = 'guest'
-        try {
-            const raw = localStorage.getItem('user')
-            if (raw) {
-                const stored = JSON.parse(raw) as { id?: number, username?: string }
-                fallbackId = String(stored.id || stored.username || fallbackId)
-            }
-        } catch {
-            fallbackId = 'guest'
-        }
-
-        const identity = String(user?.id || user?.username || fallbackId)
-        return `kys_student_profile_draft_${identity}`
-    }, [user?.id, user?.username])
-
-    const showToast = (message: string, tone: ToastTone) => {
-        setToast({ message, tone })
-        if (toastTimerRef.current) {
-            window.clearTimeout(toastTimerRef.current)
-        }
-        toastTimerRef.current = window.setTimeout(() => setToast(null), 2600)
-    }
-
-    useEffect(() => {
-        return () => {
-            if (toastTimerRef.current) {
-                window.clearTimeout(toastTimerRef.current)
-            }
-        }
-    }, [])
-
-    const saveDraft = (payloadData: Record<string, unknown>, nextStep: number) => {
-        try {
-            const now = Date.now()
-            const payload: DraftPayload = {
-                version: DRAFT_VERSION,
-                savedAt: now,
-                expiresAt: now + DRAFT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
-                step: nextStep,
-                data: payloadData,
-            }
-            localStorage.setItem(draftKey, JSON.stringify(payload))
-            return true
-        } catch {
-            return false
-        }
-    }
-
-    useEffect(() => {
-        getProfile()
-            .then(r => {
-                const serverData = (r.data || {}) as Record<string, unknown>
-
-                let restored = false
-                try {
-                    const raw = localStorage.getItem(draftKey)
-                    if (raw) {
-                        const parsed = JSON.parse(raw) as DraftPayload
-                        const validVersion = parsed?.version === DRAFT_VERSION
-                        const validData = parsed?.data && typeof parsed.data === 'object'
-                        const notExpired = Number(parsed?.expiresAt || 0) > Date.now()
-
-                        if (validVersion && validData && notExpired) {
-                            setData(parsed.data)
-                            setStep(Math.max(0, Math.min(Number(parsed.step || 0), STEPS.length - 1)))
-                            showToast('Draft restored from local storage.', 'info')
-                            restored = true
-                        } else {
-                            localStorage.removeItem(draftKey)
-                        }
-                    }
-                } catch {
-                    localStorage.removeItem(draftKey)
-                }
-
-                if (!restored) {
-                    setData(serverData)
-                }
-
-                setLoading(false)
-            })
-            .catch(() => setLoading(false))
-    }, [draftKey])
-
-    const update = (patch: Record<string, unknown>) => setData(prev => ({ ...prev, ...patch }))
-
-    const getPayloadForStep = (step: number, data: Record<string, unknown>) => {
-        const payload: Record<string, unknown> = {}
-        const personalInfo = data.personal_info as Record<string, unknown> | undefined
-
-        if (step === 0) {
-            if ('full_name' in data) payload.full_name = data.full_name
-            if ('section' in data) payload.section = data.section
-            if ('semester' in data) payload.semester = data.semester
-            if ('year_of_admission' in data) payload.year_of_admission = data.year_of_admission
-            if (personalInfo) payload.personal_info = personalInfo
-            return payload
-        }
-
-        if (step === 1) {
-            if (personalInfo) payload.personal_info = personalInfo
-            return payload
-        }
-
-        if (step === 2) {
-            if ('admission_type' in data) payload.admission_type = data.admission_type
-            if ('past_education_records' in data) payload.past_education_records = data.past_education_records
-            return payload
-        }
-
-        if (step === 3) {
-            if ('post_admission_records' in data) payload.post_admission_records = data.post_admission_records
-            return payload
-        }
-
-        if (step === 4) {
-            if ('projects' in data) payload.projects = data.projects
-            if ('internships' in data) payload.internships = data.internships
-            return payload
-        }
-
-        if (step === 5) {
-            if ('cocurricular_participations' in data) payload.cocurricular_participations = data.cocurricular_participations
-            if ('cocurricular_organizations' in data) payload.cocurricular_organizations = data.cocurricular_organizations
-            return payload
-        }
-
-        if (step === 6) {
-            if ('swoc' in data) payload.swoc = data.swoc
-            return payload
-        }
-
-        if (step === 7) {
-            if ('career_objective' in data) payload.career_objective = data.career_objective
-            if ('skills' in data) payload.skills = data.skills
-            return payload
-        }
-
-        return data
-    }
-
-    const next = async () => {
-        const missing = getMissingRequiredFields(step, data)
-        if (missing.length > 0) {
-            const message = `Please fill required fields: ${missing.join(', ')}`
-            setError(message)
-            showToast('Required fields are missing. Please complete this step.', 'error')
-            return
-        }
-
-        if (step >= 2) {
-            const validation = validateStudentProfileData(data)
-            if (!validation.isValid) {
-                const message = validation.errors[0] || 'Please correct invalid values in the form.'
-                setError(message)
-                showToast('Please fix highlighted validation issues before proceeding.', 'error')
-                return
-            }
-        }
-
-        const payload = getPayloadForStep(step, data)
-
-        try {
-            setSaving(true)
-            await updateProfile(payload)
-            setError('')
-            const nextStep = Math.min(step + 1, STEPS.length - 1)
-            const saved = saveDraft(data, nextStep)
-
-            if (saved) {
-                showToast('Step saved.', 'success')
-            } else {
-                showToast('Step saved on server. Unable to save local draft.', 'info')
-            }
-
-            setStep(nextStep)
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : ''
-            const fallback = msg || 'Failed to save this step on server. Please try again.'
-            setError(fallback)
-            showToast(fallback, 'error')
-        } finally {
-            setSaving(false)
-        }
-    }
-
-    const prev = () => {
-        setError('')
-        setStep(s => Math.max(s - 1, 0))
-    }
-
-    const submit = async () => {
-        setSaving(true)
-        setError('')
-        try {
-            const validation = validateStudentProfileData(data)
-            if (!validation.isValid) {
-                setError(validation.errors[0] || 'Validation failed.')
-                showToast('Please fix validation issues before submitting.', 'error')
-                return
-            }
-
-            await updateProfile(data)
-            localStorage.removeItem(draftKey)
-            navigate('/student/dashboard')
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : ''
-            setError(msg || 'Failed to save profile')
-        } finally {
-            setSaving(false)
-        }
-    }
-
-    const progress = Math.round(((step + 1) / STEPS.length) * 100)
-    const canSubmit = Boolean(data.declaration_accepted)
+    const { step, loading, saving, error, progress, canSubmit, next, prev, submit } = useStudentProfileWizard()
 
     if (loading) {
         return (
@@ -379,7 +48,12 @@ export default function ProfileWizard() {
         )
     }
 
-    const stepProps = { data, update }
+    const handleSubmit = async () => {
+        const submitted = await submit()
+        if (submitted) {
+            navigate('/student/dashboard')
+        }
+    }
 
     return (
         <div className="min-h-screen bg-[#edf2f8] px-3 py-5 sm:px-4 sm:py-8">
@@ -431,15 +105,15 @@ export default function ProfileWizard() {
                     </div>
 
                     <div className="rounded-2xl border border-[#d7deea] bg-white p-4 sm:p-5">
-                        {step === 0 && <Step1Personal {...stepProps} />}
-                        {step === 1 && <Step2Parents {...stepProps} />}
-                        {step === 2 && <Step3AcademicBefore {...stepProps} />}
-                        {step === 3 && <Step4AcademicAfter {...stepProps} />}
-                        {step === 4 && <Step5ProjectsInternships {...stepProps} />}
-                        {step === 5 && <Step6CoCurricular {...stepProps} />}
-                        {step === 6 && <Step7SWOC {...stepProps} />}
-                        {step === 7 && <Step8CareerSkills {...stepProps} />}
-                        {step === 8 && <Step9ReviewSubmit {...stepProps} />}
+                        {step === 0 && <Step1Personal />}
+                        {step === 1 && <Step2Parents />}
+                        {step === 2 && <Step3AcademicBefore />}
+                        {step === 3 && <Step4AcademicAfter />}
+                        {step === 4 && <Step5ProjectsInternships />}
+                        {step === 5 && <Step6CoCurricular />}
+                        {step === 6 && <Step7SWOC />}
+                        {step === 7 && <Step8CareerSkills />}
+                        {step === 8 && <Step9ReviewSubmit />}
                     </div>
 
                     {error && (
@@ -478,7 +152,7 @@ export default function ProfileWizard() {
                             </button>
                         ) : (
                             <button
-                                onClick={submit}
+                                onClick={handleSubmit}
                                 disabled={saving || !canSubmit}
                                 className="rounded-xl bg-[#1f355f] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(23,42,73,0.9)] transition hover:bg-[#172c4f] disabled:cursor-not-allowed disabled:opacity-60"
                             >
@@ -488,22 +162,6 @@ export default function ProfileWizard() {
                     </div>
                 </footer>
             </div>
-
-            {toast && (
-                <div className="fixed top-12 right-10 z-50 transition-all duration-300 animate-in fade-in slide-in-from-top-4">
-                    <div
-                        className={`rounded-2xl px-5 py-4 text-sm font-semibold text-white shadow-[0_12px_30px_-10px_rgba(0,0,0,0.35)] ${
-                            toast.tone === 'success'
-                                ? 'bg-[#079669]'
-                                : toast.tone === 'error'
-                                    ? 'bg-[#c24141]'
-                                    : 'bg-[#0f7ebf]'
-                        }`}
-                    >
-                        {toast.message}
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

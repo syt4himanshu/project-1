@@ -160,10 +160,10 @@ describe('Admin tab smoke routing', () => {
 
   test.each([
     ['/admin/dashboard', 'heading', 'Admin Overview'],
-    ['/admin/users', 'heading', 'Users'],
-    ['/admin/teachers', 'heading', 'Teachers'],
-    ['/admin/students', 'heading', 'Students'],
-    ['/admin/allocation', 'heading', 'Allocation'],
+    ['/admin/users', 'heading', 'User Management'],
+    ['/admin/teachers', 'heading', 'Teachers Management'],
+    ['/admin/students', 'heading', 'Students Directory'],
+    ['/admin/allocation', 'heading', 'Student-Faculty Allocation'],
     ['/admin/reports', 'text', 'Loading reports...'],
   ])('renders tab route %s', async (path, assertionType, expected) => {
     renderAt(path)

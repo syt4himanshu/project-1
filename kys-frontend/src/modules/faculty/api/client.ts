@@ -3,6 +3,8 @@ import { requestJson } from '../../../shared/api/httpClient'
 import { readStoredSession } from '../../../shared/auth/storage'
 import type {
   AddMinuteInput,
+  AIRemarksRequest,
+  AIRemarksResponse,
   ChangePasswordInput,
   ChatbotRequest,
   ChatbotResponse,
@@ -70,6 +72,14 @@ export const facultyClient = {
 
   askChatbot: (data: ChatbotRequest, signal?: AbortSignal) =>
     requestJson<ChatbotResponse>(ENDPOINTS.faculty.chatbot, {
+      method: 'POST',
+      body: data,
+      token: token(),
+      signal,
+    }),
+
+  askAIRemarks: (data: AIRemarksRequest, signal?: AbortSignal) =>
+    requestJson<AIRemarksResponse>(ENDPOINTS.faculty.aiRemarks, {
       method: 'POST',
       body: data,
       token: token(),

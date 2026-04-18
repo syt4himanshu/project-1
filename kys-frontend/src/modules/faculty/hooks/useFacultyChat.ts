@@ -1,215 +1,139 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { facultyClient } from '../api/client'
-import { normalizeMentees } from '../api/normalizers'
+import { useCallback, useEffect } from 'react'
+import { useAppDispatch, useAppSelector } from '../../../app/store/hooks'
 import {
-    parseStructuredResponse,
-    formatContextLabel,
-    toErrorMessage,
-} from '../chatbot/utils/chatFormatters'
+  facultyChatActions,
+  loadFacultyChatMentees,
+  regenerateFacultyChatResponse,
+  selectFacultyChatAnalysisText,
+  selectFacultyChatCanSend,
+  selectFacultyChatComposerQuery,
+  selectFacultyChatContextLabel,
+  selectFacultyChatFilteredMentees,
+  selectFacultyChatIsLoading,
+  selectFacultyChatIsStudentSelectionInvalid,
+  selectFacultyChatLastPayloadExists,
+  selectFacultyChatMenteeError,
+  selectFacultyChatMenteeLoading,
+  selectFacultyChatMenteeStatus,
+  selectFacultyChatMentees,
+  selectFacultyChatMessages,
+  selectFacultyChatRequestError,
+  selectFacultyChatScopeMode,
+  selectFacultyChatSelectedStudentUid,
+  selectFacultyChatStudentSearch,
+  stopFacultyChatResponse,
+  submitFacultyChatPayload,
+} from '../store/facultyChatSlice'
 import type { ChatMessageModel, ChatbotRequest, MenteeRow, ScopeMode } from '../api/types'
 
 export interface UseFacultyChatResult {
-    mentees: MenteeRow[]
-    filteredMentees: MenteeRow[]
-    menteeLoading: boolean
-    menteeError: string
-    scopeMode: ScopeMode
-    selectedStudentUid: string
-    studentSearch: string
-    messages: ChatMessageModel[]
-    requestError: string
-    isLoading: boolean
-    analysisText: string
-    lastPayloadExists: boolean
-    setScopeMode: (mode: ScopeMode) => void
-    setSelectedStudentUid: (uid: string) => void
-    setStudentSearch: (query: string) => void
-    reloadMentees: () => Promise<void>
-    submitPayload: (payload: ChatbotRequest) => Promise<void>
-    stopResponse: () => void
-    regenerate: () => Promise<void>
-}
-
-function isAbortError(error: unknown): boolean {
-    return (
-        (error instanceof DOMException && error.name === 'AbortError') ||
-        (error as { code?: string })?.code === 'ERR_CANCELED'
-    )
+  mentees: MenteeRow[]
+  filteredMentees: MenteeRow[]
+  menteeLoading: boolean
+  menteeError: string
+  scopeMode: ScopeMode
+  selectedStudentUid: string
+  studentSearch: string
+  messages: ChatMessageModel[]
+  requestError: string
+  isLoading: boolean
+  analysisText: string
+  lastPayloadExists: boolean
+  query: string
+  contextLabel: string
+  canSend: boolean
+  isStudentSelectionInvalid: boolean
+  setScopeMode: (mode: ScopeMode) => void
+  setSelectedStudentUid: (uid: string) => void
+  setStudentSearch: (query: string) => void
+  setQuery: (query: string) => void
+  reloadMentees: () => Promise<void>
+  submitPayload: (payload: ChatbotRequest) => Promise<void>
+  stopResponse: () => void
+  regenerate: () => Promise<void>
 }
 
 export function useFacultyChat(): UseFacultyChatResult {
-    const [mentees, setMentees] = useState<MenteeRow[]>([])
-    const [menteeLoading, setMenteeLoading] = useState(true)
-    const [menteeError, setMenteeError] = useState('')
+  const dispatch = useAppDispatch()
+  const mentees = useAppSelector(selectFacultyChatMentees)
+  const menteeStatus = useAppSelector(selectFacultyChatMenteeStatus)
+  const filteredMentees = useAppSelector(selectFacultyChatFilteredMentees)
+  const menteeLoading = useAppSelector(selectFacultyChatMenteeLoading)
+  const menteeError = useAppSelector(selectFacultyChatMenteeError)
+  const scopeMode = useAppSelector(selectFacultyChatScopeMode)
+  const selectedStudentUid = useAppSelector(selectFacultyChatSelectedStudentUid)
+  const studentSearch = useAppSelector(selectFacultyChatStudentSearch)
+  const messages = useAppSelector(selectFacultyChatMessages)
+  const requestError = useAppSelector(selectFacultyChatRequestError)
+  const isLoading = useAppSelector(selectFacultyChatIsLoading)
+  const analysisText = useAppSelector(selectFacultyChatAnalysisText)
+  const lastPayloadExists = useAppSelector(selectFacultyChatLastPayloadExists)
+  const query = useAppSelector(selectFacultyChatComposerQuery)
+  const contextLabel = useAppSelector(selectFacultyChatContextLabel)
+  const canSend = useAppSelector(selectFacultyChatCanSend)
+  const isStudentSelectionInvalid = useAppSelector(selectFacultyChatIsStudentSelectionInvalid)
 
-    const [scopeMode, setScopeModeState] = useState<ScopeMode>('all')
-    const [selectedStudentUid, setSelectedStudentUidState] = useState('')
-    const [studentSearch, setStudentSearch] = useState('')
+  useEffect(() => {
+    if (menteeStatus !== 'idle') return
+    void dispatch(loadFacultyChatMentees())
+  }, [dispatch, menteeStatus])
 
-    const [messages, setMessages] = useState<ChatMessageModel[]>([])
-    const [requestError, setRequestError] = useState('')
-    const [loadingMessageId, setLoadingMessageId] = useState('')
-    const [lastPayload, setLastPayload] = useState<ChatbotRequest | null>(null)
+  const setScopeMode = useCallback((mode: ScopeMode) => {
+    dispatch(facultyChatActions.setScopeMode(mode))
+  }, [dispatch])
 
-    const abortRef = useRef<AbortController | null>(null)
-    const counterRef = useRef(0)
+  const setSelectedStudentUid = useCallback((uid: string) => {
+    dispatch(facultyChatActions.setSelectedStudentUid(uid))
+  }, [dispatch])
 
-    // ── Mentee loading ──────────────────────────────────────────────────────────
+  const setStudentSearch = useCallback((value: string) => {
+    dispatch(facultyChatActions.setStudentSearch(value))
+  }, [dispatch])
 
-    const reloadMentees = useCallback(async () => {
-        setMenteeLoading(true)
-        setMenteeError('')
-        try {
-            const data = await facultyClient.getMentees()
-            setMentees(normalizeMentees(data))
-        } catch {
-            setMenteeError('Could not load assigned students.')
-        } finally {
-            setMenteeLoading(false)
-        }
-    }, [])
+  const setQuery = useCallback((value: string) => {
+    dispatch(facultyChatActions.setComposerQuery(value))
+  }, [dispatch])
 
-    useEffect(() => {
-        void reloadMentees()
-        return () => { abortRef.current?.abort() }
-    }, [reloadMentees])
+  const reloadMentees = useCallback(async () => {
+    await dispatch(loadFacultyChatMentees())
+  }, [dispatch])
 
-    // Auto-clear invalid student selection when mentee list changes
-    useEffect(() => {
-        if (!selectedStudentUid) return
-        if (mentees.some((r) => r.uid === selectedStudentUid)) return
-        setScopeModeState('all')
-        setSelectedStudentUidState('')
-    }, [mentees, selectedStudentUid])
+  const submitPayload = useCallback(async (payload: ChatbotRequest) => {
+    await dispatch(submitFacultyChatPayload(payload))
+  }, [dispatch])
 
-    // ── Derived state ───────────────────────────────────────────────────────────
+  const stopResponse = useCallback(() => {
+    void dispatch(stopFacultyChatResponse())
+  }, [dispatch])
 
-    const filteredMentees = useMemo(() => {
-        const q = studentSearch.trim().toLowerCase()
-        if (!q) return mentees
-        return mentees.filter((r) =>
-            `${r.full_name} ${r.uid} ${r.semester}`.toLowerCase().includes(q),
-        )
-    }, [mentees, studentSearch])
+  const regenerate = useCallback(async () => {
+    await dispatch(regenerateFacultyChatResponse())
+  }, [dispatch])
 
-    const isLoading = Boolean(loadingMessageId)
-
-    // ── Scope / student selection ───────────────────────────────────────────────
-
-    const setScopeMode = useCallback((mode: ScopeMode) => {
-        setScopeModeState(mode)
-        if (mode === 'all') setSelectedStudentUidState('')
-    }, [])
-
-    const setSelectedStudentUid = useCallback((uid: string) => {
-        setSelectedStudentUidState(uid)
-        setScopeModeState(uid ? 'student' : 'all')
-    }, [])
-
-    // ── Submit ──────────────────────────────────────────────────────────────────
-
-    const submitPayload = useCallback(
-        async (payload: ChatbotRequest) => {
-            setRequestError('')
-            const uid = `${Date.now()}-${(counterRef.current += 1)}`
-            const assistantId = `assistant-${uid}`
-            const contextLabel = formatContextLabel(scopeMode, selectedStudentUid, mentees)
-
-            const userMsg: ChatMessageModel = {
-                id: `user-${uid}`,
-                role: 'user',
-                content: payload.query,
-                contextLabel,
-                createdAt: new Date().toISOString(),
-            }
-            const loadingMsg: ChatMessageModel = {
-                id: assistantId,
-                role: 'assistant',
-                content: '',
-                contextLabel,
-                createdAt: new Date().toISOString(),
-                loading: true,
-            }
-
-            setMessages((prev) => [...prev, userMsg, loadingMsg])
-            setLoadingMessageId(assistantId)
-            setLastPayload(payload)
-
-            const controller = new AbortController()
-            abortRef.current = controller
-
-            try {
-                const result = await facultyClient.askChatbot(payload, controller.signal)
-                const responseText = String(result?.response ?? '').trim()
-                const sections = parseStructuredResponse(responseText)
-
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === assistantId
-                            ? { ...m, loading: false, content: responseText, sections }
-                            : m,
-                    ),
-                )
-            } catch (error) {
-                if (isAbortError(error)) {
-                    setMessages((prev) =>
-                        prev.map((m) =>
-                            m.id === assistantId
-                                ? { ...m, loading: false, error: true, content: 'Response stopped by user.' }
-                                : m,
-                        ),
-                    )
-                    return
-                }
-
-                const message = toErrorMessage(error)
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === assistantId
-                            ? { ...m, loading: false, error: true, content: message }
-                            : m,
-                    ),
-                )
-                setRequestError(message)
-            } finally {
-                abortRef.current = null
-                setLoadingMessageId('')
-            }
-        },
-        [mentees, scopeMode, selectedStudentUid],
-    )
-
-    const stopResponse = useCallback(() => { abortRef.current?.abort() }, [])
-
-    const regenerate = useCallback(async () => {
-        if (!lastPayload || isLoading) return
-        await submitPayload(lastPayload)
-    }, [isLoading, lastPayload, submitPayload])
-
-    const analysisText =
-        scopeMode === 'all'
-            ? `Analyzing ${mentees.length} student(s)...`
-            : 'Analyzing 1 student...'
-
-    return {
-        mentees,
-        filteredMentees,
-        menteeLoading,
-        menteeError,
-        scopeMode,
-        selectedStudentUid,
-        studentSearch,
-        messages,
-        requestError,
-        isLoading,
-        analysisText,
-        lastPayloadExists: Boolean(lastPayload),
-        setScopeMode,
-        setSelectedStudentUid,
-        setStudentSearch,
-        reloadMentees,
-        submitPayload,
-        stopResponse,
-        regenerate,
-    }
+  return {
+    mentees,
+    filteredMentees,
+    menteeLoading,
+    menteeError,
+    scopeMode,
+    selectedStudentUid,
+    studentSearch,
+    messages,
+    requestError,
+    isLoading,
+    analysisText,
+    lastPayloadExists,
+    query,
+    contextLabel,
+    canSend,
+    isStudentSelectionInvalid,
+    setScopeMode,
+    setSelectedStudentUid,
+    setStudentSearch,
+    setQuery,
+    reloadMentees,
+    submitPayload,
+    stopResponse,
+    regenerate,
+  }
 }

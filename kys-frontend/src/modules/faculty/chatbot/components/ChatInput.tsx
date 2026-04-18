@@ -1,33 +1,47 @@
 import type { FormEvent } from 'react'
+import { useAppDispatch, useAppSelector } from '../../../../app/store/hooks'
+import {
+    facultyChatActions,
+    regenerateFacultyChatResponse,
+    selectFacultyChatCanSend,
+    selectFacultyChatComposerQuery,
+    selectFacultyChatContextLabel,
+    selectFacultyChatIsLoading,
+    selectFacultyChatIsStudentSelectionInvalid,
+    selectFacultyChatLastPayloadExists,
+    selectFacultyChatRequestError,
+    selectFacultyChatScopeMode,
+    selectFacultyChatSelectedStudentUid,
+    stopFacultyChatResponse,
+    submitFacultyChatPayload,
+} from '../../store/facultyChatSlice'
 import { ErrorState } from './ErrorState'
 
-interface ChatInputProps {
-    query: string
-    contextLabel: string
-    requestError: string
-    isLoading: boolean
-    canSend: boolean
-    isStudentSelectionInvalid: boolean
-    hasLastPayload: boolean
-    onQueryChange: (value: string) => void
-    onSubmit: (e: FormEvent<HTMLFormElement>) => void
-    onStop: () => void
-    onRegenerate: () => void
-}
+export function ChatInput() {
+    const dispatch = useAppDispatch()
+    const query = useAppSelector(selectFacultyChatComposerQuery)
+    const contextLabel = useAppSelector(selectFacultyChatContextLabel)
+    const requestError = useAppSelector(selectFacultyChatRequestError)
+    const isLoading = useAppSelector(selectFacultyChatIsLoading)
+    const canSend = useAppSelector(selectFacultyChatCanSend)
+    const isStudentSelectionInvalid = useAppSelector(selectFacultyChatIsStudentSelectionInvalid)
+    const hasLastPayload = useAppSelector(selectFacultyChatLastPayloadExists)
+    const scopeMode = useAppSelector(selectFacultyChatScopeMode)
+    const selectedStudentUid = useAppSelector(selectFacultyChatSelectedStudentUid)
 
-export function ChatInput({
-    query,
-    contextLabel,
-    requestError,
-    isLoading,
-    canSend,
-    isStudentSelectionInvalid,
-    hasLastPayload,
-    onQueryChange,
-    onSubmit,
-    onStop,
-    onRegenerate,
-}: ChatInputProps) {
+    const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+
+        const nextQuery = query.trim()
+        if (!nextQuery || !canSend) return
+
+        dispatch(facultyChatActions.setComposerQuery(''))
+        await dispatch(submitFacultyChatPayload({
+            query: nextQuery,
+            studentId: scopeMode === 'student' ? selectedStudentUid : undefined,
+        }))
+    }
+
     return (
         <div className="faculty-chat__input-area">
             <p className="faculty-chat__context-label">
@@ -36,7 +50,11 @@ export function ChatInput({
 
             {requestError && (
                 <div className="faculty-chat__input-error">
-                    <ErrorState message={requestError} retryLabel="Regenerate" onRetry={onRegenerate} />
+                    <ErrorState
+                        message={requestError}
+                        retryLabel="Regenerate"
+                        onRetry={() => void dispatch(regenerateFacultyChatResponse())}
+                    />
                 </div>
             )}
 
@@ -52,7 +70,7 @@ export function ChatInput({
                     <textarea
                         id="faculty-chat-query"
                         value={query}
-                        onChange={(e) => onQueryChange(e.target.value)}
+                        onChange={(e) => dispatch(facultyChatActions.setComposerQuery(e.target.value))}
                         rows={4}
                         maxLength={2000}
                         placeholder="Ask for mentoring insights, trends, concerns, or actionable suggestions..."
@@ -65,7 +83,7 @@ export function ChatInput({
                         <button
                             type="button"
                             className="button button--ghost"
-                            onClick={onStop}
+                            onClick={() => void dispatch(stopFacultyChatResponse())}
                             disabled={!isLoading}
                         >
                             Stop
@@ -73,7 +91,7 @@ export function ChatInput({
                         <button
                             type="button"
                             className="button button--ghost"
-                            onClick={onRegenerate}
+                            onClick={() => void dispatch(regenerateFacultyChatResponse())}
                             disabled={!hasLastPayload || isLoading}
                         >
                             Regenerate

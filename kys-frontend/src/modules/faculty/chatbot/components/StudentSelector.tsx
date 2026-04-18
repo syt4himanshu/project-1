@@ -1,34 +1,28 @@
-import type { MenteeRow, ScopeMode } from '../types'
+import { useAppDispatch, useAppSelector } from '../../../../app/store/hooks'
+import {
+    facultyChatActions,
+    loadFacultyChatMentees,
+    selectFacultyChatFilteredMentees,
+    selectFacultyChatMenteeError,
+    selectFacultyChatMenteeLoading,
+    selectFacultyChatMentees,
+    selectFacultyChatScopeMode,
+    selectFacultyChatSelectedStudentUid,
+    selectFacultyChatStudentSearch,
+} from '../../store/facultyChatSlice'
 import { ScopeToggle } from './ScopeToggle'
 import { ErrorState } from './ErrorState'
 
-interface StudentSelectorProps {
-    scopeMode: ScopeMode
-    mentees: MenteeRow[]
-    filteredMentees: MenteeRow[]
-    selectedStudentUid: string
-    studentSearch: string
-    menteeLoading: boolean
-    menteeError: string
-    onMenteeRetry: () => void
-    onScopeChange: (scope: ScopeMode) => void
-    onStudentSearchChange: (value: string) => void
-    onStudentSelect: (uid: string) => void
-}
+export function StudentSelector() {
+    const dispatch = useAppDispatch()
+    const scopeMode = useAppSelector(selectFacultyChatScopeMode)
+    const mentees = useAppSelector(selectFacultyChatMentees)
+    const filteredMentees = useAppSelector(selectFacultyChatFilteredMentees)
+    const selectedStudentUid = useAppSelector(selectFacultyChatSelectedStudentUid)
+    const studentSearch = useAppSelector(selectFacultyChatStudentSearch)
+    const menteeLoading = useAppSelector(selectFacultyChatMenteeLoading)
+    const menteeError = useAppSelector(selectFacultyChatMenteeError)
 
-export function StudentSelector({
-    scopeMode,
-    mentees,
-    filteredMentees,
-    selectedStudentUid,
-    studentSearch,
-    menteeLoading,
-    menteeError,
-    onMenteeRetry,
-    onScopeChange,
-    onStudentSearchChange,
-    onStudentSelect,
-}: StudentSelectorProps) {
     const noMatches =
         !menteeLoading && Boolean(studentSearch.trim()) && filteredMentees.length === 0
 
@@ -36,7 +30,10 @@ export function StudentSelector({
         <div className="faculty-selector">
             <div className="faculty-selector__group">
                 <p className="faculty-selector__label">Scope</p>
-                <ScopeToggle value={scopeMode} onChange={onScopeChange} />
+                <ScopeToggle
+                    value={scopeMode}
+                    onChange={(scope) => dispatch(facultyChatActions.setScopeMode(scope))}
+                />
             </div>
 
             <div className="faculty-selector__group">
@@ -46,7 +43,7 @@ export function StudentSelector({
                     <input
                         id="faculty-student-search"
                         value={studentSearch}
-                        onChange={(e) => onStudentSearchChange(e.target.value)}
+                        onChange={(e) => dispatch(facultyChatActions.setStudentSearch(e.target.value))}
                         placeholder="Search by name, UID, semester"
                     />
                 </label>
@@ -58,7 +55,7 @@ export function StudentSelector({
                         disabled={menteeLoading || mentees.length === 0}
                         onChange={(e) => {
                             const v = e.target.value
-                            onStudentSelect(v === '__all__' ? '' : v)
+                            dispatch(facultyChatActions.setSelectedStudentUid(v === '__all__' ? '' : v))
                         }}
                     >
                         <option value="__all__">All assigned students</option>
@@ -79,7 +76,11 @@ export function StudentSelector({
                     <p className="faculty-selector__hint">No student matches your search.</p>
                 )}
                 {menteeError && (
-                    <ErrorState message={menteeError} retryLabel="Reload" onRetry={onMenteeRetry} />
+                    <ErrorState
+                        message={menteeError}
+                        retryLabel="Reload"
+                        onRetry={() => void dispatch(loadFacultyChatMentees())}
+                    />
                 )}
             </div>
 

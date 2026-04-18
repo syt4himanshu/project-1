@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { uploadProfilePhoto } from '../../api/student'
-import { WizardStepProps, field, input, inputCls, select, textareaCls } from './shared'
+import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
+import { field, input, inputCls, select, textareaCls } from './shared'
 
-export default function Step1Personal({ data, update }: WizardStepProps) {
+export default function Step1Personal() {
+    const { data, update } = useStudentProfileDraft()
     const pi = (data.personal_info as Record<string, unknown>) || {}
     const postAdmissionRecords = (data.post_admission_records as Record<string, unknown>[]) || []
     const upd = (k: string, v: unknown) => update({ personal_info: { ...pi, [k]: v } })

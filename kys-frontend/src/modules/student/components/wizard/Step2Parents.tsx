@@ -1,6 +1,8 @@
-import { WizardStepProps, field, input, sectionCardCls } from './shared'
+import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
+import { field, input, sectionCardCls } from './shared'
 
-export default function Step2Parents({ data, update }: WizardStepProps) {
+export default function Step2Parents() {
+    const { data, update } = useStudentProfileDraft()
     const pi = (data.personal_info as Record<string, unknown>) || {}
     const upd = (k: string, v: unknown) => update({ personal_info: { ...pi, [k]: v } })
 

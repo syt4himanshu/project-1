@@ -1,6 +1,8 @@
-import { WizardStepProps, field, input, sectionCardCls, select } from './shared'
+import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
+import { field, input, sectionCardCls, select } from './shared'
 
-export default function Step5ProjectsInternships({ data, update }: WizardStepProps) {
+export default function Step5ProjectsInternships() {
+    const { data, update } = useStudentProfileDraft()
     const projects = (data.projects as Record<string, unknown>[]) || [{}, {}, {}]
     const internships = (data.internships as Record<string, unknown>[]) || [{}, {}]
 

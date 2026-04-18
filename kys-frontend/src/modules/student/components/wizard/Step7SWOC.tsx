@@ -1,6 +1,8 @@
-import { WizardStepProps, field, sectionCardCls, textareaCls } from './shared'
+import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
+import { field, sectionCardCls, textareaCls } from './shared'
 
-export default function Step7SWOC({ data, update }: WizardStepProps) {
+export default function Step7SWOC() {
+    const { data, update } = useStudentProfileDraft()
     const swoc = (data.swoc as Record<string, unknown>) || {}
     const upd = (k: string, v: string) => update({ swoc: { ...swoc, [k]: v } })
 

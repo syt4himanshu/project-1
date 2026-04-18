@@ -40,5 +40,6 @@ export const ENDPOINTS = {
     mentee: (uid: string) => `/api/faculty/me/mentees/${encodeURIComponent(uid)}`,
     menteeMinutes: (uid: string) => `/api/faculty/me/mentees/${encodeURIComponent(uid)}/minutes`,
     chatbot: '/api/faculty/chatbot',
+    aiRemarks: '/api/faculty/ai-remarks',
   },
 } as const

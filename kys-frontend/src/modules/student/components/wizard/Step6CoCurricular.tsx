@@ -1,8 +1,10 @@
-import { WizardStepProps, field, input, sectionCardCls, select } from './shared'
+import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
+import { field, input, sectionCardCls, select } from './shared'
 
 const LEVELS = ['Department', 'Institute', 'University', 'State', 'National', 'International']
 
-export default function Step6CoCurricular({ data, update }: WizardStepProps) {
+export default function Step6CoCurricular() {
+    const { data, update } = useStudentProfileDraft()
     const participations = (data.cocurricular_participations as Record<string, unknown>[]) || [{}, {}, {}]
     const organizations = (data.cocurricular_organizations as Record<string, unknown>[]) || [{}, {}, {}]
     const programs = (data.skill_programs as Record<string, unknown>[]) || [{}, {}, {}]

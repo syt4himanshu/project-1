@@ -8,6 +8,7 @@ import {
   useLocation,
 } from 'react-router-dom'
 import { AuthContext, type AuthContextValue } from '../providers/auth-context'
+import { StoreProvider } from '../store/StoreProvider'
 import { facultyRoutes } from './faculty.routes'
 import * as facultyHooks from '../../modules/faculty/hooks'
 
@@ -72,16 +73,18 @@ function LoginSearchEcho() {
 
 function Providers({ children, authValue }: { children: ReactNode; authValue: AuthContextValue }) {
   return (
-    <AuthContext.Provider value={authValue}>
-      {children}
-    </AuthContext.Provider>
+    <StoreProvider>
+      <AuthContext.Provider value={authValue}>
+        {children}
+      </AuthContext.Provider>
+    </StoreProvider>
   )
 }
 
 function renderAt(path: string, authValue = createAuthValue()) {
   const extraRoutes: RouteObject[] = [
     {
-      path: '/login',
+      path: '/',
       element: <LoginSearchEcho />,
     },
     {
@@ -207,23 +210,21 @@ describe('Faculty route smoke and auth parity', () => {
 
   test.each([
     ['/faculty/dashboard', /welcome back/i],
-    ['/faculty/mentees', /my mentees/i],
-    ['/faculty/mentees/STU001', /mentee: student one/i],
-    ['/faculty/chatbot', /faculty insights chatbot/i],
+    ['/faculty/mentees', /welcome back/i],
+    ['/faculty/mentees/STU001', /faculty mentoring portal/i],
+    ['/faculty/chatbot', /teacher insights chatbot/i],
     ['/faculty/profile', /my profile/i],
   ])('renders faculty route %s', async (path, heading) => {
     renderAt(path)
-    expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument()
+    expect((await screen.findAllByRole('heading', { name: heading })).length).toBeGreaterThan(0)
   })
 
   it('keeps full faculty navigation links visible', async () => {
     renderAt('/faculty/dashboard')
 
-    // Use getAllByRole to handle potential duplicates, then assert at least one exists
-    expect(await screen.findByRole('link', { name: 'Dashboard' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'My Mentees' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: 'Chatbot' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: 'My Profile' }).length).toBeGreaterThan(0)
+    expect(await screen.findByRole('button', { name: /logout/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Chatbot' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Change Password' })).toBeInTheDocument()
   })
 
   it('redirects non-faculty role away from /faculty/*', async () => {

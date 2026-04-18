@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import type { AuthContextValue } from '../../providers/auth-context'
@@ -46,7 +46,7 @@ function renderWithAuth(value: AuthContextValue, ui: React.ReactNode) {
 }
 
 describe('Route guards integration', () => {
-  it('RequireAuth redirects anonymous users to login with next path', () => {
+  it('RequireAuth redirects anonymous users to login with next path', async () => {
     const authValue = createAuthValue({ status: 'anonymous', session: null })
 
     renderWithAuth(
@@ -56,12 +56,14 @@ describe('Route guards integration', () => {
           <Route element={<RequireAuth />}>
             <Route path="/admin/users" element={<p>Protected users</p>} />
           </Route>
-          <Route path="/login" element={<LoginEcho />} />
+          <Route path="/" element={<LoginEcho />} />
         </Routes>
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('login-search')).toHaveTextContent('?next=%2Fadmin%2Fusers%3Ffrom%3Dtest')
+    await waitFor(() => {
+      expect(screen.getByTestId('login-search')).toHaveTextContent('?next=%2Fadmin%2Fusers%3Ffrom%3Dtest')
+    })
   })
 
   it('RequireRole redirects non-admin user to their dashboard', () => {

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { AUTH_EXPIRED_EVENT } from '../../shared/api/httpClient'
+import { StoreProvider } from '../store/StoreProvider'
 import { useAuth } from './auth-context'
 import { AuthProvider } from './AuthProvider'
 
@@ -55,9 +56,11 @@ describe('AuthProvider integration', () => {
     )
 
     render(
-      <AuthProvider>
-        <AuthProbe />
-      </AuthProvider>,
+      <StoreProvider>
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>
+      </StoreProvider>,
     )
 
     await waitFor(() => {
@@ -96,9 +99,11 @@ describe('AuthProvider integration', () => {
     )
 
     render(
-      <AuthProvider>
-        <AuthProbe />
-      </AuthProvider>,
+      <StoreProvider>
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>
+      </StoreProvider>,
     )
 
     await waitFor(() => {

@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../shared/ui'
 import { useAddMentoringMinute, useMentee, useMenteeMinutes } from '../hooks'
+import { AIRemarksAssistant } from '../components/AIRemarksAssistant'
+import '../components/AIRemarksAssistant.css'
 
 function formatDate(value: string): string {
   const date = new Date(value)
@@ -31,6 +33,7 @@ export function FacultyMenteeDetailPage() {
   const addMinuteMutation = useAddMentoringMinute(uid)
 
   const [remarksOpen, setRemarksOpen] = useState(false)
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false)
   const [remarks, setRemarks] = useState('')
   const [suggestion, setSuggestion] = useState('')
   const [actionPlan, setActionPlan] = useState('')
@@ -54,6 +57,13 @@ export function FacultyMenteeDetailPage() {
     setSuggestion('')
     setActionPlan('')
     setFormError('')
+  }
+
+  const handleAIInsert = (aiRemarks: string, aiSuggestion?: string, aiAction?: string) => {
+    setRemarks(aiRemarks)
+    if (aiSuggestion) setSuggestion(aiSuggestion)
+    if (aiAction) setActionPlan(aiAction)
+    setAiAssistantOpen(false)
   }
 
   const handleSubmitRemarks = async (event: FormEvent<HTMLFormElement>) => {
@@ -133,9 +143,14 @@ export function FacultyMenteeDetailPage() {
           </div>
         </div>
 
-        <button type="button" className="button button--primary" onClick={() => setRemarksOpen(true)}>
-          Give Remarks
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button type="button" className="button button--secondary" onClick={() => setAiAssistantOpen(true)}>
+            ✨ AI Assistant
+          </button>
+          <button type="button" className="button button--primary" onClick={() => setRemarksOpen(true)}>
+            Give Remarks
+          </button>
+        </div>
       </section>
 
       <section className="faculty-mentoring-page__history">
@@ -158,6 +173,24 @@ export function FacultyMenteeDetailPage() {
           </div>
         )}
       </section>
+
+      <AIRemarksAssistant
+        open={aiAssistantOpen}
+        studentContext={{
+          uid: student.uid,
+          name: student.full_name,
+          semester: student.semester,
+          program,
+          previousRemarks: minutes.slice(0, 3).map((m) => ({
+            date: m.date,
+            remarks: m.remarks,
+            suggestion: m.suggestion ?? undefined,
+            action: m.action ?? undefined,
+          })),
+        }}
+        onClose={() => setAiAssistantOpen(false)}
+        onInsert={handleAIInsert}
+      />
 
       <Modal
         open={remarksOpen}

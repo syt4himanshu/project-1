@@ -112,6 +112,30 @@ export interface ChatbotResponse {
   response: string
 }
 
+export interface AIRemarksStudentContext {
+  uid: string
+  name: string
+  semester: number
+  program?: string
+  previousRemarks?: Array<{
+    date: string
+    remarks: string
+    suggestion?: string
+    action?: string
+  }>
+}
+
+export interface AIRemarksRequest {
+  query: string
+  studentContext: AIRemarksStudentContext
+}
+
+export interface AIRemarksResponse {
+  content: string
+  studentUid: string
+  timestamp: string
+}
+
 export type ScopeMode = 'all' | 'student'
 export type SectionKey = 'Summary' | 'Key Observations' | 'Concerns' | 'Suggestions'
 

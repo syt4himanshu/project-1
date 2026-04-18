@@ -1,6 +1,8 @@
-import { WizardStepProps, field, input, sectionCardCls, select } from './shared'
+import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
+import { field, input, sectionCardCls, select } from './shared'
 
-export default function Step4AcademicAfter({ data, update }: WizardStepProps) {
+export default function Step4AcademicAfter() {
+    const { data, update } = useStudentProfileDraft()
     const currentSem = Number(data.semester || 8)
     const records = (data.post_admission_records as Record<string, unknown>[]) || []
 

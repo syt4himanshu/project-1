@@ -1,4 +1,5 @@
-import { WizardStepProps, field, sectionCardCls, select, textareaCls } from './shared'
+import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
+import { field, sectionCardCls, select, textareaCls } from './shared'
 
 const DOMAINS = ['Web Development', 'Machine Learning', 'Artificial Intelligence', 'Data Science', 'Cyber Security', 'Cloud Computing', 'Mobile Development', 'Other']
 const NON_TECH_AREAS = ['Cultural Activities', 'Sports', 'Literary / Debate', 'Social Service / NSS', 'Other']
@@ -12,7 +13,8 @@ function toggleCsv(values: string[], item: string) {
     return [...values, item]
 }
 
-export default function Step8CareerSkills({ data, update }: WizardStepProps) {
+export default function Step8CareerSkills() {
+    const { data, update } = useStudentProfileDraft()
     const co = (data.career_objective as Record<string, unknown>) || {}
     const sk = (data.skills as Record<string, unknown>) || {}
 

@@ -1,9 +1,11 @@
-import { WizardStepProps, field, input, inputCls, sectionCardCls, select } from './shared'
+import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
+import { field, input, inputCls, sectionCardCls, select } from './shared'
 
 const BOARDS = ['CBSE', 'State Board', 'ICSE', 'Other']
 const ENTRANCE_EXAMS = ['MHT-CET', 'JEE']
 
-export default function Step3AcademicBefore({ data, update }: WizardStepProps) {
+export default function Step3AcademicBefore() {
+    const { data, update } = useStudentProfileDraft()
     const records = (data.past_education_records as Record<string, unknown>[]) || []
     const derivedAdmissionType = records.some(r => r.exam_name === 'DIPLOMA')
         ? 'diploma'

@@ -1,7 +1,5 @@
-import { lazy, Suspense, useMemo, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useFacultyChat } from '../hooks'
-import { formatContextLabel } from '../chatbot/utils/chatFormatters'
-import type { ScopeMode } from '../api/types'
 
 const ChatWindow = lazy(() =>
   import('../chatbot/components/ChatWindow').then((m) => ({ default: m.ChatWindow })),
@@ -24,49 +22,9 @@ function ChatSkeleton() {
 }
 
 export function FacultyChatbotPage() {
-  const {
-    mentees,
-    filteredMentees,
-    menteeLoading,
-    menteeError,
-    scopeMode,
-    selectedStudentUid,
-    studentSearch,
-    messages,
-    requestError,
-    isLoading,
-    analysisText,
-    lastPayloadExists,
-    setScopeMode,
-    setSelectedStudentUid,
-    setStudentSearch,
-    reloadMentees,
-    submitPayload,
-    stopResponse,
-    regenerate,
-  } = useFacultyChat()
+  useFacultyChat()
 
-  const [query, setQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
-
-  const contextLabel = useMemo(
-    () => formatContextLabel(scopeMode, selectedStudentUid, mentees),
-    [mentees, scopeMode, selectedStudentUid],
-  )
-
-  const isStudentSelectionInvalid = scopeMode === 'student' && !selectedStudentUid
-  const canSend = Boolean(query.trim()) && !isLoading && !isStudentSelectionInvalid
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const q = query.trim()
-    if (!q || !canSend) return
-    setQuery('')
-    await submitPayload({
-      query: q,
-      studentId: scopeMode === 'student' ? selectedStudentUid : undefined,
-    })
-  }
 
   return (
     <div className="faculty-chat" data-testid="chatbot-page">
@@ -85,19 +43,7 @@ export function FacultyChatbotPage() {
 
         {sidebarOpen && (
           <Suspense fallback={<div className="faculty-chat__sidebar-loading" />}>
-            <StudentSelector
-              scopeMode={scopeMode}
-              mentees={mentees}
-              filteredMentees={filteredMentees}
-              selectedStudentUid={selectedStudentUid}
-              studentSearch={studentSearch}
-              menteeLoading={menteeLoading}
-              menteeError={menteeError}
-              onMenteeRetry={reloadMentees}
-              onScopeChange={(mode: ScopeMode) => setScopeMode(mode)}
-              onStudentSearchChange={setStudentSearch}
-              onStudentSelect={setSelectedStudentUid}
-            />
+            <StudentSelector />
           </Suspense>
         )}
       </aside>
@@ -113,27 +59,11 @@ export function FacultyChatbotPage() {
         </div>
 
         <Suspense fallback={<ChatSkeleton />}>
-          <ChatWindow
-            messages={messages}
-            analysisText={analysisText}
-            onPromptClick={setQuery}
-          />
+          <ChatWindow />
         </Suspense>
 
         <Suspense fallback={null}>
-          <ChatInput
-            query={query}
-            contextLabel={contextLabel}
-            requestError={requestError}
-            isLoading={isLoading}
-            canSend={canSend}
-            isStudentSelectionInvalid={isStudentSelectionInvalid}
-            hasLastPayload={lastPayloadExists}
-            onQueryChange={setQuery}
-            onSubmit={handleSubmit}
-            onStop={stopResponse}
-            onRegenerate={regenerate}
-          />
+          <ChatInput />
         </Suspense>
       </section>
     </div>

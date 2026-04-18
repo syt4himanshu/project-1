@@ -44,9 +44,9 @@ describe('LoginPage faculty redirect', () => {
       </AuthContext.Provider>,
     )
 
-    await user.type(screen.getByLabelText(/username \/ uid \/ email/i), 'faculty@stvincentngp.edu.in')
-    await user.type(screen.getByLabelText(/password/i), 'Pass@1234')
-    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    await user.type(screen.getByPlaceholderText(/enter your username/i), 'faculty@stvincentngp.edu.in')
+    await user.type(screen.getByPlaceholderText(/enter your password/i), 'Pass@1234')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     await waitFor(() => {
       expect(loginMock).toHaveBeenCalledWith('faculty@stvincentngp.edu.in', 'Pass@1234')

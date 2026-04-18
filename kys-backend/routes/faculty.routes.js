@@ -9,6 +9,7 @@ const {
   getMenteeMentoringMinutes,
   facultyChatbot,
 } = require('../controllers/faculty.controller');
+const { generateAIRemarks } = require('../controllers/faculty-ai.controller');
 const { verifyToken, roleRequired } = require('../middleware/auth');
 const { chatbotRateLimiter } = require('../middleware/rateLimiter');
 const { validateRequest } = require('../middleware/validate');
@@ -78,6 +79,20 @@ router.post(
     validateRequest
   ],
   facultyChatbot
+);
+
+router.post(
+  '/ai-remarks',
+  chatbotRateLimiter,
+  [
+    body('query').isString().trim().isLength({ min: 1, max: 500 }).withMessage('Query must be 1-500 characters'),
+    body('studentContext').isObject().withMessage('Student context is required'),
+    body('studentContext.uid').isString().trim().notEmpty().withMessage('Student UID is required'),
+    body('studentContext.name').isString().trim().notEmpty().withMessage('Student name is required'),
+    body('studentContext.semester').isInt({ min: 1, max: 12 }).withMessage('Valid semester is required'),
+    validateRequest
+  ],
+  generateAIRemarks
 );
 
 module.exports = router;

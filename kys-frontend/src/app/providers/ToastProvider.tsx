@@ -1,45 +1,15 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ToastContext, type ToastInput, type ToastIntent } from './toast-context'
-
-interface ToastRecord {
-  id: number
-  title: string
-  message: string
-  intent: ToastIntent
-  durationMs: number
-}
-
-function clampDuration(durationMs: number | undefined): number {
-  if (typeof durationMs !== 'number' || !Number.isFinite(durationMs)) return 4_000
-  return Math.min(15_000, Math.max(1_500, Math.floor(durationMs)))
-}
+import { useCallback, useMemo, type ReactNode } from 'react'
+import { useAppDispatch, useAppSelector } from '../store/hooks'
+import { dismissToast, enqueueToast, selectToastItems } from '../store/toastSlice'
+import { ToastContext, type ToastInput } from './toast-context'
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<ToastRecord[]>([])
-  const nextIdRef = useRef(1)
-
-  const dismiss = useCallback((id: number) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id))
-  }, [])
+  const dispatch = useAppDispatch()
+  const toasts = useAppSelector(selectToastItems)
 
   const notify = useCallback((toast: ToastInput) => {
-    const id = nextIdRef.current
-    nextIdRef.current += 1
-
-    const record: ToastRecord = {
-      id,
-      title: toast.title?.trim() || 'Notice',
-      message: toast.message.trim() || 'Action completed.',
-      intent: toast.intent ?? 'info',
-      durationMs: clampDuration(toast.durationMs),
-    }
-
-    setToasts((current) => [...current, record])
-
-    window.setTimeout(() => {
-      dismiss(id)
-    }, record.durationMs)
-  }, [dismiss])
+    dispatch(enqueueToast(toast))
+  }, [dispatch])
 
   const value = useMemo(() => ({ notify }), [notify])
 
@@ -52,7 +22,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <article key={toast.id} className={`toast toast--${toast.intent}`}>
             <header className="toast__header">
               <p className="toast__title">{toast.title}</p>
-              <button type="button" className="toast__close" onClick={() => dismiss(toast.id)} aria-label="Close notification">
+              <button type="button" className="toast__close" onClick={() => dispatch(dismissToast(toast.id))} aria-label="Close notification">
                 ×
               </button>
             </header>
