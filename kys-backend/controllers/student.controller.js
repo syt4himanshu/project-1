@@ -91,10 +91,10 @@ const buildStudentIncludes = ({ summary = false, domain = '', careerGoal = '' } 
       required: Boolean(trimmedDomain),
       ...(trimmedDomain
         ? {
-            where: {
-              domains_of_interest: { [Op.iLike]: `%${trimmedDomain}%` },
-            },
-          }
+          where: {
+            domains_of_interest: { [Op.iLike]: `%${trimmedDomain}%` },
+          },
+        }
         : {}),
     },
     !summary ? { model: SWOC, as: 'swoc', required: false } : null,
@@ -525,25 +525,29 @@ const getStudentMentoringMinutes = async (req, res, next) => {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id } });
     if (!student) return res.status(404).json({ error: 'Student profile not found' });
 
+    // Optimized: Use include to avoid N+1 query
     const minutes = await MentoringMinute.findAll({
       where: { student_id: student.id },
+      include: [
+        {
+          model: Faculty,
+          as: 'faculty',
+          attributes: ['id', 'email', 'first_name', 'last_name'],
+        },
+      ],
       order: [['date', 'DESC']],
     });
 
-    const result = [];
-    for (const m of minutes) {
-      const faculty = await Faculty.findByPk(m.faculty_id);
-      result.push({
-        id: m.id,
-        faculty_email: faculty ? faculty.email : null,
-        faculty_name: faculty ? `${faculty.first_name} ${faculty.last_name}` : null,
-        semester: m.semester,
-        date: m.date,
-        remarks: m.remarks,
-        suggestion: m.suggestion,
-        action: m.action,
-      });
-    }
+    const result = minutes.map(m => ({
+      id: m.id,
+      faculty_email: m.faculty ? m.faculty.email : null,
+      faculty_name: m.faculty ? `${m.faculty.first_name} ${m.faculty.last_name}` : null,
+      semester: m.semester,
+      date: m.date,
+      remarks: m.remarks,
+      suggestion: m.suggestion,
+      action: m.action,
+    }));
 
     return res.status(200).json(result);
   } catch (error) {

@@ -5,6 +5,7 @@ const morgan = require('morgan');
 
 const { sequelize } = require('./models');
 const { globalRateLimiter } = require('./middleware/rateLimiter');
+const { standardTimeout } = require('./middleware/timeout');
 const logger = require('./utils/logger');
 const { validateEnv } = require('./utils/env');
 
@@ -12,6 +13,9 @@ const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
 const facultyRoutes = require('./routes/faculty.routes');
 const { studentsRouter, studentRouter, apiStudentsRouter } = require('./routes/student.routes');
+
+const { performHealthCheck } = require('./utils/healthCheck');
+const { requestTiming, getTimingStats, getSlowEndpoints } = require('./middleware/requestTiming');
 
 validateEnv();
 
@@ -42,6 +46,8 @@ app.options(/.*/, cors(corsOptions));
 
 app.use(express.json({ limit: "50kb" }));
 app.use(globalRateLimiter);
+app.use(requestTiming); // Enhanced request timing middleware
+app.use(standardTimeout); // Add timeout middleware
 app.use(
   morgan('combined', {
     stream: {
@@ -50,12 +56,32 @@ app.use(
   }),
 );
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+app.get('/health', async (_req, res) => {
+  const health = await performHealthCheck({ includeGroq: false });
+  const statusCode = health.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 app.get('/api/health/live', (_req, res) => {
   res.json({ status: 'ok' });
+});
+
+app.get('/api/health/ready', async (_req, res) => {
+  const health = await performHealthCheck({ includeGroq: true });
+  const statusCode = health.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(health);
+});
+
+// Performance metrics endpoint
+app.get('/api/metrics/timing', (_req, res) => {
+  const stats = getTimingStats();
+  const slowEndpoints = getSlowEndpoints();
+
+  res.json({
+    overall: stats,
+    slowEndpoints,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.use('/api/auth', authRoutes);
@@ -70,12 +96,12 @@ app.get('/api/health/faculty', async (req, res) => {
     const { AI_CONFIG, FALLBACK_MODELS } = require('./config/ai.config');
     const Groq = require('groq-sdk');
     const apiKey = process.env.GROQ_API_KEY;
-    
+
     // Check DB silently as per specs
     let dbStatus = "connected";
     try {
       await sequelize.authenticate();
-    } catch(e) {
+    } catch (e) {
       dbStatus = "error";
     }
 
@@ -84,7 +110,7 @@ app.get('/api/health/faculty', async (req, res) => {
     }
 
     const groq = new Groq({ apiKey: String(apiKey).trim() });
-    
+
     let currentModel = AI_CONFIG.model;
     let fallbackIndex = 0;
 
@@ -104,15 +130,15 @@ app.get('/api/health/faculty', async (req, res) => {
           return res.status(500).json({ status: "error", db: dbStatus, groq: "error", model: currentModel, latency_ms: Date.now() - start, key_loaded: true, error: "Invalid GROQ_API_KEY" });
         }
 
-        const isModelError = error.error?.error?.code === "model_decommissioned" || 
-                             error.error?.error?.code === "invalid_request_error" ||
-                             /decommissioned|not found|does not exist/.test(error.message);
+        const isModelError = error.error?.error?.code === "model_decommissioned" ||
+          error.error?.error?.code === "invalid_request_error" ||
+          /decommissioned|not found|does not exist/.test(error.message);
 
         if (isModelError && fallbackIndex < FALLBACK_MODELS.length) {
           currentModel = FALLBACK_MODELS[fallbackIndex++];
           continue;
         }
-        
+
         return res.status(500).json({ status: "error", db: dbStatus, groq: "error", model: currentModel, latency_ms: Date.now() - start, key_loaded: true, error: error.message });
       }
     }
