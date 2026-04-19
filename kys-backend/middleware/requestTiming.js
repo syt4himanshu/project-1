@@ -88,10 +88,22 @@ const getSlowEndpoints = () => {
 const requestTiming = (req, res, next) => {
     const start = Date.now();
 
-    // Capture response finish event
-    res.on('finish', () => {
+    // Store original end function
+    const originalEnd = res.end;
+
+    // Override end function to add header BEFORE response is sent
+    res.end = function (...args) {
         const duration = Date.now() - start;
 
+        // Set header BEFORE calling original end
+        if (!res.headersSent) {
+            res.setHeader('X-Response-Time', `${duration}ms`);
+        }
+
+        // Call original end
+        originalEnd.apply(res, args);
+
+        // Log timing data AFTER response is sent
         const timingData = {
             method: req.method,
             path: req.path,
@@ -122,10 +134,7 @@ const requestTiming = (req, res, next) => {
                 ...timingData,
             });
         }
-
-        // Add timing header
-        res.setHeader('X-Response-Time', `${duration}ms`);
-    });
+    };
 
     next();
 };

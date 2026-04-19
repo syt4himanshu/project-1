@@ -6,9 +6,10 @@ const { splitFullName } = require('../utils/helpers');
 const { addJti } = require('../utils/jwtBlacklist');
 
 // Verify password against both bcrypt ($2b$) and Werkzeug scrypt (scrypt:N:r:p$salt$hash) formats
-const verifyPassword = (password, hash) => {
+const verifyPassword = async (password, hash) => {
+
   if (hash.startsWith('$2b$') || hash.startsWith('$2a$')) {
-    return bcrypt.compare(password, hash);
+    return await bcrypt.compare(password, hash);
   }
   if (hash.startsWith('scrypt:')) {
     return new Promise((resolve) => {
@@ -65,6 +66,7 @@ const isValidFacultyEmail = (value) => normalizeText(value).endsWith('@stvincent
 const login = async (req, res, next) => {
   try {
     const data = req.body || {};
+
     const username = data.username || data.uid;
     const password = data.password;
 
