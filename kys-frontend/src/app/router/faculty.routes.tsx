@@ -4,21 +4,32 @@ import { Navigate, type RouteObject } from 'react-router-dom'
 import FacultyLayout from '../layouts/FacultyLayout'
 import RequireAuth from './guards/RequireAuth'
 import RequireRole from './guards/RequireRole'
-import {
-  FacultyDashboardPage,
-  FacultyMenteeDetailPage,
-  FacultyProfilePage,
-} from '../../modules/faculty/routes'
+
+// Lazy load all faculty pages for better code splitting
+const FacultyDashboardPage = lazy(async () => {
+  const { FacultyDashboardPage } = await import('../../modules/faculty/routes')
+  return { default: FacultyDashboardPage }
+})
+
+const FacultyMenteeDetailPage = lazy(async () => {
+  const { FacultyMenteeDetailPage } = await import('../../modules/faculty/routes')
+  return { default: FacultyMenteeDetailPage }
+})
+
+const FacultyProfilePage = lazy(async () => {
+  const { FacultyProfilePage } = await import('../../modules/faculty/routes')
+  return { default: FacultyProfilePage }
+})
 
 const FacultyChatbotPageLazy = lazy(async () => {
   const m = await import('../../modules/faculty/pages/FacultyChatbotPage')
   return { default: m.FacultyChatbotPage }
 })
 
-const ChatbotFallback = (
+const PageLoader = ({ message = 'Loading...' }: { message?: string }) => (
   <div className="route-loader">
     <div className="route-loader__spinner" />
-    <p>Loading chatbot...</p>
+    <p>{message}</p>
   </div>
 )
 
@@ -33,14 +44,35 @@ export const facultyRoutes: RouteObject = {
           element: <FacultyLayout />,
           children: [
             { index: true, element: <Navigate to="dashboard" replace /> },
-            { path: 'dashboard', element: <FacultyDashboardPage /> },
+            {
+              path: 'dashboard',
+              element: (
+                <Suspense fallback={<PageLoader message="Loading dashboard..." />}>
+                  <FacultyDashboardPage />
+                </Suspense>
+              ),
+            },
             { path: 'mentees', element: <Navigate to="/faculty/dashboard" replace /> },
-            { path: 'mentees/:uid', element: <FacultyMenteeDetailPage /> },
-            { path: 'profile', element: <FacultyProfilePage /> },
+            {
+              path: 'mentees/:uid',
+              element: (
+                <Suspense fallback={<PageLoader message="Loading student details..." />}>
+                  <FacultyMenteeDetailPage />
+                </Suspense>
+              ),
+            },
+            {
+              path: 'profile',
+              element: (
+                <Suspense fallback={<PageLoader message="Loading profile..." />}>
+                  <FacultyProfilePage />
+                </Suspense>
+              ),
+            },
             {
               path: 'chatbot',
               element: (
-                <Suspense fallback={ChatbotFallback}>
+                <Suspense fallback={<PageLoader message="Loading chatbot..." />}>
                   <FacultyChatbotPageLazy />
                 </Suspense>
               ),

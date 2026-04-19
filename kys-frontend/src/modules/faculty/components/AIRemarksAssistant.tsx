@@ -31,10 +31,9 @@ interface Message {
 }
 
 const SUGGESTION_CHIPS = [
-    { id: 'performance', label: 'Performance Feedback', icon: '📊' },
-    { id: 'behavior', label: 'Behavior Remarks', icon: '🎯' },
-    { id: 'improvement', label: 'Improvement Plan', icon: '📈' },
-    { id: 'summary', label: 'Overall Summary', icon: '📝' },
+    { id: 'placement', label: 'Placement-focused advice', icon: '💼' },
+    { id: 'skills', label: 'Skill improvement plan', icon: '📈' },
+    { id: 'behavior', label: 'Behavior & communication', icon: '🗣️' },
 ]
 
 export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: AIRemarksAssistantProps) {
@@ -90,10 +89,9 @@ export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: 
 
     const handleSuggestionClick = async (chipId: string) => {
         const prompts: Record<string, string> = {
-            performance: `Generate performance feedback for ${studentContext.name} (Semester ${studentContext.semester})`,
-            behavior: `Write behavior remarks for ${studentContext.name}`,
-            improvement: `Suggest improvement areas for ${studentContext.name}`,
-            summary: `Provide an overall mentoring summary for ${studentContext.name}`,
+            placement: `Provide placement-focused advice for ${studentContext.name}`,
+            skills: `Suggest a skill improvement plan for ${studentContext.name}`,
+            behavior: `Write behavior and communication remarks for ${studentContext.name}`,
         }
 
         const prompt = prompts[chipId]
@@ -290,36 +288,11 @@ function parseAIResponse(content: string): {
     suggestion?: string
     action?: string
 } {
-    const lines = content.split('\n').filter(Boolean)
-
-    let remarks = ''
-    let suggestion = ''
-    let action = ''
-    let currentSection = 'remarks'
-
-    for (const line of lines) {
-        const lower = line.toLowerCase()
-
-        if (lower.includes('suggestion') || lower.includes('recommendation')) {
-            currentSection = 'suggestion'
-            continue
-        }
-        if (lower.includes('action') || lower.includes('next step')) {
-            currentSection = 'action'
-            continue
-        }
-
-        const cleanLine = line.replace(/^[-*•]\s*/, '').trim()
-        if (!cleanLine) continue
-
-        if (currentSection === 'remarks') remarks += cleanLine + ' '
-        else if (currentSection === 'suggestion') suggestion += cleanLine + ' '
-        else if (currentSection === 'action') action += cleanLine + ' '
-    }
-
     return {
-        remarks: remarks.trim() || content.substring(0, 200),
-        suggestion: suggestion.trim() || undefined,
-        action: action.trim() || undefined,
+        // Place the entire AI output in the primary Remarks field. 
+        // This honors the rigid list formatting and avoids splitting the bullets.
+        remarks: content.trim(),
+        suggestion: undefined,
+        action: undefined,
     }
 }

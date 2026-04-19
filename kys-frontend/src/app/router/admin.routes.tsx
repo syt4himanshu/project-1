@@ -4,18 +4,44 @@ import { Navigate, type RouteObject } from 'react-router-dom'
 import AdminLayout from '../layouts/AdminLayout'
 import RequireAuth from './guards/RequireAuth'
 import RequireRole from './guards/RequireRole'
-import {
-  AdminAllocationPage,
-  AdminDashboardPage,
-  AdminStudentsPage,
-  AdminTeachersPage,
-  AdminUsersPage,
-} from '../../modules/admin/routes'
+
+// Lazy load all admin pages for better code splitting
+const AdminDashboardPage = lazy(async () => {
+  const { AdminDashboardPage } = await import('../../modules/admin/routes')
+  return { default: AdminDashboardPage }
+})
+
+const AdminUsersPage = lazy(async () => {
+  const { AdminUsersPage } = await import('../../modules/admin/routes')
+  return { default: AdminUsersPage }
+})
+
+const AdminTeachersPage = lazy(async () => {
+  const { AdminTeachersPage } = await import('../../modules/admin/routes')
+  return { default: AdminTeachersPage }
+})
+
+const AdminStudentsPage = lazy(async () => {
+  const { AdminStudentsPage } = await import('../../modules/admin/routes')
+  return { default: AdminStudentsPage }
+})
+
+const AdminAllocationPage = lazy(async () => {
+  const { AdminAllocationPage } = await import('../../modules/admin/routes')
+  return { default: AdminAllocationPage }
+})
 
 const AdminReportsPageLazy = lazy(async () => {
   const module = await import('../../modules/admin/pages/AdminReportsPage')
   return { default: module.AdminReportsPage }
 })
+
+const PageLoader = ({ message = 'Loading...' }: { message?: string }) => (
+  <div className="route-loader">
+    <div className="route-loader__spinner" />
+    <p>{message}</p>
+  </div>
+)
 
 export const adminRoutes: RouteObject = {
   path: '/admin',
@@ -33,35 +59,48 @@ export const adminRoutes: RouteObject = {
             },
             {
               path: 'dashboard',
-              element: <AdminDashboardPage />,
+              element: (
+                <Suspense fallback={<PageLoader message="Loading dashboard..." />}>
+                  <AdminDashboardPage />
+                </Suspense>
+              ),
             },
             {
               path: 'users',
-              element: <AdminUsersPage />,
+              element: (
+                <Suspense fallback={<PageLoader message="Loading users..." />}>
+                  <AdminUsersPage />
+                </Suspense>
+              ),
             },
             {
               path: 'teachers',
-              element: <AdminTeachersPage />,
+              element: (
+                <Suspense fallback={<PageLoader message="Loading teachers..." />}>
+                  <AdminTeachersPage />
+                </Suspense>
+              ),
             },
             {
               path: 'students',
-              element: <AdminStudentsPage />,
+              element: (
+                <Suspense fallback={<PageLoader message="Loading students..." />}>
+                  <AdminStudentsPage />
+                </Suspense>
+              ),
             },
             {
               path: 'allocation',
-              element: <AdminAllocationPage />,
+              element: (
+                <Suspense fallback={<PageLoader message="Loading allocation..." />}>
+                  <AdminAllocationPage />
+                </Suspense>
+              ),
             },
             {
               path: 'reports',
               element: (
-                <Suspense
-                  fallback={(
-                    <div className="route-loader">
-                      <div className="route-loader__spinner" />
-                      <p>Loading reports...</p>
-                    </div>
-                  )}
-                >
+                <Suspense fallback={<PageLoader message="Loading reports..." />}>
                   <AdminReportsPageLazy />
                 </Suspense>
               ),
