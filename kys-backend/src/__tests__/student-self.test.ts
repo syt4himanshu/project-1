@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminToken, loginAdmin, request } from './helpers/setup';
 import { cleanup, createTestFaculty, createTestStudent, findUserIdByUsername, loginAs } from './helpers/seed';
 
+const { User, StudentPersonalInfo } = require('../../models');
+
 const createdUserIds: number[] = [];
 
 async function track(username: string) {
@@ -12,7 +14,7 @@ async function track(username: string) {
 
 function unwrapStudentEnvelope<T>(body: unknown): T {
   if (body && typeof body === 'object' && 'success' in body && (body as { success: boolean }).success === true) {
-    return (body as { data: T }).data;
+    return (body as unknown as { data: T }).data;
   }
   return body as T;
 }
@@ -22,6 +24,7 @@ describe('student self APIs', () => {
   let facultyToken = '';
   let studentId: number | null = null;
   let facultyId: number | null = null;
+  let studentUsername = '';
 
   beforeAll(async () => {
     await loginAdmin();
@@ -29,6 +32,7 @@ describe('student self APIs', () => {
     const student = await createTestStudent({ semester: 3, section: 'A' });
     expect(student.res.status).toBe(201);
     await track(student.payload.username);
+    studentUsername = student.payload.username;
     studentToken = (await loginAs(student.payload.username, student.payload.password)).body.access_token;
 
     const faculty = await createTestFaculty();
@@ -137,6 +141,99 @@ describe('student self APIs', () => {
 
     const res = await request('PUT', '/api/student/me', payload, studentToken);
     expect([200, 400]).toContain(res.status);
+  });
+
+  it('PUT /api/student/me incomplete entrance exam returns 400 instead of 500', async () => {
+    const res = await request(
+      'PUT',
+      '/api/student/me',
+      {
+        admission_type: 'hsc',
+        past_education_records: [
+          { exam_name: 'SSC', percentage: 61, year_of_passing: 2022 },
+          { exam_name: 'HSSC', percentage: 72, year_of_passing: 2024 },
+          { exam_name: 'ENTRANCE_EXAM', exam_type: 'MHT-CET', percentage: 89, year_of_passing: null },
+        ],
+      },
+      studentToken,
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it('PUT /api/student/me keeps upload-managed photo fields intact', async () => {
+    const user = await User.findOne({
+      where: { username: studentUsername },
+      include: [{ association: 'student_profile' }],
+    });
+    expect(user?.student_profile?.id).toBeTruthy();
+
+    const studentProfileId = user.student_profile.id;
+    const existing = await StudentPersonalInfo.findOne({ where: { student_id: studentProfileId } });
+    const seededPhoto = {
+      photo_url: 'https://res.cloudinary.com/demo/image/upload/v1/sample.jpg',
+      photo_public_id: 'students/sample-photo',
+    };
+
+    if (existing) {
+      await existing.update({
+        mobile_no: existing.mobile_no || '9999999999',
+        personal_email: existing.personal_email || 'student.self@example.com',
+        college_email: existing.college_email || 'student.self@college.com',
+        linked_in_id: existing.linked_in_id || 'https://linkedin.com/in/student-self',
+        permanent_address: existing.permanent_address || 'Permanent Address',
+        dob: existing.dob || '2003-01-10',
+        gender: existing.gender || 'M',
+        father_name: existing.father_name || 'Father',
+        father_mobile_no: existing.father_mobile_no || '9999999998',
+        father_occupation: existing.father_occupation || 'Service',
+        mother_name: existing.mother_name || 'Mother',
+        mother_mobile_no: existing.mother_mobile_no || '9999999997',
+        mother_occupation: existing.mother_occupation || 'Teacher',
+        emergency_contact_name: existing.emergency_contact_name || 'Guardian',
+        emergency_contact_number: existing.emergency_contact_number || '9999999996',
+        ...seededPhoto,
+      });
+    } else {
+      await StudentPersonalInfo.create({
+        student_id: studentProfileId,
+        mobile_no: '9999999999',
+        personal_email: 'student.self@example.com',
+        college_email: 'student.self@college.com',
+        linked_in_id: 'https://linkedin.com/in/student-self',
+        permanent_address: 'Permanent Address',
+        dob: '2003-01-10',
+        gender: 'M',
+        father_name: 'Father',
+        father_mobile_no: '9999999998',
+        father_occupation: 'Service',
+        mother_name: 'Mother',
+        mother_mobile_no: '9999999997',
+        mother_occupation: 'Teacher',
+        emergency_contact_name: 'Guardian',
+        emergency_contact_number: '9999999996',
+        ...seededPhoto,
+      });
+    }
+
+    const res = await request(
+      'PUT',
+      '/api/student/me',
+      {
+        personal_info: {
+          mobile_no: '8888888888',
+          photo_url: '',
+          photo_public_id: '',
+        },
+      },
+      studentToken,
+    );
+    expect(res.status).toBe(200);
+
+    const reloaded = await StudentPersonalInfo.findOne({ where: { student_id: studentProfileId } });
+    expect(reloaded?.mobile_no).toBe('8888888888');
+    expect(reloaded?.photo_url).toBe(seededPhoto.photo_url);
+    expect(reloaded?.photo_public_id).toBe(seededPhoto.photo_public_id);
   });
 
   it('attempt UID/semester change -> 400 or ignored', async () => {

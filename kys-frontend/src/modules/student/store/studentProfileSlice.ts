@@ -37,6 +37,38 @@ const initialState: StudentProfileState = {
   draftKey: '',
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function preferNonEmptyString(primary: unknown, fallback: unknown) {
+  if (typeof primary === 'string' && primary.trim()) return primary
+  if (typeof fallback === 'string' && fallback.trim()) return fallback
+  return primary ?? fallback
+}
+
+function mergeStudentProfileData(
+  serverData: Record<string, unknown>,
+  draftData: Record<string, unknown>,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = {
+    ...serverData,
+    ...draftData,
+  }
+
+  const serverPersonalInfo = isRecord(serverData.personal_info) ? serverData.personal_info : {}
+  const draftPersonalInfo = isRecord(draftData.personal_info) ? draftData.personal_info : {}
+
+  merged.personal_info = {
+    ...serverPersonalInfo,
+    ...draftPersonalInfo,
+    photo_url: preferNonEmptyString(draftPersonalInfo.photo_url, serverPersonalInfo.photo_url),
+    photo_public_id: preferNonEmptyString(draftPersonalInfo.photo_public_id, serverPersonalInfo.photo_public_id),
+  }
+
+  return merged
+}
+
 function isBlank(value: unknown) {
   return value === null || value === undefined || String(value).trim() === ''
 }
@@ -100,6 +132,7 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
       if (isBlank(hssc.year_of_passing)) missing.push('HSC Year of Passing')
       if (isBlank(entrance.exam_type)) missing.push('Entrance Exam Type')
       if (isBlank(entrance.percentage)) missing.push('Entrance Percentile')
+      if (isBlank(entrance.year_of_passing)) missing.push('Entrance Exam Year of Passing')
     }
 
     if (admissionType === 'diploma') {
@@ -242,23 +275,32 @@ export const loadStudentProfileWizard = createAsyncThunk(
     const draftKey = deriveDraftKey(state)
     const draft = readDraft(draftKey)
 
-    if (draft) {
-      dispatch(enqueueToast({ title: 'Info', message: 'Draft restored from local storage.', intent: 'info' }))
-      return {
-        data: draft.data,
-        draftKey,
-        step: draft.step,
-      }
-    }
-
     try {
       const response = await getProfile()
+      if (draft) {
+        dispatch(enqueueToast({ title: 'Info', message: 'Draft restored from local storage.', intent: 'info' }))
+        return {
+          data: mergeStudentProfileData((response.data || {}) as Record<string, unknown>, draft.data),
+          draftKey,
+          step: draft.step,
+        }
+      }
+
       return {
         data: (response.data || {}) as Record<string, unknown>,
         draftKey,
         step: 0,
       }
     } catch {
+      if (draft) {
+        dispatch(enqueueToast({ title: 'Info', message: 'Draft restored from local storage.', intent: 'info' }))
+        return {
+          data: draft.data,
+          draftKey,
+          step: draft.step,
+        }
+      }
+
       return {
         data: {},
         draftKey,

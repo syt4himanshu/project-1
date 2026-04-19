@@ -63,7 +63,12 @@ export default function Dashboard() {
 
     useEffect(() => {
         getProfile()
-            .then(r => setProfile(r.data))
+            .then(r => {
+                console.log('[FRONTEND] Profile data received:', r.data)
+                console.log('[FRONTEND] personal_info:', r.data?.personal_info)
+                console.log('[FRONTEND] photo_url:', r.data?.personal_info?.photo_url)
+                setProfile(r.data)
+            })
             .catch(() => { })
             .finally(() => setLoadingProfile(false))
 
@@ -88,12 +93,15 @@ export default function Dashboard() {
 
     const studentPhotoUrl = useMemo(() => {
         const nested = profile?.personal_info?.photo_url?.trim()
+        console.log('[FRONTEND] Computing studentPhotoUrl - nested:', nested)
         if (nested) return nested
 
         const topLevel = profile?.photo_url?.trim()
+        console.log('[FRONTEND] Computing studentPhotoUrl - topLevel:', topLevel)
         if (topLevel) return topLevel
 
         const legacy = profile?.profile_photo?.trim()
+        console.log('[FRONTEND] Computing studentPhotoUrl - legacy:', legacy)
         return legacy || ''
     }, [profile?.personal_info?.photo_url, profile?.photo_url, profile?.profile_photo])
 

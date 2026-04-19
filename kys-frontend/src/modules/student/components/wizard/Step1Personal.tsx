@@ -32,11 +32,15 @@ export default function Step1Personal() {
         setUploading(true)
         setUploadMsg('')
         try {
+            console.log('[UPLOAD] Uploading file:', file.name, file.type, file.size)
             const response = await uploadProfilePhoto(file)
+            console.log('[UPLOAD] Upload response:', response)
+            console.log('[UPLOAD] photo_url from response:', response.data?.photo_url)
             upd('photo_url', response.data?.photo_url || '')
             upd('photo_public_id', response.data?.photo_public_id || '')
             setUploadMsg('Photo uploaded successfully.')
-        } catch {
+        } catch (error) {
+            console.error('[UPLOAD] Upload failed:', error)
             setUploadMsg('Failed to upload photo. You can try again later.')
         } finally {
             setUploading(false)
@@ -101,12 +105,19 @@ export default function Step1Personal() {
             <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Passport Size Photo</label>
                 {(pi.photo_url as string) ? (
-                    <p className="mb-2 text-sm text-[#5f6f86]">
-                        Existing photo:{' '}
-                        <a className="text-[#2b5fa6] underline" href={String(pi.photo_url)} target="_blank" rel="noreferrer">
-                            Open uploaded image
-                        </a>
-                    </p>
+                    <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3">
+                        <img
+                            src={String(pi.photo_url)}
+                            alt="Uploaded student profile"
+                            className="h-20 w-20 rounded-xl border border-[#d9e1ec] object-cover"
+                        />
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium text-[#32435f]">Current uploaded photo</p>
+                            <a className="text-sm text-[#2b5fa6] underline" href={String(pi.photo_url)} target="_blank" rel="noreferrer">
+                                Open uploaded image
+                            </a>
+                        </div>
+                    </div>
                 ) : (
                     <p className="mb-2 text-sm text-[#7a879c]">No photo uploaded yet.</p>
                 )}

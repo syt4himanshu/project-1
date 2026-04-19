@@ -50,6 +50,38 @@ const validatePastEducationPayload = (records = []) => {
   if (examNames.length !== new Set(examNames).size) {
     return { valid: false, error: 'Duplicate exam_name entries are not allowed.' };
   }
+
+  for (const record of records) {
+    if (!record || typeof record !== 'object') {
+      return { valid: false, error: 'Each past education record must be a valid object.' };
+    }
+
+    const examName = String(record.exam_name || '').trim();
+    if (!examName) {
+      return { valid: false, error: 'Each past education record must include exam_name.' };
+    }
+
+    const percentage = record.percentage;
+    const yearOfPassing = record.year_of_passing;
+    const hasPercentage = percentage !== null && percentage !== undefined && String(percentage).trim() !== '';
+    const hasYearOfPassing = yearOfPassing !== null && yearOfPassing !== undefined && String(yearOfPassing).trim() !== '';
+
+    if (!hasPercentage) {
+      return { valid: false, error: `Percentage / Grade is required for ${examName}.` };
+    }
+
+    if (!hasYearOfPassing) {
+      return { valid: false, error: `Year of Passing is required for ${examName}.` };
+    }
+
+    if (examName === 'ENTRANCE_EXAM') {
+      const examType = String(record.exam_type || '').trim();
+      if (!examType) {
+        return { valid: false, error: 'Entrance Exam Type is required for ENTRANCE_EXAM.' };
+      }
+    }
+  }
+
   return { valid: true, error: '' };
 };
 

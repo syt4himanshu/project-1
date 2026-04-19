@@ -111,6 +111,14 @@ const parseDatesInPayload = (payload) => {
   return payload;
 };
 
+const stripManagedPhotoFields = (payload) => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  const sanitized = { ...payload };
+  delete sanitized.photo_url;
+  delete sanitized.photo_public_id;
+  return sanitized;
+};
+
 const syncRelatedRecords = async (model, studentId, currentRecords, incoming, tx) => {
   const existingById = new Map((currentRecords || []).map((r) => [r.id, r]));
   const incomingIds = new Set((incoming || []).map((r) => r.id).filter(Boolean));
@@ -193,14 +201,16 @@ const putStudentsMe = async (req, res, next) => {
       await student.save({ transaction: tx });
 
       if (data.personal_info) {
-        const payload = parseDatesInPayload({ ...data.personal_info });
+        const payload = parseDatesInPayload(stripManagedPhotoFields({ ...data.personal_info }));
         delete payload.id;
         delete payload.student_id;
 
-        if (student.personal_info) {
-          await student.personal_info.update(payload, { transaction: tx });
-        } else {
-          await StudentPersonalInfo.create({ ...payload, student_id: student.id }, { transaction: tx });
+        if (Object.keys(payload).length) {
+          if (student.personal_info) {
+            await student.personal_info.update(payload, { transaction: tx });
+          } else {
+            await StudentPersonalInfo.create({ ...payload, student_id: student.id }, { transaction: tx });
+          }
         }
       }
 
@@ -306,29 +316,35 @@ const getStudentMe = async (req, res, next) => {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
     }
 
+    console.log('[GET_PROFILE] Student personal_info photo_url:', student.personal_info?.photo_url);
+
+    const responseData = decodeStudentProfilePayload({
+      id: student.id,
+      uid: student.uid,
+      first_name: student.first_name,
+      middle_name: student.middle_name,
+      last_name: student.last_name,
+      full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+      semester: student.semester,
+      section: student.section,
+      year_of_admission: student.year_of_admission,
+      personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
+      past_education_records: (student.past_education_records || []).map(serializeModel),
+      post_admission_records: (student.post_admission_records || []).map(serializeModel),
+      projects: (student.projects || []).map(serializeModel),
+      internships: (student.internships || []).map(serializeModel),
+      cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
+      cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
+      career_objective: student.career_objective ? serializeModel(student.career_objective) : {},
+      skills: student.skills ? serializeModel(student.skills) : {},
+      swoc: student.swoc ? serializeModel(student.swoc) : {},
+    });
+
+    console.log('[GET_PROFILE] Response personal_info.photo_url:', responseData.personal_info?.photo_url);
+
     return sendResponse(res, {
       success: true,
-      data: decodeStudentProfilePayload({
-        id: student.id,
-        uid: student.uid,
-        first_name: student.first_name,
-        middle_name: student.middle_name,
-        last_name: student.last_name,
-        full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
-        semester: student.semester,
-        section: student.section,
-        year_of_admission: student.year_of_admission,
-        personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
-        past_education_records: (student.past_education_records || []).map(serializeModel),
-        post_admission_records: (student.post_admission_records || []).map(serializeModel),
-        projects: (student.projects || []).map(serializeModel),
-        internships: (student.internships || []).map(serializeModel),
-        cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
-        cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
-        career_objective: student.career_objective ? serializeModel(student.career_objective) : {},
-        skills: student.skills ? serializeModel(student.skills) : {},
-        swoc: student.swoc ? serializeModel(student.swoc) : {},
-      }),
+      data: responseData,
     });
   } catch (error) {
     return next(error);
@@ -392,8 +408,13 @@ const putStudentMe = async (req, res, next) => {
 
       for (const [dataKey, [modelClass, relName]] of Object.entries(modelMappings)) {
         if (!(dataKey in data)) continue;
-        const relPayload = data[dataKey];
+        let relPayload = data[dataKey];
         if (relPayload == null) continue;
+
+        if (dataKey === 'personal_info') {
+          relPayload = stripManagedPhotoFields(relPayload);
+          if (!Object.keys(relPayload || {}).length) continue;
+        }
 
         if (Array.isArray(relPayload)) {
           for (const item of relPayload) parseDatesInPayload(item);
@@ -436,6 +457,8 @@ const putStudentMe = async (req, res, next) => {
 
 const uploadStudentPhoto = async (req, res, next) => {
   try {
+    console.log('[UPLOAD] Starting photo upload for user:', req.currentUser.id);
+
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: ['personal_info'] });
     if (!student) {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
@@ -448,6 +471,8 @@ const uploadStudentPhoto = async (req, res, next) => {
       });
     }
 
+    console.log('[UPLOAD] Student found, ID:', student.id);
+
     if (!req.file) return sendResponse(res, { success: false, status: 400, error: 'No file provided' });
     if (!req.file.mimetype || !req.file.mimetype.startsWith('image/')) {
       return sendResponse(res, { success: false, status: 400, error: 'Invalid file type' });
@@ -456,6 +481,8 @@ const uploadStudentPhoto = async (req, res, next) => {
     if (req.file.size > 2 * 1024 * 1024) {
       return sendResponse(res, { success: false, status: 400, error: 'File too large. Max size is 2MB' });
     }
+
+    console.log('[UPLOAD] File validated:', req.file.mimetype, req.file.size, 'bytes');
 
     if (!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)) {
       return sendResponse(res, {
@@ -467,17 +494,26 @@ const uploadStudentPhoto = async (req, res, next) => {
 
     try {
       if (student.personal_info.photo_public_id) {
+        console.log('[UPLOAD] Deleting old photo:', student.personal_info.photo_public_id);
         await cloudinary.uploader.destroy(student.personal_info.photo_public_id, { invalidate: true });
       }
 
+      console.log('[UPLOAD] Uploading to Cloudinary...');
       const uploadResult = await cloudinary.uploader.upload(
         `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
         { folder: 'students', resource_type: 'image' },
       );
 
+      console.log('[UPLOAD] Cloudinary upload successful:', {
+        secure_url: uploadResult.secure_url,
+        public_id: uploadResult.public_id,
+      });
+
       student.personal_info.photo_url = uploadResult.secure_url;
       student.personal_info.photo_public_id = uploadResult.public_id;
       await student.personal_info.save();
+
+      console.log('[UPLOAD] Database updated with photo_url:', student.personal_info.photo_url);
 
       return sendResponse(res, {
         success: true,
@@ -487,10 +523,12 @@ const uploadStudentPhoto = async (req, res, next) => {
           photo_public_id: student.personal_info.photo_public_id,
         },
       });
-    } catch (_error) {
+    } catch (uploadError) {
+      console.error('[UPLOAD] Cloudinary upload error:', uploadError);
       return sendResponse(res, { success: false, status: 500, error: 'Upload failed' });
     }
   } catch (error) {
+    console.error('[UPLOAD] Unexpected error:', error);
     return next(error);
   }
 };
