@@ -64,10 +64,11 @@ export default function Dashboard() {
     useEffect(() => {
         getProfile()
             .then(r => {
-                console.log('[FRONTEND] Profile data received:', r.data)
-                console.log('[FRONTEND] personal_info:', r.data?.personal_info)
-                console.log('[FRONTEND] photo_url:', r.data?.personal_info?.photo_url)
-                setProfile(r.data)
+                const profileData = (r.data ?? {}) as StudentProfile
+                console.log('[FRONTEND] Profile data received:', profileData)
+                console.log('[FRONTEND] personal_info:', profileData.personal_info)
+                console.log('[FRONTEND] photo_url:', profileData.personal_info?.photo_url)
+                setProfile(profileData)
             })
             .catch(() => { })
             .finally(() => setLoadingProfile(false))
