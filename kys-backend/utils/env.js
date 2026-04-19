@@ -1,6 +1,13 @@
 require('dotenv').config();
 
-const requiredEnv = ['DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET_KEY', 'GROQ_API_KEY'];
+const requiredEnv = [
+  'DATABASE_URL',
+  'SECRET_KEY',
+  'JWT_SECRET_KEY',
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET',
+];
 
 const requireEnv = (name) => {
   const value = process.env[name];
@@ -10,7 +17,13 @@ const requireEnv = (name) => {
 
 const validateEnv = () => {
   requiredEnv.forEach(requireEnv);
-  console.log("GROQ_API_KEY Loaded:", process.env.GROQ_API_KEY ? "YES" : "NO");
+
+  if (!process.env.GROQ_API_KEY) {
+    console.warn('GROQ_API_KEY is not set; AI endpoints will be degraded, but auth/API startup will continue.');
+    return;
+  }
+
+  console.log('GROQ_API_KEY Loaded: YES');
 };
 
 const getCorsSettings = () => {

@@ -17,8 +17,6 @@ const { studentsRouter, studentRouter, apiStudentsRouter } = require('./routes/s
 const { performHealthCheck } = require('./utils/healthCheck');
 const { requestTiming, getTimingStats, getSlowEndpoints } = require('./middleware/requestTiming');
 
-validateEnv();
-
 const app = express();
 app.set('trust proxy', 1);
 const corsOptions = {
@@ -40,7 +38,25 @@ if (forceHttps) {
   });
 }
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        fontSrc: ["'self'", 'https:', 'data:'],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com'],
+        objectSrc: ["'none'"],
+        scriptSrc: ["'self'"],
+        scriptSrcAttr: ["'none'"],
+        styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+  }),
+);
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
@@ -162,14 +178,30 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = Number(process.env.PORT || 5002);
+const HOST = process.env.HOST || '0.0.0.0';
+
+const getStartupErrorDetails = (error) => ({
+  message: 'Failed to start server',
+  errorName: error?.name || 'Error',
+  errorMessage:
+    error?.message ||
+    error?.parent?.message ||
+    error?.original?.message ||
+    'Unknown startup error',
+  errorCode: error?.original?.code || error?.parent?.code || error?.code || 'unknown',
+  stack: error?.stack,
+});
 
 (async () => {
   try {
+    validateEnv();
     await sequelize.authenticate();
-    logger.info('Database connection established.');
-    app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+    logger.info({ message: 'Database connection established.' });
+    app.listen(PORT, HOST, () => {
+      logger.info({ message: 'Server running', port: PORT, host: HOST });
+    });
   } catch (error) {
-    logger.error(`Failed to start server: ${error.message}`);
+    logger.error(getStartupErrorDetails(error));
     process.exit(1);
   }
 })();

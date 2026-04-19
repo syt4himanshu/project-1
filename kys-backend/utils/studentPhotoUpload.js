@@ -17,6 +17,20 @@ const validateStudentPhotoFile = (file) => {
   return null;
 };
 
+const deleteOldStudentPhotoSafely = async (previousPublicId, currentPublicId) => {
+  if (!previousPublicId || previousPublicId === currentPublicId) return;
+
+  try {
+    await cloudinary.uploader.destroy(previousPublicId, { invalidate: true });
+    console.log('[UPLOAD] Successfully deleted old photo:', previousPublicId);
+  } catch (error) {
+    console.error('Cloudinary cleanup failed', {
+      oldPublicId: previousPublicId,
+      error: error.message || error,
+    });
+  }
+};
+
 const uploadStudentPhotoForRecord = async (student, file) => {
   if (!student?.personal_info) {
     return {
@@ -58,18 +72,8 @@ const uploadStudentPhotoForRecord = async (student, file) => {
 
     invalidateMenteesCache(student.mentor_id);
 
-    // Fail-safe: Old photo deletion failure does NOT block upload success
-    if (previousPublicId && previousPublicId !== uploadResult.public_id) {
-      try {
-        await cloudinary.uploader.destroy(previousPublicId, { invalidate: true });
-        console.log('[UPLOAD] Successfully deleted old photo:', previousPublicId);
-      } catch (destroyError) {
-        console.error('[UPLOAD] Cloudinary cleanup failed (non-blocking):', {
-          oldPublicId: previousPublicId,
-          error: destroyError.message || destroyError,
-        });
-      }
-    }
+    // Fail-safe: cleanup never blocks a successful upload.
+    await deleteOldStudentPhotoSafely(previousPublicId, uploadResult.public_id);
 
     return {
       ok: true,
