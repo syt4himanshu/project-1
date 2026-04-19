@@ -80,6 +80,28 @@ export function useAddMentoringMinute(uid: string) {
   })
 }
 
+export function useUploadMenteePhoto(uid: string, studentId: number | null) {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (file: File) => {
+      if (!studentId) {
+        throw new Error('Student identifier is missing.')
+      }
+
+      return facultyClient.uploadMenteePhoto(studentId, file)
+    },
+    onSuccess: async () => {
+      // Invalidate ALL mentee-related queries to eliminate stale caching
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: facultyKeys.mentees() }), // Full list
+        qc.invalidateQueries({ queryKey: ['faculty', 'mentees'] }), // All paginated pages
+        qc.invalidateQueries({ queryKey: facultyKeys.mentee(uid) }), // Specific mentee detail
+      ])
+    },
+  })
+}
+
 // ─── Chatbot ─────────────────────────────────────────────────────────────────
 
 export function useFacultyChatbot() {

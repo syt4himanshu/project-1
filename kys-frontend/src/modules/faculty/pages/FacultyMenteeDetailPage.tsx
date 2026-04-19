@@ -1,8 +1,10 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../shared/ui'
-import { useAddMentoringMinute, useMentee, useMenteeMinutes } from '../hooks'
+import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
+import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
+import { useAddMentoringMinute, useMentee, useMenteeMinutes, useUploadMenteePhoto } from '../hooks'
 import { AIRemarksAssistant } from '../components/AIRemarksAssistant'
 import '../components/AIRemarksAssistant.css'
 
@@ -43,6 +45,7 @@ export function FacultyMenteeDetailPage() {
   const personalInfo = (student?.personal_info && typeof student.personal_info === 'object'
     ? (student.personal_info as Record<string, unknown>)
     : {})
+  const studentPhotoUrl = useMemo(() => extractStudentPhotoUrl(student), [student])
   const program = String(
     personalInfo.department ??
     personalInfo.program ??
@@ -50,6 +53,15 @@ export function FacultyMenteeDetailPage() {
     'N/A',
   )
   const minutes = useMemo(() => minutesQuery.data?.mentoring_minutes ?? [], [minutesQuery.data?.mentoring_minutes])
+  const uploadPhotoMutation = useUploadMenteePhoto(uid, student?.id ?? null)
+
+  useEffect(() => {
+    if (!student) return
+    console.log('[FACULTY] mentee detail photoUrl:', {
+      uid: student.uid,
+      photo_url: studentPhotoUrl,
+    })
+  }, [student, studentPhotoUrl])
 
   const closeRemarksModal = () => {
     setRemarksOpen(false)
@@ -86,6 +98,18 @@ export function FacultyMenteeDetailPage() {
       await minutesQuery.refetch()
     } catch (error) {
       setFormError(toApiErrorMessage(error, 'Unable to submit remarks.'))
+    }
+  }
+
+  const handlePhotoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      await uploadPhotoMutation.mutateAsync(file)
+      // Cache invalidation in mutation handles UI refresh automatically
+    } finally {
+      event.target.value = ''
     }
   }
 
@@ -134,12 +158,28 @@ export function FacultyMenteeDetailPage() {
 
       <section className="faculty-mentoring-page__student-card">
         <div className="faculty-mentoring-page__student-left">
-          <div className="faculty-mentoring-page__avatar">{initials(student.full_name)}</div>
+          <PhotoAvatar
+            url={studentPhotoUrl}
+            alt={`${student.full_name} profile`}
+            className="faculty-mentoring-page__avatar faculty-mentoring-page__avatar--image"
+            loading="eager"
+            fallback={<div className="faculty-mentoring-page__avatar">{initials(student.full_name)}</div>}
+          />
           <div>
             <h2>{student.full_name}</h2>
             <p><strong>UID:</strong> {student.uid}</p>
             <p><strong>Program:</strong> {program}</p>
             <p><strong>Current Semester:</strong> {student.semester}</p>
+            <label className="mt-2 block text-xs text-[#4f5f78]">
+              Upload / replace student photo
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                disabled={uploadPhotoMutation.isPending}
+                className="mt-2 block w-full rounded-lg border border-[#d9e1ec] px-3 py-2 text-sm"
+              />
+            </label>
           </div>
         </div>
 

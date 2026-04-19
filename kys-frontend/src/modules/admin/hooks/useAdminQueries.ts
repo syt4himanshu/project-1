@@ -292,6 +292,35 @@ export function useAdminStudentDetailQuery(studentId: number | null) {
   })
 }
 
+export function useAdminUploadStudentPhotoMutation(studentId: number | null) {
+  const { token } = useAuth()
+  const queryClient = useQueryClient()
+  const toast = useToast()
+
+  return useMutation({
+    mutationFn: (file: File) => {
+      if (!studentId) {
+        throw new Error('Student identifier is missing.')
+      }
+
+      return adminApi.uploadStudentPhoto({ token: ensureToken(token), studentId, file })
+    },
+    onSuccess: async (result) => {
+      // Invalidate ALL student-related queries to eliminate stale caching
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.users() }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'students'] }), // All student queries
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.studentDetail(studentId ?? 0) }),
+      ])
+
+      toast.success(result.message)
+    },
+    onError: (error) => {
+      toast.error(toApiErrorMessage(error, 'Unable to upload student photo.'))
+    },
+  })
+}
+
 export function useAdminAllocationQuery() {
   const { token } = useAuth()
 
