@@ -62,7 +62,7 @@ function mergeStudentProfileData(
   merged.personal_info = {
     ...serverPersonalInfo,
     ...draftPersonalInfo,
-    photo_url: preferNonEmptyString(draftPersonalInfo.photo_url, serverPersonalInfo.photo_url),
+    photoUrl: preferNonEmptyString(draftPersonalInfo.photoUrl, serverPersonalInfo.photoUrl),
     photo_public_id: preferNonEmptyString(draftPersonalInfo.photo_public_id, serverPersonalInfo.photo_public_id),
   }
 

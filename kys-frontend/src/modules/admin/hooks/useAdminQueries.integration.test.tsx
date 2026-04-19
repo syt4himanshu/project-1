@@ -67,7 +67,7 @@ describe('Admin query mutations integration', () => {
         username: 'admin',
         role: 'admin',
         name: 'Admin User',
-        profilePhotoUrl: null,
+        photoUrl: null,
         status: 'Active',
         createdAt: '2026-01-01',
       },
@@ -76,7 +76,7 @@ describe('Admin query mutations integration', () => {
         username: 'student-01',
         role: 'student',
         name: 'Student One',
-        profilePhotoUrl: null,
+        photoUrl: null,
         status: 'Active',
         createdAt: '2026-01-02',
       },
@@ -92,7 +92,7 @@ describe('Admin query mutations integration', () => {
     queryClient.setQueryData(adminQueryKeys.users(), users)
     queryClient.setQueryData(adminQueryKeys.statistics(), stats)
 
-    let rejectDelete: (error: Error) => void = () => {}
+    let rejectDelete: (error: Error) => void = () => { }
     const deleteRequest = new Promise<{ message: string }>((_resolve, reject) => {
       rejectDelete = (error: Error) => reject(error)
     })

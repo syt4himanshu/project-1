@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { DataTable, QueryState, SectionShell, type TableColumn } from '../../../shared/ui'
+import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
 import type { MenteeRow } from '../api'
 import { useMentees } from '../hooks'
 
@@ -45,7 +46,26 @@ export function FacultyMenteesPage() {
       {
         id: 'name',
         header: 'Name',
-        cell: (row) => row.full_name,
+        cell: (row) => (
+          <div className="flex items-center gap-3">
+            <PhotoAvatar
+              url={row.photo_url}
+              alt={`${row.full_name} profile`}
+              className="h-9 w-9 rounded-full object-cover"
+              fallback={(
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e4ebf7] text-xs font-bold text-[#2a4d83]">
+                  {row.full_name
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((part) => part[0]?.toUpperCase() ?? '')
+                    .join('')}
+                </div>
+              )}
+            />
+            <span>{row.full_name}</span>
+          </div>
+        ),
       },
       {
         id: 'semester',

@@ -20,6 +20,7 @@ import { AddUserModal } from '../components/users/AddUserModal'
 import { BulkUploadReport } from '../components/users/BulkUploadReport'
 import { ResetPasswordModal } from '../components/users/ResetPasswordModal'
 import { downloadCsvTemplate, parseCsv } from '../utils/csv'
+import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
 
 const USER_ROLE_FILTERS = ['all', 'admin', 'faculty', 'student', 'unknown'] as const
 
@@ -118,6 +119,14 @@ export function AdminUsersPage() {
   const bulkStudentsMutation = useBulkRegisterStudentsMutation()
   const bulkFacultyMutation = useBulkRegisterFacultyMutation()
 
+  useEffect(() => {
+    if (!usersQuery.data) return
+    console.log('[ADMIN] photoUrls:', usersQuery.data.map((row) => ({
+      username: row.username,
+      photoUrl: row.photoUrl,
+    })))
+  }, [usersQuery.data])
+
   const filteredRows = useMemo(() => {
     const rows = usersQuery.data ?? []
     const search = searchValue.trim().toLowerCase()
@@ -142,12 +151,12 @@ export function AdminUsersPage() {
         header: 'User',
         cell: (row) => (
           <div className="admin-identity">
-            {row.profilePhotoUrl ? (
-              <img
-                src={resolveImageUrl(row.profilePhotoUrl) ?? undefined}
+            {row.photoUrl ? (
+              <PhotoAvatar
+                url={resolveImageUrl(row.photoUrl)}
                 alt={`${row.name} profile`}
                 className="admin-avatar"
-                loading="lazy"
+                fallback={<span className="admin-avatar admin-avatar--placeholder">{avatarInitials(row)}</span>}
               />
             ) : (
               <span className="admin-avatar admin-avatar--placeholder">{avatarInitials(row)}</span>

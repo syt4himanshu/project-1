@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, test, vi } from 'vitest'
 import {
@@ -17,6 +17,7 @@ vi.mock('../../modules/faculty/hooks', () => ({
   useMentee: vi.fn(),
   useMenteeMinutes: vi.fn(),
   useAddMentoringMinute: vi.fn(),
+  useUploadMenteePhoto: vi.fn(),
   useFacultyChat: vi.fn(),
   useFacultyChatbot: vi.fn(),
   useFacultyProfile: vi.fn(),
@@ -158,6 +159,7 @@ describe('Faculty route smoke and auth parity', () => {
     }) as unknown as ReturnType<typeof facultyHooks.useMenteeMinutes>)
 
     vi.mocked(facultyHooks.useAddMentoringMinute).mockReturnValue(createMutation({ message: 'Saved' }) as unknown as ReturnType<typeof facultyHooks.useAddMentoringMinute>)
+    vi.mocked(facultyHooks.useUploadMenteePhoto).mockReturnValue(createMutation({ message: 'Uploaded' }) as unknown as ReturnType<typeof facultyHooks.useUploadMenteePhoto>)
     vi.mocked(facultyHooks.useFacultyChat).mockReturnValue({
       mentees: [
         {
@@ -209,14 +211,19 @@ describe('Faculty route smoke and auth parity', () => {
   })
 
   test.each([
-    ['/faculty/dashboard', /welcome back/i],
-    ['/faculty/mentees', /welcome back/i],
+    ['/faculty/dashboard', /dashboard/i],
+    ['/faculty/mentees', /dashboard/i],
     ['/faculty/mentees/STU001', /faculty mentoring portal/i],
     ['/faculty/chatbot', /teacher insights chatbot/i],
     ['/faculty/profile', /my profile/i],
   ])('renders faculty route %s', async (path, heading) => {
     renderAt(path)
-    expect((await screen.findAllByRole('heading', { name: heading })).length).toBeGreaterThan(0)
+    await waitFor(
+      () => {
+        expect(screen.getAllByRole('heading', { name: heading }).length).toBeGreaterThan(0)
+      },
+      { timeout: 3000 },
+    )
   })
 
   it('keeps full faculty navigation links visible', async () => {

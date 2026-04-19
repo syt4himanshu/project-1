@@ -138,7 +138,7 @@ export function normalizeAdminUser(raw: AdminUserApiResponse): AdminUserSummary 
     username,
     role,
     name,
-    profilePhotoUrl: normalizeDisplayText(raw.profilePhotoUrl ?? raw.profile_photo_url) || null,
+    photoUrl: normalizeDisplayText(raw.photoUrl) || null,
     status: normalizeDisplayText(raw.status, 'Active'),
     createdAt: normalizeDisplayText(raw.createdAt ?? raw.created_at ?? raw.created, '2024-01-01'),
   }

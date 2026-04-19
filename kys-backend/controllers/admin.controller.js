@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { sequelize, User, Student, Faculty, StudentPersonalInfo } = require('../models');
-const { splitFullName, buildFullName } = require('../utils/helpers');
+const { splitFullName, buildFullName, serializeModel } = require('../utils/helpers');
 const { serializeStudent } = require('../utils/serializers');
 
 const verifyPassword = (password, hash) => {
@@ -470,10 +470,10 @@ const listUsers = async (_req, res, next) => {
           ) || u.student_profile?.uid || u.username
           : u.role === 'faculty'
             ? buildFullName(u.faculty_profile?.first_name, '', u.faculty_profile?.last_name) ||
-              u.faculty_profile?.email ||
-              u.username
+            u.faculty_profile?.email ||
+            u.username
             : u.username,
-      profile_photo_url: u.student_profile?.personal_info?.photo_url || null,
+      photoUrl: serializeModel(u.student_profile?.personal_info)?.photoUrl || null,
       status: 'Active',
       created: '2024-01-01',
     }));
@@ -595,10 +595,10 @@ const createUser = async (req, res, next) => {
       if (studentPayload) {
         const studentNames = studentPayload.first_name
           ? {
-              first: studentPayload.first_name,
-              middle: studentPayload.middle_name || '',
-              last: studentPayload.last_name || '',
-            }
+            first: studentPayload.first_name,
+            middle: studentPayload.middle_name || '',
+            last: studentPayload.last_name || '',
+          }
           : splitFullName(studentPayload.name || '');
 
         const student = await Student.create(

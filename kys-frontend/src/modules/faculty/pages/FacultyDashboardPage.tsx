@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/providers/auth-context'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { QueryState } from '../../../shared/ui'
+import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
 import { StudentPreviewModal } from '../components/StudentPreviewModal'
 import { useMentees } from '../hooks'
 
@@ -60,6 +61,13 @@ export function FacultyDashboardPage() {
   const totalSemesters = semesterOptions.length
   const totalBatches = batchOptions.length
   const totalSections = sectionOptions.length
+
+  useEffect(() => {
+    console.log('[FACULTY] mentee photo_urls:', mentees.map((row) => ({
+      uid: row.uid,
+      photo_url: row.photo_url ?? null,
+    })))
+  }, [mentees])
 
   return (
     <div className="faculty-dashboard faculty-dashboard--teacher">
@@ -182,7 +190,12 @@ export function FacultyDashboardPage() {
               filteredMentees.map((row) => (
                 <article className="faculty-student-row" key={row.id || row.uid}>
                   <div className="faculty-student-row__left">
-                    <div className="faculty-student-row__avatar">{getInitials(row.full_name)}</div>
+                    <PhotoAvatar
+                      url={row.photo_url}
+                      alt={`${row.full_name} profile`}
+                      className="faculty-student-row__avatar faculty-student-row__avatar--image"
+                      fallback={<div className="faculty-student-row__avatar">{getInitials(row.full_name)}</div>}
+                    />
                     <div>
                       <p className="faculty-student-row__name">{row.full_name}</p>
                       <div className="faculty-student-row__meta">

@@ -14,7 +14,7 @@ export interface AdminUserSummary {
   username: string
   role: AdminUserRole
   name: string
-  profilePhotoUrl: string | null
+  photoUrl: string | null
   status: string
   createdAt: string
 }
@@ -216,8 +216,7 @@ export interface AdminUserApiResponse {
   role?: unknown
   name?: unknown
   full_name?: unknown
-  profile_photo_url?: unknown
-  profilePhotoUrl?: unknown
+  photoUrl?: unknown
   status?: unknown
   created?: unknown
   created_at?: unknown

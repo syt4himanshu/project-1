@@ -42,6 +42,12 @@ const serializeModel = (obj) => {
     if (value instanceof Date) data[key] = value.toISOString().split('T')[0];
   });
 
+  // Transform photo_url to photoUrl for API consistency
+  if ('photo_url' in data) {
+    data.photoUrl = data.photo_url;
+    delete data.photo_url;
+  }
+
   return data;
 };
 

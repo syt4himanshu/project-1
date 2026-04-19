@@ -5,6 +5,7 @@ export {
   useMentee,
   useMenteeMinutes,
   useAddMentoringMinute,
+  useUploadMenteePhoto,
   useFacultyChatbot,
   useChangePassword,
 } from './useFacultyQueries'

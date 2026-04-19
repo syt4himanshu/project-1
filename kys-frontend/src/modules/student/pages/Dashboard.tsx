@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMentor, getMentoringMinutes, getProfile } from '../api/student'
 import ChangePasswordModal from '../components/ChangePasswordModal'
+import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
+import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
 
 interface MentoringMinute {
     id: number
@@ -24,10 +26,8 @@ interface Mentor {
 
 interface StudentProfile {
     full_name?: string
-    profile_photo?: string
-    photo_url?: string
     personal_info?: {
-        photo_url?: string
+        photoUrl?: string
     }
 }
 
@@ -67,7 +67,7 @@ export default function Dashboard() {
                 const profileData = (r.data ?? {}) as StudentProfile
                 console.log('[FRONTEND] Profile data received:', profileData)
                 console.log('[FRONTEND] personal_info:', profileData.personal_info)
-                console.log('[FRONTEND] photo_url:', profileData.personal_info?.photo_url)
+                console.log('[FRONTEND] photoUrl:', profileData.personal_info?.photoUrl)
                 setProfile(profileData)
             })
             .catch(() => { })
@@ -93,18 +93,10 @@ export default function Dashboard() {
     }, [profile?.full_name, user?.username])
 
     const studentPhotoUrl = useMemo(() => {
-        const nested = profile?.personal_info?.photo_url?.trim()
-        console.log('[FRONTEND] Computing studentPhotoUrl - nested:', nested)
-        if (nested) return nested
-
-        const topLevel = profile?.photo_url?.trim()
-        console.log('[FRONTEND] Computing studentPhotoUrl - topLevel:', topLevel)
-        if (topLevel) return topLevel
-
-        const legacy = profile?.profile_photo?.trim()
-        console.log('[FRONTEND] Computing studentPhotoUrl - legacy:', legacy)
-        return legacy || ''
-    }, [profile?.personal_info?.photo_url, profile?.photo_url, profile?.profile_photo])
+        const resolved = extractStudentPhotoUrl(profile)
+        console.log('[FRONTEND] Resolved studentPhotoUrl:', resolved)
+        return resolved ?? ''
+    }, [profile])
 
     return (
         <div className="min-h-screen bg-[#edf2f8] text-[#1c2533]">
@@ -157,11 +149,13 @@ export default function Dashboard() {
                         </p>
                     </div>
                     <div className="ml-0 flex h-24 w-24 overflow-hidden items-center justify-center rounded-full border-4 border-[#f0c36b]/60 bg-[#102846] text-2xl font-bold text-white shadow-xl md:ml-6">
-                        {studentPhotoUrl ? (
-                            <img src={studentPhotoUrl} alt="Profile" className="h-24 w-24 object-cover" />
-                        ) : (
-                            initials(studentName)
-                        )}
+                        <PhotoAvatar
+                            url={studentPhotoUrl}
+                            alt="Profile"
+                            className="h-24 w-24 object-cover"
+                            loading="eager"
+                            fallback={initials(studentName)}
+                        />
                     </div>
                 </div>
             </section>
@@ -176,11 +170,12 @@ export default function Dashboard() {
                         <div className="mt-6 rounded-2xl border border-[#d8dfea] bg-white p-4">
                             <div className="flex items-center gap-3">
                                 <div className="flex h-12 w-12 shrink-0 overflow-hidden items-center justify-center rounded-full bg-[#e8eef8] text-sm font-bold text-[#2f4d7a]">
-                                    {studentPhotoUrl ? (
-                                        <img src={studentPhotoUrl} alt="Profile" className="h-12 w-12 object-cover" />
-                                    ) : (
-                                        initials(studentName)
-                                    )}
+                                    <PhotoAvatar
+                                        url={studentPhotoUrl}
+                                        alt="Profile"
+                                        className="h-12 w-12 object-cover"
+                                        fallback={initials(studentName)}
+                                    />
                                 </div>
                                 <p className="text-sm text-[#6a758a]">
                                     Profile information is synced from your student form details.

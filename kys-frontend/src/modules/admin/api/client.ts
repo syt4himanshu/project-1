@@ -228,6 +228,21 @@ async function getStudentDetail({ token, studentId }: AdminApiRequestOptions & {
   return normalizeAdminStudentDetail(payload)
 }
 
+async function uploadStudentPhoto(
+  { token, studentId, file }: AdminApiRequestOptions & { studentId: number; file: File },
+): Promise<AdminMutationResult> {
+  const formData = new FormData()
+  formData.append('photo', file)
+
+  const result = await requestJson<unknown>(ENDPOINTS.students.uploadPhoto(studentId), {
+    method: 'POST',
+    token,
+    body: formData,
+  })
+
+  return normalizeMutationResult(result)
+}
+
 async function listAllocation({ token }: AdminApiRequestOptions): Promise<AdminAllocationEntry[]> {
   const payload = await requestJson<AdminAllocationApiResponse[]>(ENDPOINTS.admin.allocation, {
     method: 'GET',
@@ -421,6 +436,7 @@ export const adminApi = {
   getFacultyMentees,
   listStudentSummaries,
   getStudentDetail,
+  uploadStudentPhoto,
   listAllocation,
   generateAllocation,
   confirmAllocation,

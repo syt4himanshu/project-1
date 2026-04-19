@@ -49,11 +49,11 @@ describe('AIRemarksAssistant', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: /overall summary/i }))
+    await user.click(screen.getByRole('button', { name: /placement-focused advice/i }))
 
     await waitFor(() => {
       expect(facultyClient.askAIRemarks).toHaveBeenCalledWith({
-        query: 'Provide an overall mentoring summary for Anish Kishor Bezalwar',
+        query: 'Provide placement-focused advice for Anish Kishor Bezalwar',
         studentContext,
       })
     })
@@ -77,7 +77,7 @@ describe('AIRemarksAssistant', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: /overall summary/i }))
+    await user.click(screen.getByRole('button', { name: /placement-focused advice/i }))
 
     expect(await screen.findByText(/your session expired\. please sign in again\./i)).toBeInTheDocument()
     expect(await screen.findByText(/sorry, i encountered an error\. please try again\./i)).toBeInTheDocument()

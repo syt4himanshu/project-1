@@ -10,6 +10,7 @@ const {
 const { generateFacultyInsights } = require('../services/groq.service');
 const { sendResponse } = require('../utils/responseWrapper');
 const logger = require('../utils/logger');
+const { getMenteesCache, setMenteesCache } = require('../utils/facultyMenteesCache');
 
 const includeAll = [
   'personal_info',
@@ -23,16 +24,6 @@ const includeAll = [
   'skills',
   'swoc',
 ];
-
-const cache = new Map();
-const CACHE_TTL = 60 * 1000;
-const setCache = (key, data) => cache.set(key, { data, expiry: Date.now() + CACHE_TTL });
-const getCache = (key) => {
-  const item = cache.get(key);
-  if (item && item.expiry > Date.now()) return item.data;
-  if (item) cache.delete(key);
-  return null;
-};
 
 const getMyFaculty = async (req, res, next) => {
   try {
@@ -80,8 +71,7 @@ const getMyMentees = async (req, res, next) => {
     
     if (!faculty) return sendResponse(res, { success: false, status: 404, error: 'Faculty profile not found' });
 
-    const cacheKey = `mentees_${faculty.id}_${limit}_${offset}`;
-    const cachedData = getCache(cacheKey);
+    const cachedData = getMenteesCache(faculty.id, limit, offset);
     if (cachedData) {
       logger.info({ reqId: req.id, message: 'Serving mentees from cache', facultyId: faculty.id });
       return sendResponse(res, { success: true, data: cachedData });
@@ -96,7 +86,7 @@ const getMyMentees = async (req, res, next) => {
     });
     
     const data = mentees.map((s) => ({ id: s.id, first_name: s.first_name, middle_name: s.middle_name, last_name: s.last_name, ...serializeStudent(s) }));
-    setCache(cacheKey, data);
+    setMenteesCache(faculty.id, limit, offset, data);
 
     return sendResponse(res, { success: true, data });
   } catch (error) {

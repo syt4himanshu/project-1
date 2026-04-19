@@ -30,8 +30,8 @@ async function testApiResponse() {
         console.log('- Success:', profileResponse.data.success);
         console.log('- Full Name:', profileResponse.data.data?.full_name);
         console.log('- personal_info exists:', !!profileResponse.data.data?.personal_info);
-        console.log('- personal_info.photo_url:', profileResponse.data.data?.personal_info?.photo_url);
-        console.log('- photo_url (top level):', profileResponse.data.data?.photo_url);
+        console.log('- personal_info.photoUrl:', profileResponse.data.data?.personal_info?.photoUrl);
+        console.log('- photoUrl (top level):', profileResponse.data.data?.photoUrl);
 
         console.log('\n=== Test Complete ===');
     } catch (error) {

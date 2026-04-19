@@ -11,6 +11,7 @@ import type {
     MenteesPage,
     MinuteRow,
 } from './types'
+import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,7 @@ export function normalizeMenteeRow(raw: unknown): MenteeRow {
         id: num(r.id),
         uid: str(r.uid),
         full_name: fullName,
+        photo_url: extractStudentPhotoUrl(r),
         first_name: firstName || undefined,
         middle_name: middleName || undefined,
         last_name: lastName || undefined,

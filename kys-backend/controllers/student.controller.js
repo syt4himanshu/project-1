@@ -1,4 +1,3 @@
-const cloudinary = require('cloudinary').v2;
 const { Op } = require('sequelize');
 const {
   sequelize,
@@ -26,12 +25,7 @@ const {
 const { serializeStudent, serializeStudentSummary } = require('../utils/serializers');
 const { sendResponse } = require('../utils/responseWrapper');
 const { encodeStudentProfilePayload, decodeStudentProfilePayload } = require('../utils/profileCodec');
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+const { uploadStudentPhotoForRecord } = require('../utils/studentPhotoUpload');
 
 const includeAll = [
   'personal_info',
@@ -114,7 +108,7 @@ const parseDatesInPayload = (payload) => {
 const stripManagedPhotoFields = (payload) => {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
   const sanitized = { ...payload };
-  delete sanitized.photo_url;
+  delete sanitized.photoUrl;
   delete sanitized.photo_public_id;
   return sanitized;
 };
@@ -316,7 +310,8 @@ const getStudentMe = async (req, res, next) => {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
     }
 
-    console.log('[GET_PROFILE] Student personal_info photo_url:', student.personal_info?.photo_url);
+    const serializedPersonalInfo = serializeModel(student.personal_info);
+    console.log('[GET_PROFILE] Student personal_info photoUrl:', serializedPersonalInfo?.photoUrl);
 
     const responseData = decodeStudentProfilePayload({
       id: student.id,
@@ -340,7 +335,7 @@ const getStudentMe = async (req, res, next) => {
       swoc: student.swoc ? serializeModel(student.swoc) : {},
     });
 
-    console.log('[GET_PROFILE] Response personal_info.photo_url:', responseData.personal_info?.photo_url);
+    console.log('[GET_PROFILE] Response personal_info.photoUrl:', responseData.personal_info?.photoUrl);
 
     return sendResponse(res, {
       success: true,
@@ -463,72 +458,67 @@ const uploadStudentPhoto = async (req, res, next) => {
     if (!student) {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
     }
-    if (!student.personal_info) {
-      return sendResponse(res, {
-        success: false,
-        status: 400,
-        error: 'Please save personal information first, then upload photo.',
-      });
-    }
-
     console.log('[UPLOAD] Student found, ID:', student.id);
+    console.log('[UPLOAD] File metadata:', req.file?.mimetype, req.file?.size, 'bytes');
 
-    if (!req.file) return sendResponse(res, { success: false, status: 400, error: 'No file provided' });
-    if (!req.file.mimetype || !req.file.mimetype.startsWith('image/')) {
-      return sendResponse(res, { success: false, status: 400, error: 'Invalid file type' });
-    }
-
-    if (req.file.size > 2 * 1024 * 1024) {
-      return sendResponse(res, { success: false, status: 400, error: 'File too large. Max size is 2MB' });
-    }
-
-    console.log('[UPLOAD] File validated:', req.file.mimetype, req.file.size, 'bytes');
-
-    if (!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)) {
+    const result = await uploadStudentPhotoForRecord(student, req.file);
+    if (!result.ok) {
       return sendResponse(res, {
         success: false,
-        status: 500,
-        error: 'Cloudinary credentials are missing on the server',
+        status: result.status,
+        error: result.error,
       });
     }
 
-    try {
-      if (student.personal_info.photo_public_id) {
-        console.log('[UPLOAD] Deleting old photo:', student.personal_info.photo_public_id);
-        await cloudinary.uploader.destroy(student.personal_info.photo_public_id, { invalidate: true });
-      }
+    console.log('[UPLOAD] Database updated with photoUrl:', result.data.photoUrl);
 
-      console.log('[UPLOAD] Uploading to Cloudinary...');
-      const uploadResult = await cloudinary.uploader.upload(
-        `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
-        { folder: 'students', resource_type: 'image' },
-      );
-
-      console.log('[UPLOAD] Cloudinary upload successful:', {
-        secure_url: uploadResult.secure_url,
-        public_id: uploadResult.public_id,
-      });
-
-      student.personal_info.photo_url = uploadResult.secure_url;
-      student.personal_info.photo_public_id = uploadResult.public_id;
-      await student.personal_info.save();
-
-      console.log('[UPLOAD] Database updated with photo_url:', student.personal_info.photo_url);
-
-      return sendResponse(res, {
-        success: true,
-        data: {
-          message: 'Upload successful',
-          photo_url: student.personal_info.photo_url,
-          photo_public_id: student.personal_info.photo_public_id,
-        },
-      });
-    } catch (uploadError) {
-      console.error('[UPLOAD] Cloudinary upload error:', uploadError);
-      return sendResponse(res, { success: false, status: 500, error: 'Upload failed' });
-    }
+    return sendResponse(res, {
+      success: true,
+      data: result.data,
+    });
   } catch (error) {
     console.error('[UPLOAD] Unexpected error:', error);
+    return next(error);
+  }
+};
+
+const uploadStudentPhotoByPortal = async (req, res, next) => {
+  try {
+    const studentId = Number(req.params.id);
+    if (!studentId) {
+      return sendResponse(res, { success: false, status: 400, error: 'Invalid student id' });
+    }
+
+    const where = { id: studentId };
+    if (req.currentUser.role === 'faculty') {
+      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+      if (!faculty) {
+        return sendResponse(res, { success: false, status: 404, error: 'Faculty profile not found' });
+      }
+      where.mentor_id = faculty.id;
+    }
+
+    const student = await Student.findOne({ where, include: ['personal_info'] });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student not found' });
+    }
+
+    console.log('[UPLOAD] Starting portal upload for student:', student.id, 'by role:', req.currentUser.role);
+
+    const result = await uploadStudentPhotoForRecord(student, req.file);
+    if (!result.ok) {
+      return sendResponse(res, {
+        success: false,
+        status: result.status,
+        error: result.error,
+      });
+    }
+
+    return sendResponse(res, {
+      success: true,
+      data: result.data,
+    });
+  } catch (error) {
     return next(error);
   }
 };
@@ -690,4 +680,5 @@ module.exports = {
   searchStudents,
   getStudentById,
   updateStudentMentorByAdmin,
+  uploadStudentPhotoByPortal,
 };

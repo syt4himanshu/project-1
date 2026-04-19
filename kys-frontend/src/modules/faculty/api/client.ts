@@ -70,6 +70,17 @@ export const facultyClient = {
       token: token(),
     }),
 
+  uploadMenteePhoto: (studentId: number, file: File) => {
+    const formData = new FormData()
+    formData.append('photo', file)
+
+    return requestJson<MutationResult>(ENDPOINTS.students.uploadPhoto(studentId), {
+      method: 'POST',
+      body: formData,
+      token: token(),
+    })
+  },
+
   askChatbot: (data: ChatbotRequest, signal?: AbortSignal) =>
     requestJson<ChatbotResponse>(ENDPOINTS.faculty.chatbot, {
       method: 'POST',

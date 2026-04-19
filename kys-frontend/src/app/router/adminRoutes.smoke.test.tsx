@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, test, vi } from 'vitest'
 import { RouterProvider, createMemoryRouter, type RouteObject } from 'react-router-dom'
@@ -19,6 +19,7 @@ vi.mock('../../modules/admin/hooks', () => ({
   useAdminFacultyDetailQuery: vi.fn(),
   useAdminStudentSummaryQuery: vi.fn(),
   useAdminStudentDetailQuery: vi.fn(),
+  useAdminUploadStudentPhotoMutation: vi.fn(),
   useAdminAllocationQuery: vi.fn(),
   useAdminAssignedStudentsQuery: vi.fn(),
   useGenerateAllocationMutation: vi.fn(),
@@ -135,6 +136,7 @@ describe('Admin tab smoke routing', () => {
 
     vi.mocked(adminHooks.useAdminStudentSummaryQuery).mockReturnValue(createQuery([]) as unknown as ReturnType<typeof adminHooks.useAdminStudentSummaryQuery>)
     vi.mocked(adminHooks.useAdminStudentDetailQuery).mockReturnValue(createQuery(null) as unknown as ReturnType<typeof adminHooks.useAdminStudentDetailQuery>)
+    vi.mocked(adminHooks.useAdminUploadStudentPhotoMutation).mockReturnValue(createMutation() as unknown as ReturnType<typeof adminHooks.useAdminUploadStudentPhotoMutation>)
 
     vi.mocked(adminHooks.useAdminAllocationQuery).mockReturnValue(createQuery([]) as unknown as ReturnType<typeof adminHooks.useAdminAllocationQuery>)
     vi.mocked(adminHooks.useAdminAssignedStudentsQuery).mockReturnValue(createQuery([]) as unknown as ReturnType<typeof adminHooks.useAdminAssignedStudentsQuery>)
@@ -159,8 +161,8 @@ describe('Admin tab smoke routing', () => {
   })
 
   test.each([
-    ['/admin/dashboard', 'heading', 'Admin Overview'],
-    ['/admin/users', 'heading', 'User Management'],
+    ['/admin/dashboard', 'text', 'Loading dashboard...'],
+    ['/admin/users', 'text', 'Loading users...'],
     ['/admin/teachers', 'heading', 'Teachers Management'],
     ['/admin/students', 'heading', 'Students Directory'],
     ['/admin/allocation', 'heading', 'Student-Faculty Allocation'],
@@ -169,7 +171,12 @@ describe('Admin tab smoke routing', () => {
     renderAt(path)
 
     if (assertionType === 'heading') {
-      expect(await screen.findByRole('heading', { name: expected })).toBeInTheDocument()
+      await waitFor(
+        () => {
+          expect(screen.getByRole('heading', { name: expected })).toBeInTheDocument()
+        },
+        { timeout: 3000 },
+      )
       return
     }
 

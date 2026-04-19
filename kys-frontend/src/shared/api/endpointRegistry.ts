@@ -27,6 +27,7 @@ export const ENDPOINTS = {
   },
   students: {
     search: '/api/students',
+    uploadPhoto: (studentId: number) => `/api/students/${studentId}/upload-photo`,
     mentor: '/api/students/me/mentor',
     mentoringMinutes: '/api/students/me/mentoring-minutes',
   },

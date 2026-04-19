@@ -19,6 +19,7 @@ export interface MenteeRow {
   id: number
   uid: string
   full_name: string
+  photo_url?: string | null
   first_name?: string
   middle_name?: string
   last_name?: string
