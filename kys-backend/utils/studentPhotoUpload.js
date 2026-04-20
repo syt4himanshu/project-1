@@ -1,5 +1,7 @@
 const cloudinary = require('cloudinary').v2;
 const { invalidateMenteesCache } = require('./facultyMenteesCache');
+const logger = require('./logger');
+const { ensureStudentPersonalInfo, isControlledProfileError } = require('./studentPersonalInfo');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -32,14 +34,6 @@ const deleteOldStudentPhotoSafely = async (previousPublicId, currentPublicId) =>
 };
 
 const uploadStudentPhotoForRecord = async (student, file) => {
-  if (!student?.personal_info) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Please save personal information first, then upload photo.',
-    };
-  }
-
   const validationError = validateStudentPhotoFile(file);
   if (validationError) {
     return {
@@ -57,7 +51,47 @@ const uploadStudentPhotoForRecord = async (student, file) => {
     };
   }
 
-  const previousPublicId = student.personal_info.photo_public_id || '';
+  let personalInfo = student?.personal_info;
+  if (!personalInfo) {
+    try {
+      personalInfo = await ensureStudentPersonalInfo(student?.id);
+      student.personal_info = personalInfo;
+      logger.info({
+        message: 'student_personal_info row auto-created for photo upload',
+        studentId: student?.id,
+      });
+    } catch (error) {
+      logger.warn({
+        message: 'Failed to ensure student_personal_info before photo upload',
+        studentId: student?.id,
+        error: error.message,
+        code: error.code,
+      });
+
+      if (isControlledProfileError(error)) {
+        return {
+          ok: false,
+          status: error.statusCode || 400,
+          error: {
+            message: error.message,
+            code: error.code,
+            details: error.details || [],
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        status: 500,
+        error: {
+          message: 'Failed to prepare student personal profile for upload.',
+          code: 'STUDENT_PERSONAL_INFO_SETUP_FAILED',
+        },
+      };
+    }
+  }
+
+  const previousPublicId = personalInfo.photo_public_id || '';
   let uploadResult = null;
 
   try {
@@ -66,9 +100,9 @@ const uploadStudentPhotoForRecord = async (student, file) => {
       { folder: 'students', resource_type: 'image' },
     );
 
-    student.personal_info.photo_url = uploadResult.secure_url;
-    student.personal_info.photo_public_id = uploadResult.public_id;
-    await student.personal_info.save();
+    personalInfo.photo_url = uploadResult.secure_url;
+    personalInfo.photo_public_id = uploadResult.public_id;
+    await personalInfo.save();
 
     invalidateMenteesCache(student.mentor_id);
 
@@ -80,7 +114,7 @@ const uploadStudentPhotoForRecord = async (student, file) => {
       data: {
         message: 'Upload successful',
         photoUrl: uploadResult.secure_url,
-        photo_public_id: student.personal_info.photo_public_id,
+        photo_public_id: personalInfo.photo_public_id,
         secure_url: uploadResult.secure_url,
       },
     };
@@ -98,7 +132,11 @@ const uploadStudentPhotoForRecord = async (student, file) => {
       }
     }
 
-    console.error('[UPLOAD] Cloudinary upload error:', uploadError);
+    logger.error({
+      message: '[UPLOAD] Cloudinary upload error',
+      studentId: student?.id,
+      error: uploadError.message || uploadError,
+    });
     return {
       ok: false,
       status: 500,

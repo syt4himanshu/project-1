@@ -26,6 +26,7 @@ const { serializeStudent, serializeStudentSummary } = require('../utils/serializ
 const { sendResponse } = require('../utils/responseWrapper');
 const { encodeStudentProfilePayload, decodeStudentProfilePayload } = require('../utils/profileCodec');
 const { uploadStudentPhotoForRecord } = require('../utils/studentPhotoUpload');
+const { ensureStudentPersonalInfo, isControlledProfileError } = require('../utils/studentPersonalInfo');
 
 const includeAll = [
   'personal_info',
@@ -308,6 +309,25 @@ const getStudentMe = async (req, res, next) => {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
     if (!student) {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+    }
+
+    if (!student.personal_info) {
+      try {
+        student.personal_info = await ensureStudentPersonalInfo(student.id);
+      } catch (error) {
+        if (isControlledProfileError(error)) {
+          return sendResponse(res, {
+            success: false,
+            status: error.statusCode || 400,
+            error: {
+              message: error.message,
+              code: error.code,
+              details: error.details || [],
+            },
+          });
+        }
+        throw error;
+      }
     }
 
     const serializedPersonalInfo = serializeModel(student.personal_info);
