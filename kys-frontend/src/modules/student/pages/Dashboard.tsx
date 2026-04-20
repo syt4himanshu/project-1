@@ -5,6 +5,7 @@ import { getMentor, getMentoringMinutes, getProfile } from '../api/student'
 import ChangePasswordModal from '../components/ChangePasswordModal'
 import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
 import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
+import { ThemeToggleButton } from '../../../shared/ui/theme-toggle'
 
 interface MentoringMinute {
     id: number
@@ -99,7 +100,7 @@ export default function Dashboard() {
     }, [profile])
 
     return (
-        <div className="min-h-screen bg-[#edf2f8] text-[#1c2533]">
+        <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] text-[var(--text)] transition-colors duration-300">
             <header className="bg-gradient-to-r from-[#0f2746] to-[#223f6a] shadow-lg">
                 <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
                     <div className="flex items-center gap-3">
@@ -126,6 +127,8 @@ export default function Dashboard() {
                         >
                             Change Password
                         </button>
+
+                        <ThemeToggleButton className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20" />
 
                         <button
                             onClick={() => setShowLogoutModal(true)}
@@ -162,12 +165,12 @@ export default function Dashboard() {
 
             <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <section className="rounded-3xl border border-[#d3dae6] bg-[#f7f9fc] p-6 shadow-sm">
+                    <section className="rounded-3xl border border-[var(--border)] bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-6 shadow-sm">
                         <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#4f6ea1]">Profile</p>
-                        <h2 className="font-serif text-3xl font-semibold text-[#1f304d]">Update Profile</h2>
-                        <p className="mt-1 text-sm text-[#5f6f86]">Keep your academic and personal details current</p>
+                        <h2 className="font-serif text-3xl font-semibold text-[var(--text)]">Update Profile</h2>
+                        <p className="mt-1 text-sm text-[var(--text-muted)]">Keep your academic and personal details current</p>
 
-                        <div className="mt-6 rounded-2xl border border-[#d8dfea] bg-white p-4">
+                        <div className="mt-6 rounded-2xl border border-[var(--border)] bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] p-4">
                             <div className="flex items-center gap-3">
                                 <div className="flex h-12 w-12 shrink-0 overflow-hidden items-center justify-center rounded-full bg-[#e8eef8] text-sm font-bold text-[#2f4d7a]">
                                     <PhotoAvatar
@@ -195,12 +198,12 @@ export default function Dashboard() {
                         </button>
                     </section>
 
-                    <section className="rounded-3xl border border-[#d3dae6] bg-[#f7f9fc] p-6 shadow-sm">
+                    <section className="rounded-3xl border border-[var(--border)] bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-6 shadow-sm">
                         <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#a37200]">Mentor</p>
-                        <h2 className="font-serif text-3xl font-semibold text-[#1f304d]">Mentor Information</h2>
-                        <p className="mt-1 text-sm text-[#5f6f86]">Your assigned faculty mentor details</p>
+                        <h2 className="font-serif text-3xl font-semibold text-[var(--text)]">Mentor Information</h2>
+                        <p className="mt-1 text-sm text-[var(--text-muted)]">Your assigned faculty mentor details</p>
 
-                        <div className="mt-6 rounded-2xl border border-[#d8dfea] bg-white p-4">
+                        <div className="mt-6 rounded-2xl border border-[var(--border)] bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] p-4">
                             {loadingMentor ? (
                                 <div className="flex items-center justify-center py-10">
                                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#22456f] border-t-transparent" />
@@ -214,17 +217,17 @@ export default function Dashboard() {
                                             {initials(mentor.full_name)}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="truncate text-lg font-semibold text-[#1f304d]">{mentor.full_name}</p>
+                                            <p className="truncate text-lg font-semibold text-[var(--text)]">{mentor.full_name}</p>
                                             <p className="truncate text-sm text-[#64748b]">{mentor.email}</p>
                                         </div>
                                     </div>
 
                                     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                        <div className="rounded-xl border border-[#dce3ed] bg-[#f8fafc] p-3">
+                                        <div className="rounded-xl border bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-3">
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#61748f]">Email</p>
                                             <p className="mt-1 break-all text-sm text-[#253248]">{mentor.email}</p>
                                         </div>
-                                        <div className="rounded-xl border border-[#dce3ed] bg-[#f8fafc] p-3">
+                                        <div className="rounded-xl border bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-3">
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#61748f]">Phone</p>
                                             <p className="mt-1 text-sm text-[#253248]">{mentor.contact_number || 'N/A'}</p>
                                         </div>
@@ -234,12 +237,12 @@ export default function Dashboard() {
                         </div>
                     </section>
 
-                    <section className="rounded-3xl border border-[#d3dae6] bg-[#f7f9fc] p-6 shadow-sm lg:col-span-2">
+                    <section className="rounded-3xl border border-[var(--border)] bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-6 shadow-sm lg:col-span-2">
                         <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#3f78dc]">Mentoring</p>
-                        <h2 className="font-serif text-3xl font-semibold text-[#1f304d]">Mentoring Remarks</h2>
-                        <p className="mt-1 text-sm text-[#5f6f86]">Feedback and suggestions from your mentors</p>
+                        <h2 className="font-serif text-3xl font-semibold text-[var(--text)]">Mentoring Remarks</h2>
+                        <p className="mt-1 text-sm text-[var(--text-muted)]">Feedback and suggestions from your mentors</p>
 
-                        <div className="mt-6 rounded-2xl border border-[#d8dfea] bg-white p-4 sm:p-5">
+                        <div className="mt-6 rounded-2xl border border-[var(--border)] bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] p-4 sm:p-5">
                             {loadingMinutes ? (
                                 <div className="flex items-center justify-center py-14">
                                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#22456f] border-t-transparent" />
@@ -280,10 +283,10 @@ export default function Dashboard() {
 
             {showPwModal && <ChangePasswordModal onClose={() => setShowPwModal(false)} />}
 
-            {showLogoutModal && (
+          {showLogoutModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-                    <div className="w-full max-w-xl rounded-[22px] border border-[#d5dcea] bg-[#f7f9fc] p-6 shadow-[0_28px_60px_-25px_rgba(17,28,48,0.55)] sm:p-7">
-                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#f4b4b0] bg-[#fff2f1] text-[#dc2626]">
+                    <div className="w-full max-w-xl rounded-[22px] border border-[#d5dcea] bg-[#f7f9fc] p-6 shadow-[0_28px_60px_-25px_rgba(17,28,48,0.55)] sm:p-7 dark:bg-gray-800">
+                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#f4b4b0] bg-[#fff2f1] text-[#dc2626] dark:bg-gray-700">
                             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M12 9v4" />
                                 <path d="M12 17h.01" />
@@ -291,13 +294,13 @@ export default function Dashboard() {
                             </svg>
                         </div>
 
-                        <h3 className="font-serif text-4xl font-semibold text-[#1f304d]">Log Out</h3>
-                        <p className="mt-2 text-lg text-[#6f7f96]">Are you sure you want to log out?</p>
+                        <h3 className="font-serif text-4xl font-semibold text-[#1f304d] dark:text-gray-100">Log Out</h3>
+                        <p className="mt-2 text-lg text-[#6f7f96] dark:text-gray-300">Are you sure you want to log out?</p>
 
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
                             <button
                                 onClick={() => setShowLogoutModal(false)}
-                                className="rounded-xl border border-[#cdd7e7] bg-[#f4f6fa] px-7 py-3 text-lg font-semibold text-[#697a93] transition hover:bg-[#edf1f7]"
+                                className="rounded-xl border border-[#cdd7e7] bg-[#f4f6fa] px-7 py-3 text-lg font-semibold text-[#697a93] transition hover:bg-[#edf1f7] dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 Stay Here
                             </button>

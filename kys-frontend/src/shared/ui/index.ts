@@ -1,5 +1,7 @@
 export { DataTable } from './data-table'
 export type { TableColumn } from './data-table'
+export { ResponsiveDataView } from './responsive-data-view'
+export type { ResponsiveDataViewProps } from './responsive-data-view'
 export { Pagination } from './pagination'
 export { QueryState, SectionShell } from './query-state'
 export { Modal } from './modal'

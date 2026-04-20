@@ -33,7 +33,7 @@ export default function Step6CoCurricular() {
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">Participation Activities</h3>
                 <p className="mb-4 text-sm text-[#7a879c]">(Technical Competition / Paper Presentation / Hackathon / etc.)</p>
                 {[0, 1, 2].map(i => (
-                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] bg-white p-4 last:mb-0">
+                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4 last:mb-0">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Activity {i + 1}</p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 sm:gap-4">
                             {field('Name of Activity', input('text', (participations[i]?.name as string) || '', v => updP(i, 'name', v), 'Name of activity'))}
@@ -49,7 +49,7 @@ export default function Step6CoCurricular() {
                 <h3 className="mb-4 border-b-2 border-[#e05050] pb-2 text-3xl font-semibold text-[#223b60]">Organized Activities</h3>
                 <p className="mb-4 text-sm text-[#7a879c]">(Coordinator / Co-Coordinator / Member / etc.)</p>
                 {[0, 1, 2].map(i => (
-                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] bg-white p-4 last:mb-0">
+                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4 last:mb-0">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Activity {i + 1}</p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 sm:gap-4">
                             {field('Name of Activity', input('text', (organizations[i]?.name as string) || '', v => updO(i, 'name', v), 'Name of activity'))}
@@ -66,7 +66,7 @@ export default function Step6CoCurricular() {
                 <p className="mb-4 text-sm text-[#7a879c]">(Online courses, certifications, workshops, training programs)</p>
 
                 {[0, 1, 2].map(i => (
-                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] bg-white p-4 last:mb-0">
+                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4 last:mb-0">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Program {i + 1}</p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                             {field('Program / Course Title', input('text', (programs[i]?.course_title as string) || '', v => updProgram(i, 'course_title', v), i === 0 ? 'e.g. Machine Learning Specialization' : 'Course Title'))}

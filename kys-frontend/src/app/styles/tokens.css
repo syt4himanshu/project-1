@@ -1,11 +1,139 @@
 :root {
-  --bg: #0f172a;
-  --bg-soft: #111c34;
-  --panel: #f8fafc;
-  --text: #0f172a;
-  --text-muted: #475569;
+  --bg: #f5f7fb;
+  --bg-soft: #edf2f8;
+  --panel: #ffffff;
+  --text: #1e2d4e;
+  --text-muted: #64748b;
   --border: #dbe4f1;
   --primary: #1d4ed8;
   --primary-soft: #dbeafe;
   --danger: #b91c1c;
+
+  /* Brand button tokens */
+  --brand-navy: #1e2d4e;
+  --brand-navy-light: #334a7a;
+  --r-md: 10px;
+  --t-base: 0.3s;
+  --ease-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease: ease;
+}
+
+:root.dark {
+  --bg: #0f172a;
+  --bg-soft: #111c34;
+  --panel: #1e293b;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  --primary: #3b82f6;
+  --primary-soft: #1e3a8a;
+  --danger: #ef4444;
+}
+
+/* 
+   FORCE DARK MODE ON ALL HARDCODED HEX CLASSES 
+   This is an aggressive override system to handle static utility CSS.
+*/
+
+html.dark body { 
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+/* Backgrounds */
+.dark .bg-white, 
+.dark .bg-\[white\],
+.dark .bg-\[\#ffffff\],
+.dark .bg-\[\#f7f9fc\], 
+.dark .bg-\[\#f5f7fb\], 
+.dark .bg-\[\#f8fafd\], 
+.dark .bg-\[\#eef2f7\],
+.dark .bg-\[\#edf2f8\],
+.dark .bg-\[\#f3f6fb\],
+.dark .bg-\[\#f8fafc\],
+.dark .bg-\[\#fafcff\] {
+  background-color: var(--panel) !important;
+}
+
+/* Secondary Backgrounds (Inner Cards) */
+.dark .bg-gray-50,
+.dark .bg-\[\#f8fafc\],
+.dark .bg-\[\#f9fafb\],
+.dark .bg-\[\#eef3fa\] {
+  background-color: var(--bg-soft) !important;
+}
+
+/* Borders */
+.dark .border,
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-\[\#d6deea\],
+.dark .border-\[\#d4dcea\],
+.dark .border-\[\#cfd7e4\],
+.dark .border-\[\#ccd5e4\],
+.dark .border-\[\#d7deea\],
+.dark .border-\[\#d8dfeb\],
+.dark .border-\[\#dde5f1\] {
+  border-color: var(--border) !important;
+}
+
+/* Text Colors (Ensuring visibility) */
+.dark .text-slate-900,
+.dark .text-gray-900,
+.dark .text-\[\#1f304d\],
+.dark .text-\[\#1c2533\],
+.dark .text-\[\#1e2d4e\],
+.dark .text-\[\#2a3f62\],
+.dark .text-\[\#20324e\],
+.dark .text-\[\#223b60\],
+.dark .text-\[\#26364d\],
+.dark .text-\[\#2f4d7a\] {
+  color: var(--text) !important;
+}
+
+.dark .text-slate-600,
+.dark .text-gray-600,
+.dark .text-\[\#5f6f86\],
+.dark .text-\[\#6d7b90\],
+.dark .text-\[\#74839a\],
+.dark .text-\[\#7a8599\],
+.dark .text-\[\#64748b\],
+.dark .text-\[\#6a758a\],
+.dark .text-\[\#6f7f96\] {
+  color: var(--text-muted) !important;
+}
+
+/* Specific Section Card Overrides */
+.dark [class*="sectionCardCls"],
+.dark section[class*="rounded-2xl"] {
+  background-color: var(--panel) !important;
+  border-color: var(--border) !important;
+}
+
+/* Input Overrides */
+.dark input, 
+.dark textarea, 
+.dark select {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+.dark input::placeholder, 
+.dark textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Final Heading & Label Overrides */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5 {
+  color: var(--text) !important;
+}
+
+.dark label, .dark p, .dark span {
+  color: var(--text-muted);
+}
+
+.dark p.text-white, .dark span.text-white, .dark .text-white {
+  color: white !important;
 }

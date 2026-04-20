@@ -59,7 +59,7 @@ export default function Step8CareerSkills() {
                                         onClick={() => updCo('non_technical_areas', toggleCsv(selectedNonTechAreas, area).join(', '))}
                                         className={`rounded-xl border px-4 py-2 text-sm transition ${active
                                             ? 'border-[#1f355f] bg-[#1f355f] text-white'
-                                            : 'border-[#cfd7e4] bg-white text-[#3a4a62] hover:border-[#3e5f93]'
+                                            : 'border-[#cfd7e4] dark:border-[#334155] bg-white dark:bg-[#1e293b] text-[#3a4a62] dark:text-[#cbd5e1] hover:border-[#3e5f93]'
                                             }`}
                                     >
                                         {area}
@@ -150,7 +150,7 @@ export default function Step8CareerSkills() {
                                         onClick={() => updSk('domains_of_interest', toggleCsv(selectedDomains, domain).join(', '))}
                                         className={`rounded-xl border px-4 py-2 text-sm transition ${active
                                             ? 'border-[#1f355f] bg-[#1f355f] text-white'
-                                            : 'border-[#cfd7e4] bg-white text-[#3a4a62] hover:border-[#3e5f93]'
+                                            : 'border-[#cfd7e4] dark:border-[#334155] bg-white dark:bg-[#1e293b] text-[#3a4a62] dark:text-[#cbd5e1] hover:border-[#3e5f93]'
                                             }`}
                                     >
                                         {domain}

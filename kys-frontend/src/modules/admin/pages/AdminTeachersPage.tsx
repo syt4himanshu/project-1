@@ -65,7 +65,7 @@ export function AdminTeachersPage() {
         cell: (row) => (
           <button
             type="button"
-            className="button button--ghost"
+            className="button button--soft"
             onClick={() => setSelectedFacultyId(row.id)}
           >
             View Detail

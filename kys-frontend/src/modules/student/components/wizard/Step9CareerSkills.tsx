@@ -18,7 +18,7 @@ export default function Step9CareerSkills({ data, update }: WizardStepProps) {
 
     return (
         <div className="space-y-5">
-            <section className="rounded-2xl border border-[#d6deea] bg-[#f7f9fc] p-4 sm:p-5">
+            <section className="rounded-2xl border border-[#d6deea] dark:border-[#334155] bg-[#f7f9fc] dark:bg-[#1e293b] p-4 sm:p-5">
                 <h3 className="mb-4 font-serif text-2xl text-[#20324e]">Career Objective</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                     {field('Career Goal', select(['Higher Studies', 'Job', 'Entrepreneurship', 'Research', 'Other'],
@@ -32,7 +32,7 @@ export default function Step9CareerSkills({ data, update }: WizardStepProps) {
                         ))}
                     </div>
                     <div className="sm:col-span-2">
-                        <label className="inline-flex items-center gap-3 rounded-xl border border-[#d4dcea] bg-white px-4 py-3 text-sm text-[#334155]">
+                        <label className="inline-flex items-center gap-3 rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] px-4 py-3 text-sm text-[#334155] dark:text-[#cbd5e1]">
                             <input
                                 type="checkbox"
                                 id="campus"
@@ -54,7 +54,7 @@ export default function Step9CareerSkills({ data, update }: WizardStepProps) {
                 </div>
             </section>
 
-            <section className="rounded-2xl border border-[#d6deea] bg-[#f7f9fc] p-4 sm:p-5">
+            <section className="rounded-2xl border border-[#d6deea] dark:border-[#334155] bg-[#f7f9fc] dark:bg-[#1e293b] p-4 sm:p-5">
                 <h3 className="mb-4 font-serif text-2xl text-[#20324e]">Skills</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                     {field('Programming Languages', input('text', (sk.programming_languages as string) || '', v => updSk('programming_languages', v), 'Python, Java, C++'))}
@@ -70,7 +70,7 @@ export default function Step9CareerSkills({ data, update }: WizardStepProps) {
                                     onClick={() => toggleDomain(d)}
                                     className={`rounded-full border px-3 py-1.5 text-sm transition ${selectedDomains.includes(d)
                                         ? 'border-[#234574] bg-[#234574] text-white'
-                                        : 'border-[#cfd7e4] bg-white text-[#3a4a62] hover:border-[#3e5f93]'
+                                        : 'border-[#cfd7e4] dark:border-[#334155] bg-white dark:bg-[#1e293b] text-[#3a4a62] dark:text-[#cbd5e1] hover:border-[#3e5f93]'
                                         }`}
                                 >
                                     {d}

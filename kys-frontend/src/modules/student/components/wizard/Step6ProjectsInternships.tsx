@@ -20,7 +20,7 @@ export default function Step6ProjectsInternships({ data, update }: WizardStepPro
             <section className={sectionCardCls}>
                 <h3 className="mb-4 font-serif text-2xl text-[#20324e]">Projects</h3>
                 {[0, 1].map(i => (
-                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] bg-white p-4 last:mb-0">
+                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4 last:mb-0">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Project {i + 1}</p>
                         <div className="grid grid-cols-1 gap-4">
                             {field('Title', input('text', (projects[i]?.title as string) || '', v => updProject(i, 'title', v)))}
@@ -33,7 +33,7 @@ export default function Step6ProjectsInternships({ data, update }: WizardStepPro
             <section className={sectionCardCls}>
                 <h3 className="mb-4 font-serif text-2xl text-[#20324e]">Internships</h3>
                 {[0, 1].map(i => (
-                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] bg-white p-4 last:mb-0">
+                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4 last:mb-0">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Internship {i + 1}</p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                             {field('Company', input('text', (internships[i]?.company_name as string) || '', v => updInternship(i, 'company_name', v)))}

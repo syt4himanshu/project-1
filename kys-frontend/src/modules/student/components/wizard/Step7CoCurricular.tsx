@@ -20,7 +20,7 @@ export default function Step7CoCurricular({ data, update }: WizardStepProps) {
             <section className={sectionCardCls}>
                 <h3 className="mb-4 font-serif text-2xl text-[#20324e]">Participation</h3>
                 {[0, 1, 2].map(i => (
-                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] bg-white p-4 last:mb-0">
+                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4 last:mb-0">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Entry {i + 1}</p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                             {field('Name', input('text', (participations[i]?.name as string) || '', v => updP(i, 'name', v)))}
@@ -35,7 +35,7 @@ export default function Step7CoCurricular({ data, update }: WizardStepProps) {
             <section className={sectionCardCls}>
                 <h3 className="mb-4 font-serif text-2xl text-[#20324e]">Organization</h3>
                 {[0, 1, 2].map(i => (
-                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] bg-white p-4 last:mb-0">
+                    <div key={i} className="mb-4 rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4 last:mb-0">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Entry {i + 1}</p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                             {field('Name', input('text', (organizations[i]?.name as string) || '', v => updO(i, 'name', v)))}

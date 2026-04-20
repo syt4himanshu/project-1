@@ -9,6 +9,7 @@ import Step7SWOC from '../components/wizard/Step7SWOC'
 import Step8CareerSkills from '../components/wizard/Step8CareerSkills'
 import Step9ReviewSubmit from '../components/wizard/Step9ReviewSubmit'
 import { useStudentProfileWizard } from '../hooks/useStudentProfileWizard'
+import { ThemeToggleButton } from '../../../shared/ui/theme-toggle'
 
 const STEPS = [
     'Student Personal Information',
@@ -40,7 +41,7 @@ export default function ProfileWizard() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#edf2f8]">
+            <div className="min-h-screen bg-[var(--bg-soft)]">
                 <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center px-4">
                     <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#22456f] border-t-transparent" />
                 </div>
@@ -56,20 +57,23 @@ export default function ProfileWizard() {
     }
 
     return (
-        <div className="min-h-screen bg-[#edf2f8] px-3 py-5 sm:px-4 sm:py-8">
-            <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-3xl border border-[#ccd5e4] bg-[#f5f7fb] shadow-[0_20px_45px_-24px_rgba(22,42,72,0.45)]">
-                <header className="border-t-[3px] border-[#f0b243] bg-gradient-to-r from-[#1f355f] to-[#3e5380] px-5 py-6 sm:px-8 sm:py-8">
-                    <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Student Mentoring and Career Counselling Form</h1>
-                    <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#c8d3e7] sm:text-sm">Department of Computer Engineering</p>
+        <div className="min-h-screen bg-[var(--bg-soft)] px-3 py-5 sm:px-4 sm:py-8 transition-colors duration-300">
+            <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--bg-soft)] shadow-[0_20px_45px_-24px_rgba(22,42,72,0.45)]">
+                <header className="border-t-[3px] border-[#f0b243] bg-gradient-to-r from-[#1f355f] to-[#3e5380] px-5 py-6 sm:px-8 sm:py-8 flex justify-between items-start">
+                    <div>
+                      <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Student Mentoring and Career Counselling Form</h1>
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#c8d3e7] sm:text-sm">Department of Computer Engineering</p>
+                    </div>
+                    <ThemeToggleButton className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-[var(--panel)]/10 text-white transition hover:bg-[var(--panel)]/20 mt-2" />
                 </header>
 
-                <div className="border-y border-[#d8dfeb] bg-white px-5 py-5 sm:px-8 sm:py-6">
+                <div className="border-y border-[var(--border)] bg-[var(--panel)] px-5 py-5 sm:px-8 sm:py-6">
                     <div className="mb-4 flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6a7a91]">Progress</p>
-                        <p className="text-xl font-semibold text-[#2a3f62]">{progress}%</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Progress</p>
+                        <p className="text-xl font-semibold text-[var(--text)]">{progress}%</p>
                     </div>
 
-                    <div className="h-1.5 overflow-hidden rounded-full bg-[#e8edf5]">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-[var(--border)]">
                         <div
                             className="h-full rounded-full bg-gradient-to-r from-[#203d68] to-[#df981e] transition-all duration-500"
                             style={{ width: `${progress}%` }}
@@ -87,7 +91,7 @@ export default function ProfileWizard() {
                                             ? 'border-[#12996c] bg-[#12996c] text-white'
                                             : current
                                                 ? 'border-[#1f355f] bg-[#1f355f] text-white'
-                                                : 'border-[#d5dce8] bg-white text-[#9ca9bc]'
+                                                : 'border-[#d5dce8] bg-[var(--panel)] text-[#9ca9bc]'
                                     }`}>
                                         {done ? '\u2713' : i + 1}
                                     </div>
@@ -100,11 +104,11 @@ export default function ProfileWizard() {
 
                 <main className="px-5 py-6 sm:px-8 sm:py-8">
                     <div className="mb-6">
-                        <h2 className="font-serif text-3xl font-semibold text-[#1f304d] sm:text-4xl">{STEPS[step]}</h2>
-                        <p className="mt-1 text-sm text-[#6d7b90] sm:text-base">{STEP_SUBTEXT[step]}</p>
+                        <h2 className="font-serif text-3xl font-semibold text-[var(--text)] sm:text-4xl">{STEPS[step]}</h2>
+                        <p className="mt-1 text-sm text-[var(--text-muted)] sm:text-base">{STEP_SUBTEXT[step]}</p>
                     </div>
 
-                    <div className="rounded-2xl border border-[#d7deea] bg-white p-4 sm:p-5">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-5">
                         {step === 0 && <Step1Personal />}
                         {step === 1 && <Step2Parents />}
                         {step === 2 && <Step3AcademicBefore />}
@@ -123,21 +127,21 @@ export default function ProfileWizard() {
                     )}
                 </main>
 
-                <footer className="border-t border-[#d8dfeb] bg-[#f8fafd] px-5 py-4 sm:px-8">
+                <footer className="border-t border-[var(--border)] bg-[var(--panel)] px-5 py-4 sm:px-8">
                     <div className="mb-3 text-center text-sm font-medium text-[#7a879c]">Step {step + 1} of {STEPS.length}</div>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <button
                             onClick={prev}
                             disabled={step === 0}
-                            className="rounded-xl border border-[#d0d8e6] bg-white px-5 py-2.5 text-sm font-semibold text-[#5f6f86] transition hover:bg-[#f3f6fb] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="rounded-xl border border-[#d0d8e6] bg-[var(--panel)] px-5 py-2.5 text-sm font-semibold text-[#5f6f86] transition hover:bg-[var(--bg-soft)] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             Previous
                         </button>
 
                         <button
                             onClick={() => navigate('/student/dashboard')}
-                            className="rounded-xl px-4 py-2 text-sm font-medium text-[#5f7190] transition hover:bg-[#e8edf5] hover:text-[#2c446b]"
+                            className="rounded-xl px-4 py-2 text-sm font-medium text-[#5f7190] transition hover:bg-[var(--bg-soft)] hover:text-[#2c446b]"
                         >
                             Back to Dashboard
                         </button>

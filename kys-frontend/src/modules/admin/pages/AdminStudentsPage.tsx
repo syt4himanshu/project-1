@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
-import { DataTable, QueryState, type TableColumn } from '../../../shared/ui'
+import { ResponsiveDataView, QueryState, type TableColumn } from '../../../shared/ui'
+import { sanitizeDisplayValue, getAvatarColor } from '../../../shared/utils/render'
 import type { AdminStudentSummary, AdminStudentSummaryFilters } from '../api'
 import { StudentDetailModal } from '../components/students/StudentDetailModal'
 import { useAdminStudentSummaryQuery } from '../hooks'
@@ -16,16 +17,6 @@ const CAREER_GOAL_OPTIONS = [
   'Not Decided',
 ] as const
 
-function printNumber(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) return 'N/A'
-  return String(value)
-}
-
-function printText(value: string): string {
-  const text = value.trim()
-  return text || 'N/A'
-}
-
 export function AdminStudentsPage() {
   const [filters, setFilters] = useState<AdminStudentSummaryFilters>({
     search: '',
@@ -35,6 +26,7 @@ export function AdminStudentsPage() {
     domain: '',
     careerGoal: '',
   })
+  const [showFilters, setShowFilters] = useState(false)
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null)
 
   useEffect(() => {
@@ -48,59 +40,112 @@ export function AdminStudentsPage() {
       {
         id: 'uid',
         header: 'UID',
-        cell: (row) => <span className="mono-cell">{row.uid}</span>,
+        cell: (row) => <span className="mono-cell">{sanitizeDisplayValue(row.uid)}</span>,
       },
       {
         id: 'name',
         header: 'Name',
-        cell: (row) => row.name,
+        cell: (row) => sanitizeDisplayValue(row.name),
       },
       {
         id: 'semester',
         header: 'Semester',
-        cell: (row) => printNumber(row.semester),
+        cell: (row) => row.semester ? `Sem ${row.semester}` : 'N/A',
       },
       {
         id: 'section',
         header: 'Section',
-        cell: (row) => printText(row.section),
+        cell: (row) => sanitizeDisplayValue(row.section),
       },
       {
         id: 'mentor',
         header: 'Mentor',
-        cell: (row) => printText(row.mentorName),
+        cell: (row) => sanitizeDisplayValue(row.mentorName),
       },
       {
         id: 'careerGoal',
         header: 'Career Goal',
-        cell: (row) => printText(row.careerGoal),
+        cell: (row) => sanitizeDisplayValue(row.careerGoal),
       },
       {
         id: 'domain',
         header: 'Domain',
-        cell: (row) => printText(row.domainOfInterest),
+        cell: (row) => sanitizeDisplayValue(row.domainOfInterest),
       },
       {
         id: 'year',
         header: 'Admission Year',
-        cell: (row) => printNumber(row.yearOfAdmission),
+        cell: (row) => row.yearOfAdmission || 'N/A',
       },
       {
         id: 'actions',
         header: 'Actions',
         cell: (row) => (
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setSelectedStudentId(row.id)}
-          >
-            View Detail
-          </button>
+            <button
+              type="button"
+              className="button button--soft"
+              onClick={() => setSelectedStudentId(row.id)}
+            >
+              View Detail
+            </button>
         ),
       },
     ],
     [],
   )
+
+  const renderStudentCard = (row: AdminStudentSummary) => {
+    // Determine initials for avatar
+    const nameParts = row.name.split(' ').filter(Boolean)
+    const initials = nameParts.length >= 2 
+      ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+      : row.name.slice(0, 2).toUpperCase()
+
+    return (
+      <div className="mobile-card">
+        <div className="mobile-card__header">
+          <div className="mobile-card__avatar">
+            {initials}
+          </div>
+          <div className="mobile-card__info">
+            <h4 className="mobile-card__title">{sanitizeDisplayValue(row.name)}</h4>
+            <p className="mobile-card__subtitle">{sanitizeDisplayValue(row.uid)} · Student</p>
+          </div>
+        </div>
+
+        <div className="mobile-card__content">
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Branch / Domain</span>
+            <span className="mobile-card__value">{sanitizeDisplayValue(row.domainOfInterest)}</span>
+          </div>
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Year / Sem</span>
+            <span className="mobile-card__value">
+              {row.yearOfAdmission || 'N/A'} · {row.semester ? `Sem ${row.semester}` : 'N/A'}
+            </span>
+          </div>
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Backlogs</span>
+            <div className="mobile-card__pill-list">
+              {/* Backlog data isn't in summary yet, showing Clear as default or placeholder */}
+              <span className="mobile-card__pill mobile-card__pill--success">Clear</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mobile-card__actions">
+          {/* View Only for current Student Page scope */}
+          <button 
+            className="mobile-action-btn mobile-action-btn--secondary"
+            onClick={() => setSelectedStudentId(row.id)}
+            title="View Detail"
+          >
+            <span className="material-symbols-outlined">visibility</span>
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (studentsQuery.isError) {
     return (
@@ -128,7 +173,8 @@ export function AdminStudentsPage() {
       </div>
 
       <div className="admin-toolbar-grid admin-toolbar-grid--students">
-        <div className="role-toolbar__card role-toolbar__card--filters admin-toolbar-block">
+        {/* Search - Always Visible */}
+        <div className="role-toolbar__card admin-toolbar-block">
           <div className="role-field role-field--icon">
             <span className="material-symbols-outlined">search</span>
             <input
@@ -139,6 +185,19 @@ export function AdminStudentsPage() {
               type="text"
             />
           </div>
+          
+          <button 
+            className="button button--ghost button--icon desktop-hide"
+            style={{ width: '100%', marginTop: '0.75rem', justifyContent: 'center' }}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <span className="material-symbols-outlined">filter_list</span>
+            {showFilters ? 'Hide Filters' : 'Filters ▼'}
+          </button>
+        </div>
+
+        {/* Desktop Filters OR Mobile Conditional Filters */}
+        <div className={`role-toolbar__card role-toolbar__card--filters admin-toolbar-block ${!showFilters ? 'mobile-hide' : ''}`}>
           <div className="admin-toolbar-fields-grid admin-toolbar-fields-grid--two">
             <select
               className="role-select"
@@ -160,7 +219,7 @@ export function AdminStudentsPage() {
           </div>
         </div>
 
-        <div className="role-toolbar__card role-toolbar__card--bulk admin-toolbar-block">
+        <div className={`role-toolbar__card role-toolbar__card--bulk admin-toolbar-block ${!showFilters ? 'mobile-hide' : ''}`}>
           <div className="admin-toolbar-fields-grid admin-toolbar-fields-grid--three">
             <input
               className="role-input"
@@ -188,9 +247,6 @@ export function AdminStudentsPage() {
           </div>
           <div className="role-toolbar__inline">
             <button className="button button--ghost button--icon role-chip-button">
-              <span className="material-symbols-outlined" aria-hidden="true">filter_list</span> Advanced Filters
-            </button>
-            <button className="button button--ghost button--icon role-chip-button">
               <span className="material-symbols-outlined" aria-hidden="true">download</span> Export Data
             </button>
           </div>
@@ -198,13 +254,14 @@ export function AdminStudentsPage() {
       </div>
 
       <div className="admin-surface">
-        <DataTable
+        <ResponsiveDataView
           columns={columns}
           data={studentsQuery.data ?? []}
           keyExtractor={(row) => row.id || row.uid}
           isLoading={studentsQuery.isPending}
           pageSize={15}
           emptyLabel="No students matched the current filters."
+          renderMobileCard={renderStudentCard}
         />
       </div>
 
@@ -215,3 +272,4 @@ export function AdminStudentsPage() {
     </div>
   )
 }
+

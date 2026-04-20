@@ -14,7 +14,7 @@ export default function Step8SWOC({ data, update }: WizardStepProps) {
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
             {items.map(({ key, label }) => (
-                <div key={key} className="rounded-2xl border border-[#d6deea] bg-[#f7f9fc] p-4">
+                <div key={key} className="rounded-2xl border border-[#d6deea] dark:border-[#334155] bg-[#f7f9fc] dark:bg-[#1e293b] p-4">
                     {field(label, (
                         <textarea
                             value={(swoc[key] as string) || ''}

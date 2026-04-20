@@ -6,6 +6,7 @@ import { ROLE_LABELS } from '../../app/config/role-map'
 import { toDashboardPath } from '../../shared/auth/roleGuards'
 import { isUserRole } from '../../shared/auth/session'
 import { toErrorMessage } from '../../shared/api/errorMapper'
+import { ThemeToggleButton } from '../../shared/ui/theme-toggle'
 
 function UserIcon() {
   return (
@@ -140,11 +141,7 @@ export function LoginPage() {
                   <p className="student-login__brand-subtitle">KNOW YOUR STUDENT</p>
                 </div>
               </div>
-              <button type="button" aria-label="Theme button" className="student-login__theme-btn">
-                <svg className="student-login__theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z" />
-                </svg>
-              </button>
+              <ThemeToggleButton className="student-login__theme-btn" />
             </div>
 
             <div className="student-login__hero-body">
@@ -225,46 +222,51 @@ export function LoginPage() {
   }
 
   return (
-    <section className="card auth-card">
-      <h1>Sign in</h1>
-      <p className="subtext">
-        {requestedRole ? `Requested role: ${ROLE_LABELS[requestedRole]}` : 'Use your KYS credentials.'}
-      </p>
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] transition-colors duration-300">
+      <section className="card auth-card">
+        <div className="flex justify-between items-center">
+          <h1>Sign in</h1>
+          <ThemeToggleButton className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition" />
+        </div>
+        <p className="subtext">
+          {requestedRole ? `Requested role: ${ROLE_LABELS[requestedRole]}` : 'Use your KYS credentials.'}
+        </p>
 
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <label>
-          Username / UID / Email
-          <input
-            type="text"
-            autoComplete="username"
-            value={identifier}
-            onChange={(event) => setIdentifier(event.target.value)}
-            required
-          />
-        </label>
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <label>
+            Username / UID / Email
+            <input
+              type="text"
+              autoComplete="username"
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+              required
+            />
+          </label>
 
-        <label>
-          Password
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </label>
+          <label>
+            Password
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </label>
 
-        {error ? <p className="message message--error">{error}</p> : null}
-        {info ? <p className="message message--info">{info}</p> : null}
+          {error ? <p className="message message--error">{error}</p> : null}
+          {info ? <p className="message message--info">{info}</p> : null}
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Signing in...' : 'Sign in'}
-        </button>
-      </form>
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Signing in...' : 'Sign in'}
+          </button>
+        </form>
 
-      <p className="back-link">
-        <Link to="/roles">Back to role selection</Link>
-      </p>
-    </section>
+        <p className="back-link">
+          <Link to="/roles">Back to role selection</Link>
+        </p>
+      </section>
+    </div>
   )
 }

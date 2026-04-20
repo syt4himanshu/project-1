@@ -190,7 +190,7 @@ export function AdminUsersPage() {
           <div className="table-actions">
             <button
               type="button"
-              className="button button--ghost"
+              className="button button--soft"
               onClick={() => setResetTarget(row)}
               disabled={row.role === 'admin' || row.role === 'unknown'}
             >

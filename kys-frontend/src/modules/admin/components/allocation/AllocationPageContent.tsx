@@ -49,7 +49,7 @@ export function AllocationPageContent() {
           <div className="table-actions">
             <button
               type="button"
-              className="button button--ghost"
+              className="button button--soft"
               disabled={row.assignedCount >= row.capacity}
               onClick={() => setPanelState({ type: 'assign', faculty: row })}
             >

@@ -32,13 +32,15 @@ export function Pagination({
         onClick={() => onPageChange(clampPage(page - 1, pageCount))}
         disabled={page <= 1}
       >
-        Previous
+        <span className="mobile-hide">Previous</span>
+        <span className="desktop-hide">← Prev</span>
       </button>
 
-      <p className="table-pagination__label">
-        <span>Showing {start}-{end}</span>
-        <span>Page {page} of {pageCount}</span>
-      </p>
+      <div className="table-pagination__label">
+        <span className="mobile-hide">Showing {start}-{end} of {totalItems}</span>
+        <span className="desktop-hide">Showing {start}-{end} of {totalItems}</span>
+        <span className="mobile-hide">Page {page} of {pageCount}</span>
+      </div>
 
       <button
         type="button"
@@ -46,8 +48,10 @@ export function Pagination({
         onClick={() => onPageChange(clampPage(page + 1, pageCount))}
         disabled={page >= pageCount}
       >
-        Next
+        <span className="mobile-hide">Next</span>
+        <span className="desktop-hide">Next →</span>
       </button>
     </footer>
   )
+
 }

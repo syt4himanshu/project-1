@@ -8,7 +8,7 @@ function valueOrNA(value: unknown) {
 }
 
 function SectionHeading({ title }: { title: string }) {
-    return <h3 className="mb-4 rounded-lg border-l-4 border-[#df981e] bg-[#eef3fa] px-3 py-2 text-sm font-semibold uppercase tracking-[0.08em] text-[#294267]">{title}</h3>
+    return <h3 className="mb-4 rounded-lg border-l-4 border-[#df981e] bg-[#eef3fa] dark:bg-[#0f172a] px-3 py-2 text-sm font-semibold uppercase tracking-[0.08em] text-[#294267] dark:text-[#cbd5e1]">{title}</h3>
 }
 
 function TwoColGrid({ children }: { children: ReactNode }) {
@@ -42,7 +42,7 @@ export default function Step9ReviewSubmit() {
 
     return (
         <div className="space-y-5">
-            <section className="rounded-2xl border border-[#d6deea] bg-[#f7f9fc] p-4 sm:p-5">
+            <section className="rounded-2xl border border-[#d6deea] dark:border-[#334155] bg-[#f7f9fc] dark:bg-[#1e293b] p-4 sm:p-5">
                 <h2 className="mb-4 font-serif text-3xl font-semibold text-[#1f304d]">Review Your Information</h2>
 
                 <SectionHeading title='Student Personal Information' />
@@ -162,7 +162,7 @@ export default function Step9ReviewSubmit() {
                 </div>
             </section>
 
-            <label className="flex items-start gap-3 rounded-xl border border-[#d0d8e6] bg-white px-4 py-3 text-sm text-[#334155]">
+            <label className="flex items-start gap-3 rounded-xl border border-[#d0d8e6] dark:border-[#334155] bg-white dark:bg-[#1e293b] px-4 py-3 text-sm text-[#334155] dark:text-[#cbd5e1]">
                 <input
                     type="checkbox"
                     checked={Boolean(data.declaration_accepted)}
