@@ -306,9 +306,19 @@ const putStudentsMe = async (req, res, next) => {
 
 const getStudentMe = async (req, res, next) => {
   try {
+    console.log('REQ USER ID:', req.currentUser?.id);
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
+    console.log('FETCHED STUDENT:', student?.id, student?.user_id);
     if (!student) {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+    }
+
+    console.log('QUERYING PERSONAL INFO WITH:', student?.id);
+    if (!student.personal_info) {
+      // Defensive fallback: direct lookup avoids occasional null association from large include graph.
+      student.personal_info = await StudentPersonalInfo.findOne({
+        where: { student_id: student.id },
+      });
     }
 
     if (!student.personal_info) {
@@ -331,7 +341,7 @@ const getStudentMe = async (req, res, next) => {
     }
 
     const serializedPersonalInfo = serializeModel(student.personal_info);
-    console.log('[GET_PROFILE] Student personal_info photoUrl:', serializedPersonalInfo?.photoUrl);
+    console.log('[GET_PROFILE] Student personal_info photoUrl:', serializedPersonalInfo);
 
     const responseData = decodeStudentProfilePayload({
       id: student.id,

@@ -49,6 +49,7 @@ studentRouter.get('/me', verifyToken, roleRequired(['student']), getStudentMe);
 studentRouter.put('/me', verifyToken, roleRequired(['student']), validate(studentProfileSchema), putStudentMe);
 studentRouter.post('/me/upload-photo', verifyToken, roleRequired(['student']), handlePhotoUpload, uploadStudentPhoto);
 
+
 const apiStudentsRouter = express.Router();
 apiStudentsRouter.get('/', verifyToken, roleRequired(['admin', 'faculty']), searchStudents);
 apiStudentsRouter.get('/:id', verifyToken, roleRequired(['admin', 'faculty']), getStudentById);
