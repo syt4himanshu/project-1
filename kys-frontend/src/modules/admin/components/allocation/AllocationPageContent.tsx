@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { toApiErrorMessage } from '../../../../shared/api/errorMapper'
-import { DataTable, QueryState, type TableColumn } from '../../../../shared/ui'
+import { QueryState, ResponsiveDataView, type TableColumn } from '../../../../shared/ui'
+import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import type { AdminAllocationEntry } from '../../api'
 import { useAdminAllocationQuery } from '../../hooks'
 import { AllocationAssignModal } from './AllocationAssignModal'
@@ -9,6 +10,15 @@ import { AllocationRemoveModal } from './AllocationRemoveModal'
 interface PanelState {
   type: 'assign' | 'remove'
   faculty: AdminAllocationEntry
+}
+
+function getInitials(value: string): string {
+  const text = sanitizeDisplayValue(value)
+  const parts = text.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+  }
+  return text.slice(0, 2).toUpperCase() || 'NA'
 }
 
 export function AllocationPageContent() {
@@ -22,8 +32,8 @@ export function AllocationPageContent() {
         header: 'Faculty',
         cell: (row) => (
           <div>
-            <p className="admin-identity__primary">{row.facultyName}</p>
-            <p className="admin-identity__secondary">{row.email}</p>
+            <p className="admin-identity__primary">{sanitizeDisplayValue(row.facultyName)}</p>
+            <p className="admin-identity__secondary">{sanitizeDisplayValue(row.email)}</p>
           </div>
         ),
       },
@@ -70,6 +80,65 @@ export function AllocationPageContent() {
     [],
   )
 
+  const renderAllocationCard = (row: AdminAllocationEntry) => {
+    return (
+      <div className="mobile-card">
+        <div className="mobile-card__header">
+          <div className="mobile-card__avatar">
+            {getInitials(row.facultyName)}
+          </div>
+          <div className="mobile-card__info">
+            <h4 className="mobile-card__title">{sanitizeDisplayValue(row.facultyName)}</h4>
+            <p className="mobile-card__subtitle">FAC{String(row.facultyId).padStart(3, '0')} · Faculty</p>
+          </div>
+        </div>
+
+        <div className="mobile-card__content">
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Assigned Students</span>
+            <span className="mobile-card__value">{row.assignedCount}</span>
+          </div>
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Capacity</span>
+            <span className="mobile-card__value">{normalizeCapacity(row.capacity)}</span>
+          </div>
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Email</span>
+            <span className="mobile-card__value">{sanitizeDisplayValue(row.email)}</span>
+          </div>
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Utilization</span>
+            <span className="mobile-card__value">{`${row.assignedCount}/${normalizeCapacity(row.capacity)}`}</span>
+          </div>
+        </div>
+
+        <div className="mobile-card__actions">
+          <button
+            type="button"
+            className="mobile-action-btn mobile-action-btn--primary"
+            disabled={row.assignedCount >= row.capacity}
+            onClick={() => setPanelState({ type: 'assign', faculty: row })}
+            title="Edit"
+            aria-label="Edit"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+          </button>
+
+          <button
+            type="button"
+            className="mobile-action-btn mobile-action-btn--secondary"
+            disabled={row.assignedCount === 0}
+            onClick={() => setPanelState({ type: 'remove', faculty: row })}
+            title="View"
+            aria-label="View"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">visibility</span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (allocationQuery.isError) {
     return (
       <div className="admin-page">
@@ -96,13 +165,14 @@ export function AllocationPageContent() {
       </div>
 
       <div className="admin-surface">
-        <DataTable
+        <ResponsiveDataView
           columns={columns}
           data={allocationQuery.data ?? []}
           keyExtractor={(row) => row.facultyId}
           isLoading={allocationQuery.isPending}
           pageSize={12}
           emptyLabel="No faculty records available for allocation."
+          renderMobileCard={renderAllocationCard}
         />
       </div>
 

@@ -1,11 +1,17 @@
 node_modules/
 dist/
 build/
+# Env files (ignore in all subfolders too)
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!**/.env.example
 !.env.development
+!**/.env.development
 !.env.production
+!**/.env.production
 *.log
 .DS_Store
 coverage/

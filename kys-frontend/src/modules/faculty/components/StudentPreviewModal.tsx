@@ -272,7 +272,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
         <div className="faculty-preview__footer-actions">
           <button
             type="button"
-            className="button button--ghost"
+            className="button button--soft"
             onClick={() => void handlePrint()}
             disabled={menteeQuery.isPending || menteeQuery.isError || isExporting || !student}
           >
@@ -280,16 +280,16 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
           </button>
           <button
             type="button"
-            className="button button--primary"
+            className="button button--soft"
             onClick={() => void handlePdf()}
             disabled={menteeQuery.isPending || menteeQuery.isError || isExporting || !student}
           >
             {isExporting ? 'Exporting...' : 'Download PDF'}
           </button>
-          <button type="button" className="button button--primary" onClick={goToMentoringPanel} disabled={!student}>
+          <button type="button" className="button button--soft" onClick={goToMentoringPanel} disabled={!student}>
             Give Remarks
           </button>
-          <button type="button" className="button button--ghost" onClick={onClose}>
+          <button type="button" className="button button--soft" onClick={onClose}>
             Close
           </button>
         </div>

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toApiErrorMessage } from '../../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../../shared/ui'
 import { normalizeForDisplay } from '../../api'
 import { PhotoAvatar } from '../../../../shared/components/PhotoAvatar'
 import { extractStudentPhotoUrl } from '../../../../shared/utils/studentPhoto'
-import { useAdminStudentDetailQuery, useAdminUploadStudentPhotoMutation } from '../../hooks'
+import { sanitizeDisplayValue } from '../../../../shared/utils/render'
+import { useAdminStudentDetailQuery } from '../../hooks'
 
 interface StudentDetailModalProps {
   studentId: number | null
@@ -44,7 +45,7 @@ function isEmpty(value: unknown): boolean {
 }
 
 function showValue(value: unknown): string {
-  return isEmpty(value) ? 'N/A' : toText(value)
+  return isEmpty(value) ? 'N/A' : sanitizeDisplayValue(toText(value))
 }
 
 function pick(record: AnyRecord | undefined, ...keys: string[]): unknown {
@@ -97,8 +98,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
   const [isExporting, setIsExporting] = useState(false)
 
   const detailQuery = useAdminStudentDetailQuery(studentId)
-  const uploadMutation = useAdminUploadStudentPhotoMutation(studentId)
-  const student = detailQuery.data
+    const student = detailQuery.data
 
   const personalInfo = useMemo(() => student?.personalInfo ?? {}, [student?.personalInfo])
   const studentPhotoUrl = useMemo(() => extractStudentPhotoUrl({ personal_info: personalInfo }), [personalInfo])
@@ -183,27 +183,6 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
   const organizationRows = useMemo(() => fixedSlots(student?.coCurricularOrganizations as AnyRecord[] | undefined, 3), [student?.coCurricularOrganizations])
   const programRows = useMemo(() => fixedSlots(student?.skillPrograms as AnyRecord[] | undefined, 3), [student?.skillPrograms])
   const internshipRows = useMemo(() => fixedSlots(student?.internships as AnyRecord[] | undefined, 2), [student?.internships])
-
-  useEffect(() => {
-    if (!student) return
-    console.log('[ADMIN] student detail photoUrl:', {
-      studentId: student.id,
-      uid: student.uid,
-      photoUrl: studentPhotoUrl,
-    })
-  }, [student, studentPhotoUrl])
-
-  const handlePhotoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    try {
-      await uploadMutation.mutateAsync(file)
-      await detailQuery.refetch()
-    } finally {
-      event.target.value = ''
-    }
-  }
 
   const handlePrint = async () => {
     if (!contentRef.current || !student) return
@@ -333,36 +312,29 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
       {student ? (
         <div className="detail-scroll" ref={contentRef}>
           <DetailSection title="Photo">
-            <div className="flex items-center gap-4">
+            <div className="admin-student-photo-wrap">
               <PhotoAvatar
                 url={studentPhotoUrl}
                 alt={`${student.name} profile`}
-                className="h-20 w-20 rounded-2xl border border-[#d9e1ec] object-cover"
+                className="admin-student-photo-preview__image"
                 loading="eager"
                 fallback={(
-                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#d9e1ec] bg-[#e8eef8] text-lg font-semibold text-[#2f4d7a]">
+                  <div className="admin-student-photo-preview__fallback">
                     {student.name.slice(0, 2).toUpperCase()}
                   </div>
                 )}
               />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-[#32435f]">
+              <div className="admin-student-photo-meta">
+                <p className="admin-student-photo-meta__title">
                   {studentPhotoUrl ? 'Current Cloudinary photo' : 'No photo uploaded yet'}
                 </p>
                 {studentPhotoUrl ? (
-                  <a className="text-sm text-[#2b5fa6] underline" href={studentPhotoUrl} target="_blank" rel="noreferrer">
+                  <a className="admin-student-photo-meta__link" href={studentPhotoUrl} target="_blank" rel="noreferrer">
                     Open uploaded image
                   </a>
                 ) : (
-                  <p className="text-sm text-[#6a758a]">The default initials avatar is shown until a photo is uploaded.</p>
+                  <p className="admin-student-photo-meta__hint">The default initials avatar is shown until a photo is uploaded.</p>
                 )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  disabled={uploadMutation.isPending}
-                  className="mt-3 block w-full rounded-xl border border-[#d9e1ec] px-3 py-2 text-sm"
-                />
               </div>
             </div>
           </DetailSection>
@@ -560,3 +532,4 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
     </Modal>
   )
 }
+

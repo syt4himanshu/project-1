@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../shared/ui'
 import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
 import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
-import { useAddMentoringMinute, useMentee, useMenteeMinutes, useUploadMenteePhoto } from '../hooks'
+import { useAddMentoringMinute, useMentee, useMenteeMinutes } from '../hooks'
 import { AIRemarksAssistant } from '../components/AIRemarksAssistant'
 import '../components/AIRemarksAssistant.css'
+import { Sparkles } from 'lucide-react'
 
 function formatDate(value: string): string {
   const date = new Date(value)
@@ -53,15 +54,6 @@ export function FacultyMenteeDetailPage() {
     'N/A',
   )
   const minutes = useMemo(() => minutesQuery.data?.mentoring_minutes ?? [], [minutesQuery.data?.mentoring_minutes])
-  const uploadPhotoMutation = useUploadMenteePhoto(uid, student?.id ?? null)
-
-  useEffect(() => {
-    if (!student) return
-    console.log('[FACULTY] mentee detail photoUrl:', {
-      uid: student.uid,
-      photo_url: studentPhotoUrl,
-    })
-  }, [student, studentPhotoUrl])
 
   const closeRemarksModal = () => {
     setRemarksOpen(false)
@@ -101,17 +93,6 @@ export function FacultyMenteeDetailPage() {
     }
   }
 
-  const handlePhotoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    try {
-      await uploadPhotoMutation.mutateAsync(file)
-      // Cache invalidation in mutation handles UI refresh automatically
-    } finally {
-      event.target.value = ''
-    }
-  }
 
   if (!uid) {
     return (
@@ -170,24 +151,14 @@ export function FacultyMenteeDetailPage() {
             <p><strong>UID:</strong> {student.uid}</p>
             <p><strong>Program:</strong> {program}</p>
             <p><strong>Current Semester:</strong> {student.semester}</p>
-            <label className="mt-2 block text-xs text-[#4f5f78]">
-              Upload / replace student photo
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                disabled={uploadPhotoMutation.isPending}
-                className="mt-2 block w-full rounded-lg border border-[#d9e1ec] px-3 py-2 text-sm"
-              />
-            </label>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button type="button" className="button button--secondary" onClick={() => setAiAssistantOpen(true)}>
-            ✨ AI Assistant
+          <button type="button" className="button button--soft" onClick={() => setAiAssistantOpen(true)}>
+            <Sparkles size={16} style={{ marginRight: '6px' }} /> AI Assistant
           </button>
-          <button type="button" className="button button--primary" onClick={() => setRemarksOpen(true)}>
+          <button type="button" className="button button--soft" onClick={() => setRemarksOpen(true)}>
             Give Remarks
           </button>
         </div>
@@ -277,10 +248,10 @@ export function FacultyMenteeDetailPage() {
           {formError ? <p className="form-error">{formError}</p> : null}
 
           <div className="faculty-remarks-form__actions">
-            <button type="button" className="button button--ghost" onClick={closeRemarksModal}>
+            <button type="button" className="button button--soft" onClick={closeRemarksModal}>
               Cancel
             </button>
-            <button type="submit" className="button button--primary" disabled={addMinuteMutation.isPending}>
+            <button type="submit" className="button button--soft" disabled={addMinuteMutation.isPending}>
               {addMinuteMutation.isPending ? 'Submitting...' : 'Submit Remarks'}
             </button>
           </div>

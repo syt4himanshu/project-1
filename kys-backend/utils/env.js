@@ -22,8 +22,6 @@ const validateEnv = () => {
     console.warn('GROQ_API_KEY is not set; AI endpoints will be degraded, but auth/API startup will continue.');
     return;
   }
-
-  console.log('GROQ_API_KEY Loaded: YES');
 };
 
 const getCorsSettings = () => {

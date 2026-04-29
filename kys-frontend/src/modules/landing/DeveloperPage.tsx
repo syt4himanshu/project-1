@@ -3,12 +3,26 @@ import { useNavigate } from 'react-router-dom'
 export function DeveloperPage() {
   const navigate = useNavigate()
 
+  const facultyMentors = [
+    {
+      name: 'Dr. Manoj Bramhe',
+      image: '/faculty-mentor-manoj.jpg',
+    },
+    {
+      name: 'Dr. Kapil Gupta',
+      image: '/faculty-mentor-kapil.jpeg',
+    },
+    {
+      name: 'Ayaz Ahmed Khan',
+      image: '/faculty-mentor-ayaz.jpg',
+    },
+  ]
+
   const developers = [
     {
       name: 'Himanshu Mire',
       role: 'Backend & API Specialist',
-      summaryLineOne: 'Built core faculty-facing workflows and ensured reliable API integration.',
-      summaryLineTwo: 'Focused on performance tuning, responsive layout behavior, and maintainable structure.',
+      summaryLineOne: 'Led end-to-end platform development, architecting backend systems, AI workflows, and performance optimizations to deliver scalable, secure, and reliable production systems.',
       image: '/hm2.jpeg',
       github: 'https://github.com/syt4himanshu',
       linkedin: 'https://www.linkedin.com/in/himanshu-mire-816308288/',
@@ -41,7 +55,27 @@ export function DeveloperPage() {
               Developer Team
             </h1>
 
-            <div className="kys-developer__grid">
+            <p className="kys-developer__section-title">Faculty Mentors</p>
+            <div className="kys-developer__mentors-grid">
+              {facultyMentors.map((mentor, idx) => (
+                <article key={mentor.name} className="kys-developer__mentor-item" style={{ animationDelay: `${idx * 180}ms` }}>
+                  <div className="kys-developer__mentor-avatar-wrap">
+                    <img
+                      className="kys-developer__mentor-avatar"
+                      src={mentor.image}
+                      alt={`${mentor.name} profile`}
+                      onError={(event) => {
+                        event.currentTarget.src = '/college-logo.png'
+                      }}
+                    />
+                  </div>
+                  <h3 className="kys-developer__mentor-name">{mentor.name}</h3>
+                </article>
+              ))}
+            </div>
+
+            <p className="kys-developer__section-title">Developers</p>
+            <div className="kys-developer__developers-grid">
               {developers.map((dev, idx) => (
                 <article key={dev.name} className="kys-developer__item" style={{ animationDelay: `${idx * 220}ms` }}>
                   <div className="kys-developer__avatar-wrap">

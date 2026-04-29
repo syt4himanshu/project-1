@@ -40,7 +40,7 @@ export function FacultyChatbotPage() {
           {sidebarOpen && <span className="faculty-chat__sidebar-title">Student Context</span>}
           <button
             type="button"
-            className="button button--ghost faculty-chat__sidebar-toggle"
+            className="button button--soft faculty-chat__sidebar-toggle"
             onClick={() => setSidebarOpen((p) => !p)}
             aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
           >

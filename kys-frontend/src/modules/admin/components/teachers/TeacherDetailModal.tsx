@@ -1,6 +1,7 @@
 import { toApiErrorMessage } from '../../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../../shared/ui'
 import { normalizeForDisplay } from '../../api'
+import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import { useAdminFacultyDetailQuery } from '../../hooks'
 
 interface TeacherDetailModalProps {
@@ -17,7 +18,7 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
       open={Boolean(facultyId)}
       onClose={onClose}
       title="Teacher Detail"
-      subtitle={detail ? `${detail.faculty.name} (${detail.faculty.uid})` : 'Loading teacher details...'}
+      subtitle={detail ? `${sanitizeDisplayValue(detail.faculty.name)} (${sanitizeDisplayValue(detail.faculty.uid)})` : 'Loading teacher details...'}
       size="lg"
       footer={(
         <button type="button" className="button button--primary" onClick={onClose}>
@@ -45,15 +46,15 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
               <tbody>
                 <tr>
                   <th>Name</th>
-                  <td>{normalizeForDisplay(detail.faculty.name)}</td>
+                  <td>{sanitizeDisplayValue(normalizeForDisplay(detail.faculty.name))}</td>
                 </tr>
                 <tr>
                   <th>Email</th>
-                  <td>{normalizeForDisplay(detail.faculty.email)}</td>
+                  <td>{sanitizeDisplayValue(normalizeForDisplay(detail.faculty.email))}</td>
                 </tr>
                 <tr>
                   <th>Contact</th>
-                  <td>{normalizeForDisplay(detail.faculty.contact)}</td>
+                  <td>{sanitizeDisplayValue(normalizeForDisplay(detail.faculty.contact))}</td>
                 </tr>
                 <tr>
                   <th>Assigned Students</th>
@@ -84,10 +85,10 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
                   {detail.mentees.map((mentee, index) => (
                     <tr key={mentee.id || `${mentee.uid}-${index}`}>
                       <td>{index + 1}</td>
-                      <td className="mono-cell">{normalizeForDisplay(mentee.uid)}</td>
-                      <td>{normalizeForDisplay(mentee.fullName)}</td>
+                      <td className="mono-cell">{sanitizeDisplayValue(normalizeForDisplay(mentee.uid))}</td>
+                      <td>{sanitizeDisplayValue(normalizeForDisplay(mentee.fullName))}</td>
                       <td>{normalizeForDisplay(mentee.semester)}</td>
-                      <td>{normalizeForDisplay(mentee.section)}</td>
+                      <td>{sanitizeDisplayValue(normalizeForDisplay(mentee.section))}</td>
                       <td>{normalizeForDisplay(mentee.yearOfAdmission)}</td>
                     </tr>
                   ))}

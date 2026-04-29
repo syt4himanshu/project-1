@@ -26,32 +26,31 @@ export function Pagination({
 
   return (
     <footer className="table-pagination" aria-label="Pagination">
-      <button
-        type="button"
-        className="table-pagination__button"
-        onClick={() => onPageChange(clampPage(page - 1, pageCount))}
-        disabled={page <= 1}
-      >
-        <span className="mobile-hide">Previous</span>
-        <span className="desktop-hide">← Prev</span>
-      </button>
-
       <div className="table-pagination__label">
-        <span className="mobile-hide">Showing {start}-{end} of {totalItems}</span>
-        <span className="desktop-hide">Showing {start}-{end} of {totalItems}</span>
+        <span>Showing {start}–{end} of {totalItems}</span>
         <span className="mobile-hide">Page {page} of {pageCount}</span>
       </div>
 
-      <button
-        type="button"
-        className="table-pagination__button"
-        onClick={() => onPageChange(clampPage(page + 1, pageCount))}
-        disabled={page >= pageCount}
-      >
-        <span className="mobile-hide">Next</span>
-        <span className="desktop-hide">Next →</span>
-      </button>
+      <div className="table-pagination__actions">
+        <button
+          type="button"
+          className="table-pagination__button"
+          onClick={() => onPageChange(clampPage(page - 1, pageCount))}
+          disabled={page <= 1}
+        >
+          Prev
+        </button>
+
+        <button
+          type="button"
+          className="table-pagination__button"
+          onClick={() => onPageChange(clampPage(page + 1, pageCount))}
+          disabled={page >= pageCount}
+        >
+          Next
+        </button>
+      </div>
     </footer>
   )
-
 }
+

@@ -1,4 +1,4 @@
-import { isUserRole } from '../../../shared/auth/session'
+﻿import { isUserRole } from '../../../shared/auth/session'
 import type {
   AdminAllocationApiResponse,
   AdminAllocationEntry,
@@ -30,7 +30,9 @@ import type {
   AdminStudentSummaryApiResponse,
   AdminStudentSummaryFilters,
   AdminTopper,
-  AdminTopperApiResponse,
+  AdminTopperRowApiResponse,
+  AdminTopperResponseApiResponse,
+  AdminTopperResponse,
   AdminUserApiResponse,
   AdminUserRole,
   AdminUserSummary,
@@ -42,6 +44,7 @@ import type {
   JsonRecord,
   NormalizedAdminStudentSummaryFilters,
 } from './types'
+import { sanitizeDisplayValue } from '../../../shared/utils/render'
 
 const EMPTY_TEXT_VALUES = new Set(['', 'n/a', 'na', 'none', '-', '--', 'null', 'undefined'])
 
@@ -70,11 +73,28 @@ function normalizeDisplayText(value: unknown, fallback = ''): string {
   return EMPTY_TEXT_VALUES.has(trimmed.toLowerCase()) ? fallback : trimmed
 }
 
+function normalizeSanitizedText(value: unknown, fallback = ''): string {
+  const cleaned = sanitizeDisplayValue(value)
+  if (cleaned === '—') return fallback
+  return normalizeDisplayText(cleaned, fallback)
+}
+
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value
     .map((entry) => normalizeDisplayText(entry))
     .filter((entry) => entry !== '')
+}
+
+function parseBacklogCountFromSubjects(subjects: string[]): number {
+  if (subjects.length === 0) return 0
+
+  const numericCandidate = subjects[0]?.match(/^(\d+)\s*(?:subjects?|backlogs?)$/i)
+  if (subjects.length === 1 && numericCandidate) {
+    return Number(numericCandidate[1])
+  }
+
+  return subjects.length
 }
 
 function toRole(value: unknown): AdminUserRole {
@@ -285,13 +305,29 @@ export function normalizeReportStats(raw: AdminReportStatsApiResponse): AdminRep
   }
 }
 
-export function normalizeTopper(raw: AdminTopperApiResponse, fallbackRank: number): AdminTopper {
+export function normalizeTopper(raw: AdminTopperRowApiResponse, fallbackRank: number): AdminTopper {
   return {
     rank: toNumber(raw.rank, fallbackRank),
     name: normalizeDisplayText(raw.name, 'Unknown Student'),
     uid: normalizeDisplayText(raw.uid, 'UNKNOWN_UID'),
     sgpa: toNumber(raw.sgpa, 0),
     semester: toNullableNumber(raw.semester),
+    enrollment_year: toNullableNumber(raw.enrollment_year) ?? undefined,
+  }
+}
+
+export function normalizeTopperResponse(raw: AdminTopperResponseApiResponse): AdminTopperResponse {
+  const toppersRaw = Array.isArray(raw.toppers) ? raw.toppers : []
+  const toppers = toppersRaw
+    .filter((entry): entry is AdminTopperRowApiResponse => isRecord(entry))
+    .map((entry, index) => normalizeTopper(entry, index + 1))
+
+  return {
+    semester: toNumber(raw.semester, 1),
+    batch_current_sem: toNumber(raw.batch_current_sem, 1),
+    is_in_progress: Boolean(raw.is_in_progress),
+    current_cycle: (raw.current_cycle === 'even' ? 'even' : 'odd') as 'odd' | 'even',
+    toppers,
   }
 }
 
@@ -301,22 +337,6 @@ export function normalizeSemesterDistributionRow(
   return {
     semester: toNumber(raw.semester, 0),
     count: toNumber(raw.count, 0),
-  }
-}
-
-export function normalizeBacklogEntry(raw: AdminBacklogEntryApiResponse): AdminBacklogEntry {
-  const subjects = Array.isArray(raw.subjects)
-    ? raw.subjects.map((value) => normalizeDisplayText(value)).filter(Boolean)
-    : normalizeDisplayText(raw.subjects)
-      .split(/[,;\n]+/)
-      .map((value) => value.trim())
-      .filter(Boolean)
-
-  return {
-    studentId: toNumber(raw.student_id, 0),
-    name: normalizeDisplayText(raw.name, 'Unknown Student'),
-    uid: normalizeDisplayText(raw.uid, 'UNKNOWN_UID'),
-    subjects,
   }
 }
 
@@ -349,18 +369,39 @@ export function normalizeGeneralReportRow(raw: AdminGeneralReportApiResponse): A
   }
 }
 
+
+export function normalizeBacklogEntry(raw: AdminBacklogEntryApiResponse): AdminBacklogEntry {
+  const subjects = Array.isArray(raw.subjects)
+    ? raw.subjects.map((value) => normalizeSanitizedText(value)).filter(Boolean)
+    : normalizeSanitizedText(raw.subjects)
+      .split(/[,;\n]+/)
+      .map((value) => normalizeSanitizedText(value.trim()))
+      .filter(Boolean)
+
+  const parsedBacklogCount = toNumber(raw.backlog_count, 0)
+  const fallbackCount = parseBacklogCountFromSubjects(subjects)
+  const backlogCount = Math.max(parsedBacklogCount, fallbackCount)
+
+  return {
+    studentId: toNumber(raw.student_id, 0),
+    name: normalizeSanitizedText(raw.name, 'Unknown Student'),
+    uid: normalizeSanitizedText(raw.uid, 'UNKNOWN_UID'),
+    subjects,
+    backlogCount,
+  }
+}
 export function normalizeIncompleteProfile(raw: AdminIncompleteProfileApiResponse): AdminIncompleteProfile {
   const missingFields = Array.isArray(raw.missing_fields)
-    ? raw.missing_fields.map((value) => normalizeDisplayText(value)).filter(Boolean)
-    : normalizeDisplayText(raw.missing_fields)
+    ? raw.missing_fields.map((value) => normalizeSanitizedText(value)).filter(Boolean)
+    : normalizeSanitizedText(raw.missing_fields)
       .split(/[,;\n]+/)
-      .map((value) => value.trim())
+      .map((value) => normalizeSanitizedText(value.trim()))
       .filter(Boolean)
 
   return {
     id: toNumber(raw.id, 0),
-    name: normalizeDisplayText(raw.name, 'Unknown Student'),
-    uid: normalizeDisplayText(raw.uid, 'UNKNOWN_UID'),
+    name: normalizeSanitizedText(raw.name, 'Unknown Student'),
+    uid: normalizeSanitizedText(raw.uid, 'UNKNOWN_UID'),
     yearOfAdmission: toNullableNumber(raw.year_of_admission),
     missingFields,
   }
@@ -406,3 +447,4 @@ export function normalizeArrayForDisplay(values: unknown, fallback = 'N/A'): str
 
   return tokens.length > 0 ? tokens.join(', ') : fallback
 }
+

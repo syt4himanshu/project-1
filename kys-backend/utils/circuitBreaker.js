@@ -42,6 +42,9 @@ class CircuitBreaker {
             this.onSuccess();
             return result;
         } catch (error) {
+            if (error && error.skipCircuitBreaker) {
+                throw error;
+            }
             this.onFailure();
             throw error;
         }

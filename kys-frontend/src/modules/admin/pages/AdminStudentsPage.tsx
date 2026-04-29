@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { ResponsiveDataView, QueryState, type TableColumn } from '../../../shared/ui'
-import { sanitizeDisplayValue, getAvatarColor } from '../../../shared/utils/render'
+import { sanitizeDisplayValue } from '../../../shared/utils/render'
 import type { AdminStudentSummary, AdminStudentSummaryFilters } from '../api'
 import { StudentDetailModal } from '../components/students/StudentDetailModal'
 import { useAdminStudentSummaryQuery } from '../hooks'
@@ -16,6 +16,62 @@ const CAREER_GOAL_OPTIONS = [
   'Government Exams',
   'Not Decided',
 ] as const
+
+function getInitials(fullName: string): string {
+  const clean = sanitizeDisplayValue(fullName)
+  const parts = clean.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+  }
+  return clean.slice(0, 2).toUpperCase() || 'NA'
+}
+
+function formatFixedTwo(value: unknown): string {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric.toFixed(2) : '—'
+}
+
+function resolveBacklogPills(row: AdminStudentSummary): { text: string; tone: 'success' | 'danger' | 'warning' }[] {
+  const rowRecord = row as unknown as Record<string, unknown>
+  const rawBacklogs = rowRecord.backlogSubjects ?? rowRecord.backlogs ?? rowRecord.backlog_subjects
+
+  if (typeof rawBacklogs === 'number') {
+    if (rawBacklogs <= 0) {
+      return [{ text: 'Clear', tone: 'success' }]
+    }
+    return [{ text: `${rawBacklogs} subjects`, tone: 'warning' }]
+  }
+
+  if (typeof rawBacklogs !== 'string') {
+    return [{ text: 'Clear', tone: 'success' }]
+  }
+
+  const cleaned = sanitizeDisplayValue(rawBacklogs)
+  const asNumber = Number(cleaned)
+  if (Number.isFinite(asNumber)) {
+    if (asNumber <= 0) {
+      return [{ text: 'Clear', tone: 'success' }]
+    }
+    return [{ text: `${asNumber} subjects`, tone: 'warning' }]
+  }
+
+  const subjects = cleaned
+    .split(',')
+    .map((item) => sanitizeDisplayValue(item).trim())
+    .filter((item) => item && item !== '—')
+
+  if (subjects.length === 0) {
+    return [{ text: 'Clear', tone: 'success' }]
+  }
+
+  return subjects.map((subject) => ({ text: subject, tone: 'danger' as const }))
+}
+
+function pillClass(tone: 'success' | 'danger' | 'warning'): string {
+  if (tone === 'danger') return 'mobile-card__pill mobile-card__pill--danger'
+  if (tone === 'warning') return 'mobile-card__pill mobile-card__pill--warning'
+  return 'mobile-card__pill mobile-card__pill--success'
+}
 
 export function AdminStudentsPage() {
   const [filters, setFilters] = useState<AdminStudentSummaryFilters>({
@@ -50,7 +106,7 @@ export function AdminStudentsPage() {
       {
         id: 'semester',
         header: 'Semester',
-        cell: (row) => row.semester ? `Sem ${row.semester}` : 'N/A',
+        cell: (row) => (row.semester ? `Sem ${row.semester}` : 'N/A'),
       },
       {
         id: 'section',
@@ -81,13 +137,13 @@ export function AdminStudentsPage() {
         id: 'actions',
         header: 'Actions',
         cell: (row) => (
-            <button
-              type="button"
-              className="button button--soft"
-              onClick={() => setSelectedStudentId(row.id)}
-            >
-              View Detail
-            </button>
+          <button
+            type="button"
+            className="button button--soft"
+            onClick={() => setSelectedStudentId(row.id)}
+          >
+            View Detail
+          </button>
         ),
       },
     ],
@@ -95,17 +151,15 @@ export function AdminStudentsPage() {
   )
 
   const renderStudentCard = (row: AdminStudentSummary) => {
-    // Determine initials for avatar
-    const nameParts = row.name.split(' ').filter(Boolean)
-    const initials = nameParts.length >= 2 
-      ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
-      : row.name.slice(0, 2).toUpperCase()
+    const backlogPills = resolveBacklogPills(row)
+    const rowRecord = row as unknown as Record<string, unknown>
+    const cgpa = formatFixedTwo(rowRecord.cgpa ?? rowRecord.CGPA)
 
     return (
       <div className="mobile-card">
         <div className="mobile-card__header">
-          <div className="mobile-card__avatar">
-            {initials}
+          <div className="mobile-card__avatar" >
+            {getInitials(row.name)}
           </div>
           <div className="mobile-card__info">
             <h4 className="mobile-card__title">{sanitizeDisplayValue(row.name)}</h4>
@@ -115,32 +169,40 @@ export function AdminStudentsPage() {
 
         <div className="mobile-card__content">
           <div className="mobile-card__row">
-            <span className="mobile-card__label">Branch / Domain</span>
+            <span className="mobile-card__label">Branch</span>
             <span className="mobile-card__value">{sanitizeDisplayValue(row.domainOfInterest)}</span>
           </div>
           <div className="mobile-card__row">
-            <span className="mobile-card__label">Year / Sem</span>
-            <span className="mobile-card__value">
-              {row.yearOfAdmission || 'N/A'} · {row.semester ? `Sem ${row.semester}` : 'N/A'}
-            </span>
+            <span className="mobile-card__label">Year</span>
+            <span className="mobile-card__value">{row.yearOfAdmission || 'N/A'}</span>
+          </div>
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Semester</span>
+            <span className="mobile-card__value">{row.semester ? `Sem ${row.semester}` : 'N/A'}</span>
+          </div>
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">CGPA</span>
+            <span className="mobile-card__value">{cgpa}</span>
           </div>
           <div className="mobile-card__row">
             <span className="mobile-card__label">Backlogs</span>
             <div className="mobile-card__pill-list">
-              {/* Backlog data isn't in summary yet, showing Clear as default or placeholder */}
-              <span className="mobile-card__pill mobile-card__pill--success">Clear</span>
+              {backlogPills.map((pill, index) => (
+                <span key={`${pill.text}-${index}`} className={pillClass(pill.tone)}>{pill.text}</span>
+              ))}
             </div>
           </div>
         </div>
 
         <div className="mobile-card__actions">
-          {/* View Only for current Student Page scope */}
-          <button 
+          <button
+            type="button"
             className="mobile-action-btn mobile-action-btn--secondary"
             onClick={() => setSelectedStudentId(row.id)}
-            title="View Detail"
+            title="View"
+            aria-label="View"
           >
-            <span className="material-symbols-outlined">visibility</span>
+            <span className="material-symbols-outlined" aria-hidden="true">visibility</span>
           </button>
         </div>
       </div>
@@ -173,7 +235,6 @@ export function AdminStudentsPage() {
       </div>
 
       <div className="admin-toolbar-grid admin-toolbar-grid--students">
-        {/* Search - Always Visible */}
         <div className="role-toolbar__card admin-toolbar-block">
           <div className="role-field role-field--icon">
             <span className="material-symbols-outlined">search</span>
@@ -185,18 +246,18 @@ export function AdminStudentsPage() {
               type="text"
             />
           </div>
-          
-          <button 
+
+          <button
+            type="button"
             className="button button--ghost button--icon desktop-hide"
             style={{ width: '100%', marginTop: '0.75rem', justifyContent: 'center' }}
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={() => setShowFilters((current) => !current)}
           >
             <span className="material-symbols-outlined">filter_list</span>
             {showFilters ? 'Hide Filters' : 'Filters ▼'}
           </button>
         </div>
 
-        {/* Desktop Filters OR Mobile Conditional Filters */}
         <div className={`role-toolbar__card role-toolbar__card--filters admin-toolbar-block ${!showFilters ? 'mobile-hide' : ''}`}>
           <div className="admin-toolbar-fields-grid admin-toolbar-fields-grid--two">
             <select

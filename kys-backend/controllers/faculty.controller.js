@@ -106,15 +106,31 @@ const addMentoringMinute = async (req, res, next) => {
     const { remarks, suggestion, action } = req.body || {};
 
     try {
-      await MentoringMinute.create({
+      const payload = {
         student_id: student.id,
         faculty_id: faculty.id,
+        faculty_name_snapshot: [faculty.first_name, faculty.last_name].filter(Boolean).join(' ').trim() || null,
+        faculty_email_snapshot: faculty.email || null,
         semester: student.semester,
         date: new Date(),
         remarks,
         suggestion,
         action,
-      });
+      };
+
+      try {
+        await MentoringMinute.create(payload);
+      } catch (createError) {
+        const message = String(createError?.message || '');
+        if (/faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(message)) {
+          const legacyPayload = { ...payload };
+          delete legacyPayload.faculty_name_snapshot;
+          delete legacyPayload.faculty_email_snapshot;
+          await MentoringMinute.create(legacyPayload);
+        } else {
+          throw createError;
+        }
+      }
       return sendResponse(res, { success: true, status: 201, data: { message: 'Mentoring minute added successfully.' } });
     } catch (_error) {
       return sendResponse(res, { success: false, status: 500, error: 'Database error while saving mentoring minute' });
@@ -136,8 +152,9 @@ const getMenteeMentoringMinutes = async (req, res, next) => {
     const student = await Student.findOne({ where: { uid: req.params.uid, mentor_id: faculty.id } });
     if (!student) return sendResponse(res, { success: false, status: 404, error: 'Mentee not found or not assigned to this faculty' });
 
-    const minutes = await MentoringMinute.findAll({ 
+    const minutes = await MentoringMinute.findAll({
       where: { student_id: student.id }, 
+      attributes: ['id', 'student_id', 'faculty_id', 'semester', 'date', 'remarks', 'suggestion', 'action'],
       order: [['date', 'DESC']],
       limit,
       offset
@@ -150,7 +167,7 @@ const getMenteeMentoringMinutes = async (req, res, next) => {
       remarks: m.remarks,
       suggestion: m.suggestion,
       action: m.action,
-      created_by_faculty: m.faculty_id === faculty.id,
+      created_by_faculty: Number(m.faculty_id) === Number(faculty.id),
     }));
 
     return sendResponse(res, {
@@ -242,6 +259,7 @@ const facultyChatbot = async (req, res) => {
         student_limit: MAX_STUDENTS,
         students: sanitizedStudentData,
       },
+      mode: 'insights',
     }, req.id);
 
     return sendResponse(res, { success: true, data: { response } });

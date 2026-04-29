@@ -24,7 +24,6 @@ const deleteOldStudentPhotoSafely = async (previousPublicId, currentPublicId) =>
 
   try {
     await cloudinary.uploader.destroy(previousPublicId, { invalidate: true });
-    console.log('[UPLOAD] Successfully deleted old photo:', previousPublicId);
   } catch (error) {
     console.error('Cloudinary cleanup failed', {
       oldPublicId: previousPublicId,
@@ -123,7 +122,6 @@ const uploadStudentPhotoForRecord = async (student, file) => {
     if (uploadResult?.public_id) {
       try {
         await cloudinary.uploader.destroy(uploadResult.public_id, { invalidate: true });
-        console.log('[UPLOAD] Rolled back new photo after error:', uploadResult.public_id);
       } catch (cleanupError) {
         console.error('[UPLOAD] Rollback cleanup failed (non-blocking):', {
           newPublicId: uploadResult.public_id,

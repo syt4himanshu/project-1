@@ -306,14 +306,11 @@ const putStudentsMe = async (req, res, next) => {
 
 const getStudentMe = async (req, res, next) => {
   try {
-    console.log('REQ USER ID:', req.currentUser?.id);
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
-    console.log('FETCHED STUDENT:', student?.id, student?.user_id);
     if (!student) {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
     }
 
-    console.log('QUERYING PERSONAL INFO WITH:', student?.id);
     if (!student.personal_info) {
       // Defensive fallback: direct lookup avoids occasional null association from large include graph.
       student.personal_info = await StudentPersonalInfo.findOne({
@@ -341,7 +338,6 @@ const getStudentMe = async (req, res, next) => {
     }
 
     const serializedPersonalInfo = serializeModel(student.personal_info);
-    console.log('[GET_PROFILE] Student personal_info photoUrl:', serializedPersonalInfo);
 
     const responseData = decodeStudentProfilePayload({
       id: student.id,
@@ -364,8 +360,6 @@ const getStudentMe = async (req, res, next) => {
       skills: student.skills ? serializeModel(student.skills) : {},
       swoc: student.swoc ? serializeModel(student.swoc) : {},
     });
-
-    console.log('[GET_PROFILE] Response personal_info.photoUrl:', responseData.personal_info?.photoUrl);
 
     return sendResponse(res, {
       success: true,
@@ -482,14 +476,10 @@ const putStudentMe = async (req, res, next) => {
 
 const uploadStudentPhoto = async (req, res, next) => {
   try {
-    console.log('[UPLOAD] Starting photo upload for user:', req.currentUser.id);
-
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: ['personal_info'] });
     if (!student) {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
     }
-    console.log('[UPLOAD] Student found, ID:', student.id);
-    console.log('[UPLOAD] File metadata:', req.file?.mimetype, req.file?.size, 'bytes');
 
     const result = await uploadStudentPhotoForRecord(student, req.file);
     if (!result.ok) {
@@ -499,8 +489,6 @@ const uploadStudentPhoto = async (req, res, next) => {
         error: result.error,
       });
     }
-
-    console.log('[UPLOAD] Database updated with photoUrl:', result.data.photoUrl);
 
     return sendResponse(res, {
       success: true,
@@ -532,8 +520,6 @@ const uploadStudentPhotoByPortal = async (req, res, next) => {
     if (!student) {
       return sendResponse(res, { success: false, status: 404, error: 'Student not found' });
     }
-
-    console.log('[UPLOAD] Starting portal upload for student:', student.id, 'by role:', req.currentUser.role);
 
     const result = await uploadStudentPhotoForRecord(student, req.file);
     if (!result.ok) {
@@ -584,22 +570,59 @@ const getStudentMentoringMinutes = async (req, res, next) => {
     if (!student) return res.status(404).json({ error: 'Student profile not found' });
 
     // Optimized: Use include to avoid N+1 query
-    const minutes = await MentoringMinute.findAll({
-      where: { student_id: student.id },
-      include: [
-        {
-          model: Faculty,
-          as: 'faculty',
-          attributes: ['id', 'email', 'first_name', 'last_name'],
-        },
-      ],
-      order: [['date', 'DESC']],
-    });
+    let minutes;
+    try {
+      minutes = await MentoringMinute.findAll({
+        where: { student_id: student.id },
+        attributes: [
+          'id',
+          'faculty_id',
+          'faculty_name_snapshot',
+          'faculty_email_snapshot',
+          'semester',
+          'date',
+          'remarks',
+          'suggestion',
+          'action',
+        ],
+        include: [
+          {
+            model: Faculty,
+            as: 'faculty',
+            attributes: ['id', 'email', 'first_name', 'last_name'],
+          },
+        ],
+        order: [['date', 'DESC']],
+      });
+    } catch (queryError) {
+      const message = String(queryError?.message || '');
+      if (/faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(message)) {
+        minutes = await MentoringMinute.findAll({
+          where: { student_id: student.id },
+          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'suggestion', 'action'],
+          include: [
+            {
+              model: Faculty,
+              as: 'faculty',
+              attributes: ['id', 'email', 'first_name', 'last_name'],
+            },
+          ],
+          order: [['date', 'DESC']],
+        });
+      } else {
+        throw queryError;
+      }
+    }
 
     const result = minutes.map(m => ({
       id: m.id,
-      faculty_email: m.faculty ? m.faculty.email : null,
-      faculty_name: m.faculty ? `${m.faculty.first_name} ${m.faculty.last_name}` : null,
+      faculty_email: m.faculty?.email || m.faculty_email_snapshot || null,
+      faculty_name:
+        (m.faculty
+          ? `${m.faculty.first_name || ''} ${m.faculty.last_name || ''}`.trim()
+          : '') ||
+        m.faculty_name_snapshot ||
+        'Former Faculty',
       semester: m.semester,
       date: m.date,
       remarks: m.remarks,

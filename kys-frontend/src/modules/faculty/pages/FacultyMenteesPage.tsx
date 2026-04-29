@@ -86,7 +86,7 @@ export function FacultyMenteesPage() {
         id: 'actions',
         header: 'Actions',
         cell: (row) => (
-          <Link className="button button--ghost" to={`/faculty/mentees/${encodeURIComponent(row.uid)}`}>
+          <Link className="button button--soft" to={`/faculty/mentees/${encodeURIComponent(row.uid)}`}>
             Open
           </Link>
         ),

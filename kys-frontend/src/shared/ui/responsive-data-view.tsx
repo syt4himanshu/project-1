@@ -101,8 +101,6 @@ export function ResponsiveDataView<T>({
           loadingRowCount={loadingRowCount}
           emptyLabel={emptyLabel}
           pageSize={pageSize}
-          page={currentPage}
-          onPageChange={handlePageChange}
         />
       </div>
 

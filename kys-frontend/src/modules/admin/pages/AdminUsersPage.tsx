@@ -3,7 +3,8 @@ import { env } from '../../../app/config/env'
 import { useAuth } from '../../../app/providers/auth-context'
 import { useToast } from '../../../app/providers/toast-context'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
-import { ConfirmDialog, DataTable, QueryState, type TableColumn } from '../../../shared/ui'
+import { ConfirmDialog, QueryState, ResponsiveDataView, type TableColumn } from '../../../shared/ui'
+import { sanitizeDisplayValue } from '../../../shared/utils/render'
 import type {
   AdminUserSummary,
   BulkFacultyRowInput,
@@ -39,9 +40,15 @@ function roleBadgeClass(role: AdminUserSummary['role']): string {
   }
 }
 
+function statusPillClass(status: string): string {
+  return sanitizeDisplayValue(status).toLowerCase() === 'active'
+    ? 'mobile-card__pill mobile-card__pill--success'
+    : 'mobile-card__pill mobile-card__pill--warning'
+}
+
 function formatDate(value: string): string {
   const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return value
+  if (Number.isNaN(parsed.getTime())) return sanitizeDisplayValue(value)
 
   return new Intl.DateTimeFormat('en-IN', {
     day: '2-digit',
@@ -51,7 +58,7 @@ function formatDate(value: string): string {
 }
 
 function avatarInitials(row: AdminUserSummary): string {
-  const source = row.name || row.username
+  const source = sanitizeDisplayValue(row.name || row.username)
   const parts = source.split(/\s+/).filter(Boolean)
   if (parts.length >= 2) {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
@@ -97,6 +104,7 @@ function parseBulkRows(file: File): Promise<Record<string, string>[]> {
 export function AdminUsersPage() {
   const [searchValue, setSearchValue] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('all')
+  const [showFilters, setShowFilters] = useState(false)
 
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<AdminUserSummary | null>(null)
@@ -119,14 +127,6 @@ export function AdminUsersPage() {
   const bulkStudentsMutation = useBulkRegisterStudentsMutation()
   const bulkFacultyMutation = useBulkRegisterFacultyMutation()
 
-  useEffect(() => {
-    if (!usersQuery.data) return
-    console.log('[ADMIN] photoUrls:', usersQuery.data.map((row) => ({
-      username: row.username,
-      photoUrl: row.photoUrl,
-    })))
-  }, [usersQuery.data])
-
   const filteredRows = useMemo(() => {
     const rows = usersQuery.data ?? []
     const search = searchValue.trim().toLowerCase()
@@ -135,7 +135,8 @@ export function AdminUsersPage() {
       const matchesSearch = search
         ? [row.username, row.name]
           .filter(Boolean)
-          .some((value) => value.toLowerCase().includes(search))
+          .map((value) => sanitizeDisplayValue(value).toLowerCase())
+          .some((value) => value.includes(search))
         : true
 
       const matchesRole = roleFilter === 'all' ? true : row.role === roleFilter
@@ -154,7 +155,7 @@ export function AdminUsersPage() {
             {row.photoUrl ? (
               <PhotoAvatar
                 url={resolveImageUrl(row.photoUrl)}
-                alt={`${row.name} profile`}
+                alt={`${sanitizeDisplayValue(row.name)} profile`}
                 className="admin-avatar"
                 fallback={<span className="admin-avatar admin-avatar--placeholder">{avatarInitials(row)}</span>}
               />
@@ -162,8 +163,8 @@ export function AdminUsersPage() {
               <span className="admin-avatar admin-avatar--placeholder">{avatarInitials(row)}</span>
             )}
             <div>
-              <p className="admin-identity__primary">{row.username}</p>
-              <p className="admin-identity__secondary">{row.name}</p>
+              <p className="admin-identity__primary">{sanitizeDisplayValue(row.username)}</p>
+              <p className="admin-identity__secondary">{sanitizeDisplayValue(row.name)}</p>
             </div>
           </div>
         ),
@@ -171,12 +172,12 @@ export function AdminUsersPage() {
       {
         id: 'role',
         header: 'Role',
-        cell: (row) => <span className={roleBadgeClass(row.role)}>{row.role}</span>,
+        cell: (row) => <span className={roleBadgeClass(row.role)}>{sanitizeDisplayValue(row.role)}</span>,
       },
       {
         id: 'status',
         header: 'Status',
-        cell: (row) => <span className="status-pill">{row.status}</span>,
+        cell: (row) => <span className="status-pill">{sanitizeDisplayValue(row.status)}</span>,
       },
       {
         id: 'createdAt',
@@ -254,6 +255,84 @@ export function AdminUsersPage() {
     }
   }
 
+  const renderUserCard = (row: AdminUserSummary) => {
+    const isProtectedUser = row.id === user?.id || row.username === user?.username
+    const rowRecord = row as unknown as Record<string, unknown>
+    const emailValue = sanitizeDisplayValue(rowRecord.email ?? row.username)
+
+    return (
+      <div className="mobile-card">
+        <div className="mobile-card__header">
+          {row.photoUrl ? (
+            <PhotoAvatar
+              url={resolveImageUrl(row.photoUrl)}
+              alt={`${sanitizeDisplayValue(row.name)} profile`}
+              className="mobile-card__avatar"
+              fallback={(
+                <div className="mobile-card__avatar" >
+                  {avatarInitials(row)}
+                </div>
+              )}
+            />
+          ) : (
+            <div className="mobile-card__avatar" >
+              {avatarInitials(row)}
+            </div>
+          )}
+
+          <div className="mobile-card__info">
+            <h4 className="mobile-card__title">{sanitizeDisplayValue(row.username)}</h4>
+            <p className="mobile-card__subtitle">
+              <span className={roleBadgeClass(row.role)}>{sanitizeDisplayValue(row.role)}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="mobile-card__content">
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Email</span>
+            <span className="mobile-card__value">{emailValue}</span>
+          </div>
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Status</span>
+            <div className="mobile-card__pill-list">
+              <span className={statusPillClass(row.status)}>{sanitizeDisplayValue(row.status)}</span>
+            </div>
+          </div>
+          <div className="mobile-card__row">
+            <span className="mobile-card__label">Last Login</span>
+            <span className="mobile-card__value">{formatDate(row.createdAt)}</span>
+          </div>
+        </div>
+
+        <div className="mobile-card__actions">
+          <button
+            type="button"
+            className="mobile-action-btn mobile-action-btn--primary"
+            onClick={() => setResetTarget(row)}
+            disabled={row.role === 'admin' || row.role === 'unknown'}
+            title="Edit"
+            aria-label="Edit"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+          </button>
+
+
+          <button
+            type="button"
+            className="mobile-action-btn mobile-action-btn--danger"
+            onClick={() => setDeleteTarget(row)}
+            disabled={isProtectedUser}
+            title="Delete"
+            aria-label="Delete"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">delete</span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (usersQuery.isError) {
     return (
       <div className="admin-page">
@@ -291,7 +370,18 @@ export function AdminUsersPage() {
               type="text"
             />
           </div>
-          <div className="role-toolbar__inline">
+
+          <button
+            type="button"
+            className="button button--ghost button--icon desktop-hide"
+            style={{ width: '100%', marginTop: '0.75rem', justifyContent: 'center' }}
+            onClick={() => setShowFilters((current) => !current)}
+          >
+            <span className="material-symbols-outlined">filter_list</span>
+            {showFilters ? 'Hide Filters' : 'Filters ▼'}
+          </button>
+
+          <div className={`role-toolbar__inline ${!showFilters ? 'mobile-hide' : ''}`}>
             <span className="role-toolbar__label">Role Filter:</span>
             <select
               className="role-select"
@@ -362,13 +452,14 @@ export function AdminUsersPage() {
       </div>
 
       <div className="admin-surface">
-        <DataTable
+        <ResponsiveDataView
           columns={columns}
           data={filteredRows}
           keyExtractor={(row) => row.id}
           isLoading={usersQuery.isPending}
           pageSize={12}
           emptyLabel="No users matched the current filter."
+          renderMobileCard={renderUserCard}
         />
       </div>
 
@@ -386,7 +477,7 @@ export function AdminUsersPage() {
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title="Delete User"
-        message={deleteTarget ? `Delete ${deleteTarget.username}? This cannot be undone.` : 'Delete selected user?'}
+        message={deleteTarget ? `Delete ${sanitizeDisplayValue(deleteTarget.username)}? This cannot be undone.` : 'Delete selected user?'}
         confirmLabel="Delete"
         cancelLabel="Cancel"
         tone="danger"
@@ -425,3 +516,4 @@ export function AdminUsersPage() {
     </div>
   )
 }
+

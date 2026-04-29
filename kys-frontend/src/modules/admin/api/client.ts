@@ -18,7 +18,7 @@ import {
   normalizeReportStats,
   normalizeSemesterDistributionRow,
   normalizeStudentSummaryFilters,
-  normalizeTopper,
+  normalizeTopperResponse,
 } from './normalizers'
 import type {
   AdminAllocationApiResponse,
@@ -49,8 +49,8 @@ import type {
   AdminStudentSummary,
   AdminStudentSummaryApiResponse,
   AdminStudentSummaryFilters,
-  AdminTopper,
-  AdminTopperApiResponse,
+  AdminTopperResponse,
+  AdminTopperResponseApiResponse,
   AdminUserApiResponse,
   AdminUserSummary,
   BulkFacultyApiResponse,
@@ -317,18 +317,17 @@ async function getReportStats({ token }: AdminApiRequestOptions): Promise<AdminR
 
 async function listReportToppers(
   { token, semester }: AdminApiRequestOptions & { semester?: number },
-): Promise<AdminTopper[]> {
+): Promise<AdminTopperResponse> {
   const path = semester
     ? `${ENDPOINTS.admin.reports.toppers}?semester=${encodeURIComponent(String(semester))}`
     : ENDPOINTS.admin.reports.toppers
 
-  const payload = await requestJson<AdminTopperApiResponse[]>(path, {
+  const payload = await requestJson<AdminTopperResponseApiResponse>(path, {
     method: 'GET',
     token,
   })
 
-  const rows = Array.isArray(payload) ? payload : []
-  return rows.map((row, index) => normalizeTopper(row, index + 1))
+  return normalizeTopperResponse(payload)
 }
 
 async function listSemesterDistribution({ token }: AdminApiRequestOptions): Promise<AdminSemesterDistributionRow[]> {

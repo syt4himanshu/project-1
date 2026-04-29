@@ -130,6 +130,7 @@ const generateAIRemarks = async (req, res) => {
                 total_students: 1,
                 students: [enrichedContext],
             },
+            mode: 'remarks',
         }, req.id);
 
         logger.info({ reqId: req.id, message: 'AI Remarks Generated Successfully', studentUid: student.uid });

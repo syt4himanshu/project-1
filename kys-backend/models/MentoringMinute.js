@@ -6,7 +6,9 @@ class MentoringMinute extends Model {
       {
         id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
         student_id: { type: DataTypes.INTEGER, allowNull: false },
-        faculty_id: { type: DataTypes.INTEGER, allowNull: false },
+        faculty_id: { type: DataTypes.INTEGER, allowNull: true },
+        faculty_name_snapshot: { type: DataTypes.STRING(255), allowNull: true },
+        faculty_email_snapshot: { type: DataTypes.STRING(255), allowNull: true },
         semester: { type: DataTypes.INTEGER, allowNull: false },
         date: { type: DataTypes.DATEONLY, allowNull: true },
         remarks: { type: DataTypes.TEXT, allowNull: true },

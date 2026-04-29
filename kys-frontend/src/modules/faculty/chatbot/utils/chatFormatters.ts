@@ -9,7 +9,12 @@ const emptySections = (): ParsedSections => ({
 })
 
 const normalizeSectionKey = (raw: string): SectionKey | null => {
-    const key = raw.toLowerCase().trim().replace(':', '')
+    const key = raw
+        .toLowerCase()
+        .replace(/^[\s>*#\-\d\.\)\(]+/, '')
+        .replace(/[*_`]+/g, '')
+        .trim()
+        .replace(/:$/, '')
     if (key === 'summary') return 'Summary'
     if (key === 'key observations' || key === 'observations' || key === 'performance overview') return 'Key Observations'
     if (key === 'concerns' || key === 'risk areas' || key === 'risks') return 'Concerns'

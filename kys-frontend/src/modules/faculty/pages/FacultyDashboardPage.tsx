@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/providers/auth-context'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
@@ -62,13 +62,6 @@ export function FacultyDashboardPage() {
   const totalBatches = batchOptions.length
   const totalSections = sectionOptions.length
 
-  useEffect(() => {
-    console.log('[FACULTY] mentee photo_urls:', mentees.map((row) => ({
-      uid: row.uid,
-      photo_url: row.photo_url ?? null,
-    })))
-  }, [mentees])
-
   return (
     <div className="faculty-dashboard faculty-dashboard--teacher">
       <header className="faculty-dashboard__banner">
@@ -96,8 +89,8 @@ export function FacultyDashboardPage() {
         <div className="faculty-overview__head">
           <h2 className="faculty-overview__title">Teacher Dashboard</h2>
           <div className="faculty-overview__quick-links">
-            <Link to="/faculty/chatbot" className="button button--ghost">Chatbot</Link>
-            <Link to="/faculty/profile#change-password" className="button button--ghost">Change Password</Link>
+            <Link to="/faculty/chatbot" className="button button--soft">Chatbot</Link>
+            <Link to="/faculty/profile#change-password" className="button button--soft">Change Password</Link>
           </div>
         </div>
 
@@ -205,7 +198,7 @@ export function FacultyDashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <button type="button" className="button button--primary" onClick={() => setActiveUid(row.uid)}>
+                  <button type="button" className="button button--soft" onClick={() => setActiveUid(row.uid)}>
                     View
                   </button>
                 </article>

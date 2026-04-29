@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Sanitizes a value for display by stripping metadata and internal JSON structures.
  * This is used to prevent internal data markers (like [[KYS_META]]) from leaking into the UI.
  */
 export function sanitizeDisplayValue(value: unknown): string {
   if (value === null || value === undefined) return '—'
-  
+
   if (typeof value !== 'string') {
     return String(value)
   }

@@ -66,9 +66,6 @@ export default function Dashboard() {
         getProfile()
             .then(r => {
                 const profileData = (r.data ?? {}) as StudentProfile
-                console.log('[FRONTEND] Profile data received:', profileData)
-                console.log('[FRONTEND] personal_info:', profileData.personal_info)
-                console.log('[FRONTEND] photoUrl:', profileData.personal_info?.photoUrl)
                 setProfile(profileData)
             })
             .catch(() => { })
@@ -95,7 +92,6 @@ export default function Dashboard() {
 
     const studentPhotoUrl = useMemo(() => {
         const resolved = extractStudentPhotoUrl(profile)
-        console.log('[FRONTEND] Resolved studentPhotoUrl:', resolved)
         return resolved ?? ''
     }, [profile])
 

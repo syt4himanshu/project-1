@@ -163,7 +163,7 @@ export function FacultyProfilePage() {
             ) : null}
 
             <div className="faculty-profile-form__actions">
-              <button type="submit" className="button button--primary" disabled={updateProfileMutation.isPending}>
+              <button type="submit" className="button button--soft" disabled={updateProfileMutation.isPending}>
                 {updateProfileMutation.isPending ? 'Saving...' : 'Save profile'}
               </button>
             </div>
@@ -220,7 +220,7 @@ export function FacultyProfilePage() {
             ) : null}
 
             <div className="faculty-profile-form__actions">
-              <button type="submit" className="button button--primary" disabled={changePasswordMutation.isPending}>
+              <button type="submit" className="button button--soft" disabled={changePasswordMutation.isPending}>
                 {changePasswordMutation.isPending ? 'Updating...' : 'Change password'}
               </button>
             </div>

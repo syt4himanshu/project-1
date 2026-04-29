@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -9,6 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 import { QueryState } from '../../../../shared/ui'
+import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import { useAdminReportToppersQuery } from '../../hooks'
 
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8] as const
@@ -19,29 +20,37 @@ function truncate(value: string, maxLength: number): string {
 }
 
 export function ReportToppersCard() {
-  const [semester, setSemester] = useState<number | undefined>(undefined)
+  const [semester, setSemester] = useState<number>(1)
+  const [hasAutoSelected, setHasAutoSelected] = useState(false)
   const toppersQuery = useAdminReportToppersQuery(semester)
 
+  // Auto-select the first available semester on first successful load
+  useEffect(() => {
+    if (toppersQuery.data && !hasAutoSelected) {
+      if (toppersQuery.data.is_in_progress) {
+        const cycle = toppersQuery.data.current_cycle
+        const firstAvailable = cycle === 'odd' ? 2 : 1
+        setSemester(firstAvailable)
+      }
+      setHasAutoSelected(true)
+    }
+  }, [toppersQuery.data, hasAutoSelected])
+
   const chartData = useMemo(
-    () => (toppersQuery.data ?? []).map((row) => ({
+    () => (toppersQuery.data?.toppers ?? []).map((row) => ({
       ...row,
-      chartName: truncate(row.name, 10),
+      chartName: truncate(sanitizeDisplayValue(row.name), 10),
     })),
     [toppersQuery.data],
   )
+
+  const isInProgress = toppersQuery.data?.is_in_progress
 
   return (
     <section className="admin-section card reports-card" aria-label="Topper report">
       <header className="reports-card__header">
         <h3>Top 10 Toppers</h3>
         <div className="reports-card__controls" role="tablist" aria-label="Toppers semester filter">
-          <button
-            type="button"
-            className={`reports-chip${semester === undefined ? ' active' : ''}`}
-            onClick={() => setSemester(undefined)}
-          >
-            All
-          </button>
           {SEMESTERS.map((option) => (
             <button
               key={option}
@@ -68,8 +77,14 @@ export function ReportToppersCard() {
       ) : null}
 
       {!toppersQuery.isPending && !toppersQuery.isError ? (
-        chartData.length === 0 ? (
-          <QueryState title="No topper data" description="No records are available for the selected semester." />
+        isInProgress ? (
+          <div className="reports-empty-state">
+            <span className="material-symbols-outlined reports-empty-icon">event_busy</span>
+            <p className="reports-empty-title">Results for Semester {semester} are not yet available.</p>
+            <p className="reports-empty-sub">This semester is currently in progress.</p>
+          </div>
+        ) : chartData.length === 0 ? (
+          <QueryState title="No topper data" description="No records were found for the resolved batch." />
         ) : (
           <>
             <div className="reports-chart-wrap" role="img" aria-label="Bar chart of topper SGPA scores">
@@ -78,7 +93,13 @@ export function ReportToppersCard() {
                   <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" />
                   <XAxis dataKey="chartName" tick={{ fontSize: 11 }} />
                   <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value) => [Number(value ?? 0), 'SGPA']} />
+                  <Tooltip 
+                    formatter={(value) => [Number(value ?? 0).toFixed(2), 'SGPA']}
+                    labelFormatter={(label, payload) => {
+                      const item = payload[0]?.payload
+                      return item ? `${item.name} (${item.uid})` : label
+                    }}
+                  />
                   <Bar dataKey="sgpa" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -90,17 +111,17 @@ export function ReportToppersCard() {
                   <tr>
                     <th>Rank</th>
                     <th>Name</th>
-                    <th>UID</th>
-                    <th>SGPA</th>
+                    <th style={{ minWidth: '8.5rem' }}>UID</th>
+                    <th style={{ minWidth: '4.25rem' }}>SGPA</th>
                   </tr>
                 </thead>
                 <tbody>
                   {chartData.map((row) => (
-                    <tr key={`${row.uid}-${row.rank}`}>
-                      <td>#{row.rank}</td>
-                      <td>{row.name}</td>
-                      <td className="mono-cell">{row.uid}</td>
-                      <td>{row.sgpa.toFixed(2)}</td>
+                    <tr key={`${sanitizeDisplayValue(row.uid)}-${row.rank}`}>
+                      <td style={{ fontWeight: 600 }}>#{row.rank}</td>
+                      <td>{sanitizeDisplayValue(row.name)}</td>
+                      <td><span className="mono-cell reports-uid-text">{sanitizeDisplayValue(row.uid)}</span></td>
+                      <td style={{ fontWeight: 500 }} className="reports-sgpa-cell">{row.sgpa.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>

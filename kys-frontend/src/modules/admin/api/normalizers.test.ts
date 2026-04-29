@@ -38,7 +38,21 @@ describe('admin normalizers', () => {
       name: 'Alex',
       uid: 'U11',
       subjects: ['Math II', 'Operating Systems', 'DBMS', 'TOC'],
+      backlogCount: 4,
     })
+  })
+
+  it('uses explicit backlog_count for numeric backlog-only input', () => {
+    const result = normalizeBacklogEntry({
+      student_id: '12',
+      name: 'Blair',
+      uid: 'U12',
+      subjects: '3 subjects',
+      backlog_count: '3',
+    })
+
+    expect(result.backlogCount).toBe(3)
+    expect(result.subjects).toEqual(['3 subjects'])
   })
 
   it('normalizes general report rows with academic records', () => {

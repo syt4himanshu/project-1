@@ -86,8 +86,8 @@ SWOC.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
 Student.hasMany(MentoringMinute, { foreignKey: 'student_id', as: 'mentoring_minutes', onDelete: 'CASCADE' });
 MentoringMinute.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
 
-Faculty.hasMany(MentoringMinute, { foreignKey: 'faculty_id', as: 'mentoring_minutes_written', onDelete: 'CASCADE' });
-MentoringMinute.belongsTo(Faculty, { foreignKey: 'faculty_id', as: 'faculty' });
+Faculty.hasMany(MentoringMinute, { foreignKey: 'faculty_id', as: 'mentoring_minutes_written', onDelete: 'SET NULL' });
+MentoringMinute.belongsTo(Faculty, { foreignKey: 'faculty_id', as: 'faculty', onDelete: 'SET NULL' });
 
 module.exports = {
   sequelize,

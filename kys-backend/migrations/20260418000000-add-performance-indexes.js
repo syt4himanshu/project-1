@@ -56,7 +56,6 @@ module.exports = {
             name: 'idx_user_role',
         });
 
-        console.log('✓ Performance indexes added successfully');
     },
 
     async down(queryInterface, Sequelize) {
@@ -71,6 +70,5 @@ module.exports = {
         await queryInterface.removeIndex('student', 'idx_student_user_id');
         await queryInterface.removeIndex('student', 'idx_student_mentor_id');
 
-        console.log('✓ Performance indexes removed');
     },
 };

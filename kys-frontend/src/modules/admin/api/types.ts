@@ -331,6 +331,32 @@ export interface AdminTopper {
   uid: string
   sgpa: number
   semester: number | null
+  enrollment_year?: number
+}
+
+export interface AdminTopperResponse {
+  semester: number
+  batch_current_sem: number
+  is_in_progress: boolean
+  current_cycle: 'odd' | 'even'
+  toppers: AdminTopper[]
+}
+
+export interface AdminTopperRowApiResponse {
+  rank?: unknown
+  name?: unknown
+  uid?: unknown
+  sgpa?: unknown
+  semester?: unknown
+  enrollment_year?: unknown
+}
+
+export interface AdminTopperResponseApiResponse {
+  semester?: unknown
+  batch_current_sem?: unknown
+  is_in_progress?: unknown
+  current_cycle?: unknown
+  toppers?: unknown
 }
 
 export interface AdminSemesterDistributionRow {
@@ -343,6 +369,7 @@ export interface AdminBacklogEntry {
   name: string
   uid: string
   subjects: string[]
+  backlogCount?: number
 }
 
 export interface AdminGeneralReportAcademicRow {
@@ -409,6 +436,7 @@ export interface AdminBacklogEntryApiResponse {
   name?: unknown
   uid?: unknown
   subjects?: unknown
+  backlog_count?: unknown
 }
 
 export interface AdminGeneralReportAcademicApiResponse {

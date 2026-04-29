@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const { sequelize, User, Student, Faculty, StudentPersonalInfo } = require('../models');
 const { splitFullName, buildFullName, serializeModel } = require('../utils/helpers');
 const { serializeStudent } = require('../utils/serializers');
+const { unpackText } = require('../utils/profileCodec');
 
 const verifyPassword = (password, hash) => {
   if (hash.startsWith('$2b$') || hash.startsWith('$2a$')) {
@@ -45,38 +46,233 @@ const fullStudentIncludes = [
   'swoc',
 ];
 
-const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
+const KYS_PLACEHOLDER_VALUES = new Set(['n/a', 'na', 'none', 'nil', '-', '--', 'no backlog', 'no backlogs']);
+
+const stripKysArtifacts = (value) => {
+  const text = value == null ? '' : String(value);
+  return text
+    .replace(/\[\[KYS[_A-Z]*\]\]\s*[\[\{][^)\]]*[\]\}]/g, '')
+    .replace(/\[\[KYS[_A-Z]*\]\]/g, '')
+    .replace(/\{"season":[^}]+\}/g, '')
+    .trim();
+};
+
+const normalizeText = (value) => stripKysArtifacts(value);
 
 const isBacklogPlaceholder = (value) => {
   const token = normalizeText(value).toLowerCase();
   return (
     !token ||
-    token === 'n/a' ||
-    token === 'na' ||
-    token === 'none' ||
-    token === 'nil' ||
-    token === '-' ||
-    token === '--' ||
-    token === 'no backlog' ||
-    token === 'no backlogs'
+    KYS_PLACEHOLDER_VALUES.has(token)
   );
 };
 
-const parseBacklogSubjects = (value) => {
-  if (!value) return [];
+const extractBacklogTokens = (rawValue) => {
+  const source = normalizeText(rawValue);
+  if (!source) return [];
 
-  const tokens = (Array.isArray(value) ? value.join(',') : String(value))
+  // Handle saved JSON arrays gracefully when malformed payloads reach reports.
+  if (source.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(source);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((entry) => normalizeText(entry))
+          .filter((entry) => entry && !isBacklogPlaceholder(entry));
+      }
+    } catch (_) {
+      // Fall back to delimiter parsing below.
+    }
+  }
+
+  return source
     .split(/[,\n;]+/)
-    .map((s) => normalizeText(s))
-    .filter((s) => !isBacklogPlaceholder(s));
+    .map((entry) => normalizeText(entry))
+    .map((entry) => entry.replace(/^['"\[]+|['"\]]+$/g, '').trim())
+    .filter((entry) => entry && !isBacklogPlaceholder(entry));
+};
 
+const parseBacklogInfo = (value) => {
+  if (!value) return { subjects: [], count: 0 };
+
+  const asText = Array.isArray(value) ? value.join(',') : String(value);
+  const decoded = unpackText(asText);
+  const tokens = extractBacklogTokens(decoded?.base || asText);
+
+  let numericCount = 0;
   const uniqueByLowerCase = new Map();
-  tokens.forEach((subject) => {
+  tokens.forEach((token) => {
+    const numberMatch = token.match(/^(\d+)(?:\s*(?:subjects?|backlogs?))?$/i);
+    if (numberMatch) {
+      numericCount = Math.max(numericCount, Number(numberMatch[1]));
+      return;
+    }
+
+    const subject = token;
     const key = subject.toLowerCase();
     if (!uniqueByLowerCase.has(key)) uniqueByLowerCase.set(key, subject);
   });
 
-  return Array.from(uniqueByLowerCase.values());
+  const subjects = Array.from(uniqueByLowerCase.values());
+  const count = Math.max(subjects.length, numericCount);
+
+  return { subjects, count };
+};
+
+const parseBacklogSubjects = (value) => parseBacklogInfo(value).subjects;
+const parseBacklogCount = (value) => parseBacklogInfo(value).count;
+
+const isMeaningfulValue = (value) => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'boolean') return true;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value === 'string') {
+    const text = normalizeText(value).toLowerCase();
+    return text.length > 0 && !KYS_PLACEHOLDER_VALUES.has(text);
+  }
+  if (Array.isArray(value)) return value.some((entry) => isMeaningfulValue(entry));
+  if (typeof value === 'object') {
+    return Object.values(value).some((entry) => isMeaningfulValue(entry));
+  }
+  return false;
+};
+
+const toPlain = (value) => {
+  if (!value) return null;
+  if (typeof value.get === 'function') return value.get({ plain: true });
+  return value;
+};
+
+const REQUIRED_PERSONAL_INFO_FIELDS = [
+  'mobile_no',
+  'personal_email',
+  'college_email',
+  'permanent_address',
+  'dob',
+  'gender',
+  'father_name',
+  'father_mobile_no',
+  'father_occupation',
+  'mother_name',
+  'mother_mobile_no',
+  'mother_occupation',
+];
+
+const REQUIRED_CAREER_OBJECTIVE_FIELDS = [
+  'career_goal',
+  'clarity_preparedness',
+];
+
+const REQUIRED_SWOC_FIELDS = ['strengths', 'weaknesses', 'opportunities', 'challenges'];
+
+const collectMissingObjectFields = (missingFields, prefix, data, requiredFields) => {
+  const plainData = toPlain(data) || {};
+  requiredFields.forEach((field) => {
+    if (!isMeaningfulValue(plainData[field])) {
+      missingFields.push(`${prefix}.${field}`);
+    }
+  });
+};
+
+const REPORT_MISSING_FIELD_LABELS = {
+  full_name: 'Full Name',
+  'personal_info.mobile_no': 'WhatsApp Mobile No.',
+  'personal_info.personal_email': 'Personal Email',
+  'personal_info.college_email': 'College Email (Professional)',
+  'personal_info.permanent_address': 'Permanent Address',
+  'personal_info.dob': 'Date of Birth',
+  'personal_info.gender': 'Gender',
+  'personal_info.father_name': "Father's Name",
+  'personal_info.father_mobile_no': "Father's WhatsApp Mobile No.",
+  'personal_info.father_occupation': "Father's Occupation",
+  'personal_info.mother_name': "Mother's Name",
+  'personal_info.mother_mobile_no': "Mother's WhatsApp Mobile No.",
+  'personal_info.mother_occupation': "Mother's Occupation",
+  'past_education_records.ssc.percentage': 'SSC Percentage / Grade',
+  'past_education_records.ssc.year_of_passing': 'SSC Year of Passing',
+  admission_type: 'Admission Type (after 10th)',
+  'past_education_records.hssc.percentage': 'HSC Percentage / Grade',
+  'past_education_records.hssc.year_of_passing': 'HSC Year of Passing',
+  'past_education_records.entrance.exam_type': 'Entrance Exam Type',
+  'past_education_records.entrance.percentage': 'Entrance Percentile',
+  'past_education_records.entrance.year_of_passing': 'Entrance Exam Year of Passing',
+  'past_education_records.diploma.percentage': 'Diploma Percentage / Grade',
+  'past_education_records.diploma.year_of_passing': 'Diploma Year of Passing',
+  'swoc.strengths': 'Strengths',
+  'swoc.weaknesses': 'Weaknesses / Areas of Improvement',
+  'swoc.opportunities': 'Opportunities',
+  'swoc.challenges': 'Challenges',
+  'career_objective.career_goal': 'Career Goal',
+  'career_objective.clarity_preparedness': 'Clarity and Preparedness Level',
+  'career_objective.interested_in_campus_placement': 'Interested in Campus Placement?',
+  'skills.domains_of_interest': 'Domains of Interest',
+};
+
+const mapMissingFieldLabel = (fieldKey) => REPORT_MISSING_FIELD_LABELS[fieldKey] || fieldKey;
+
+const getPastRecord = (student, examName) => {
+  const records = Array.isArray(student?.past_education_records) ? student.past_education_records : [];
+  return records.map((record) => toPlain(record) || {}).find((record) => record.exam_name === examName) || {};
+};
+
+const inferAdmissionType = (student) => {
+  const raw = normalizeText(student?.admission_type).toLowerCase();
+  if (raw === 'hsc' || raw === 'diploma') return raw;
+
+  const records = Array.isArray(student?.past_education_records) ? student.past_education_records : [];
+  const plainRecords = records.map((record) => toPlain(record) || {});
+  if (plainRecords.some((record) => record.exam_name === 'DIPLOMA')) return 'diploma';
+  if (plainRecords.some((record) => record.exam_name === 'HSSC' || record.exam_name === 'ENTRANCE_EXAM')) return 'hsc';
+  return '';
+};
+
+const getMissingRequiredFields = (student) => {
+  const missingFields = [];
+
+  const fullName = [student?.first_name, student?.middle_name, student?.last_name]
+    .map((entry) => normalizeText(entry))
+    .filter(Boolean)
+    .join(' ');
+  if (!fullName) {
+    missingFields.push('full_name');
+  }
+
+  collectMissingObjectFields(missingFields, 'personal_info', student.personal_info, REQUIRED_PERSONAL_INFO_FIELDS);
+  collectMissingObjectFields(missingFields, 'career_objective', student.career_objective, REQUIRED_CAREER_OBJECTIVE_FIELDS);
+  collectMissingObjectFields(missingFields, 'swoc', student.swoc, REQUIRED_SWOC_FIELDS);
+
+  const skills = toPlain(student.skills) || {};
+  if (!isMeaningfulValue(skills.domains_of_interest)) {
+    missingFields.push('skills.domains_of_interest');
+  }
+
+  const career = toPlain(student.career_objective) || {};
+  if (typeof career.interested_in_campus_placement !== 'boolean') {
+    missingFields.push('career_objective.interested_in_campus_placement');
+  }
+
+  const ssc = getPastRecord(student, 'SSC');
+  if (!isMeaningfulValue(ssc.percentage)) missingFields.push('past_education_records.ssc.percentage');
+  if (!isMeaningfulValue(ssc.year_of_passing)) missingFields.push('past_education_records.ssc.year_of_passing');
+
+  const admissionType = inferAdmissionType(student);
+  if (!admissionType) {
+    missingFields.push('admission_type');
+  } else if (admissionType === 'hsc') {
+    const hssc = getPastRecord(student, 'HSSC');
+    const entrance = getPastRecord(student, 'ENTRANCE_EXAM');
+    if (!isMeaningfulValue(hssc.percentage)) missingFields.push('past_education_records.hssc.percentage');
+    if (!isMeaningfulValue(hssc.year_of_passing)) missingFields.push('past_education_records.hssc.year_of_passing');
+    if (!isMeaningfulValue(entrance.exam_type)) missingFields.push('past_education_records.entrance.exam_type');
+    if (!isMeaningfulValue(entrance.percentage)) missingFields.push('past_education_records.entrance.percentage');
+    if (!isMeaningfulValue(entrance.year_of_passing)) missingFields.push('past_education_records.entrance.year_of_passing');
+  } else if (admissionType === 'diploma') {
+    const diploma = getPastRecord(student, 'DIPLOMA');
+    if (!isMeaningfulValue(diploma.percentage)) missingFields.push('past_education_records.diploma.percentage');
+    if (!isMeaningfulValue(diploma.year_of_passing)) missingFields.push('past_education_records.diploma.year_of_passing');
+  }
+
+  return Array.from(new Set(missingFields)).map(mapMissingFieldLabel);
 };
 
 const toCsv = (rows) => {
@@ -130,7 +326,7 @@ const reportsStats = async (_req, res, next) => {
         }
         const semester = Number(record.semester);
         if (Number.isFinite(semester) && semester > 0) activeSemesters.add(semester);
-        if (parseBacklogSubjects(record.backlog_subjects).length > 0) hasBacklog = true;
+        if (parseBacklogCount(record.backlog_subjects) > 0) hasBacklog = true;
       });
 
       if (hasBacklog) withBacklogs += 1;
@@ -149,8 +345,41 @@ const reportsStats = async (_req, res, next) => {
 
 const reportsToppers = async (req, res, next) => {
   try {
-    const semester = req.query.semester ? Number(req.query.semester) : null;
+    const semTab = req.query.semester ? Number(req.query.semester) : 1;
+
+    // 1. Determine Current Cycle from Student Distribution
+    const allStudentSemesters = await Student.findAll({ attributes: ['semester'] });
+    let oddCount = 0;
+    let evenCount = 0;
+    allStudentSemesters.forEach((s) => {
+      const sem = Number(s.semester);
+      if (sem) {
+        if (sem % 2 === 0) evenCount++;
+        else oddCount++;
+      }
+    });
+
+    const currentCycle = evenCount > oddCount ? 'even' : 'odd';
+
+    // 2. Determine if the requested semester tab is currently in progress
+    const isTabInCycle = (currentCycle === 'odd' && semTab % 2 !== 0) ||
+                         (currentCycle === 'even' && semTab % 2 === 0);
+
+    if (isTabInCycle) {
+      return res.status(200).json({
+        semester: semTab,
+        is_in_progress: true,
+        current_cycle: currentCycle,
+        toppers: [],
+      });
+    }
+
+    // 3. Resolve target batch: students who have COMPLETED semTab
+    const expectedCurrentSem = semTab + 1;
+
+    // 4. Fetch students and records
     const students = await Student.findAll({
+      where: { semester: expectedCurrentSem },
       include: ['post_admission_records'],
       order: [['id', 'ASC']],
     });
@@ -158,38 +387,48 @@ const reportsToppers = async (req, res, next) => {
     const rows = [];
     students.forEach((student) => {
       const records = student.post_admission_records || [];
-      let sgpa = null;
-      let semValue = semester || null;
+      const match = records.find((r) => Number(r.semester) === semTab);
 
-      if (semester) {
-        const match = records.find((r) => Number(r.semester) === semester);
-        if (match) {
-          const parsedSgpa = Number(match.sgpa);
-          if (Number.isFinite(parsedSgpa)) sgpa = parsedSgpa;
+      if (match) {
+        const parsedSgpa = Number(match.sgpa);
+        if (Number.isFinite(parsedSgpa)) {
+          rows.push({
+            name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+            uid: student.uid,
+            sgpa: Number(parsedSgpa.toFixed(2)),
+            semester: semTab,
+            enrollment_year: student.year_of_admission,
+          });
         }
-      } else {
-        const withSgpa = records
-          .map((r) => Number(r.sgpa))
-          .filter((value) => Number.isFinite(value));
-        if (withSgpa.length) {
-          sgpa = withSgpa.reduce((sum, value) => sum + value, 0) / withSgpa.length;
-          semValue = student.semester || null;
-        }
-      }
-
-      if (sgpa != null) {
-        rows.push({
-          name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
-          uid: student.uid,
-          sgpa: Number(sgpa.toFixed(2)),
-          semester: semValue,
-        });
       }
     });
 
-    rows.sort((a, b) => b.sgpa - a.sgpa);
-    const top10 = rows.slice(0, 10).map((r, idx) => ({ rank: idx + 1, ...r }));
-    return res.status(200).json(top10);
+    // 5. Sort & Rank with tie handling
+    rows.sort((a, b) => {
+      if (b.sgpa !== a.sgpa) return b.sgpa - a.sgpa;
+      return a.name.localeCompare(b.name);
+    });
+
+    const toppers = [];
+    let lastSgpa = -1;
+    let currentRank = 0;
+
+    for (let i = 0; i < rows.length && toppers.length < 10; i++) {
+      const row = rows[i];
+      if (row.sgpa !== lastSgpa) {
+        currentRank = i + 1;
+      }
+      toppers.push({ ...row, rank: currentRank });
+      lastSgpa = row.sgpa;
+    }
+
+    return res.status(200).json({
+      semester: semTab,
+      batch_current_sem: expectedCurrentSem,
+      is_in_progress: false,
+      current_cycle: currentCycle,
+      toppers,
+    });
   } catch (error) {
     return next(error);
   }
@@ -223,17 +462,22 @@ const reportsBacklogs = async (_req, res, next) => {
     const rows = [];
     students.forEach((student) => {
       const subjects = [];
+      let inferredCount = 0;
       (student.post_admission_records || []).forEach((r) => {
-        parseBacklogSubjects(r.backlog_subjects).forEach((sub) => {
+        const backlogInfo = parseBacklogInfo(r.backlog_subjects);
+        inferredCount = Math.max(inferredCount, backlogInfo.count);
+        backlogInfo.subjects.forEach((sub) => {
           if (!subjects.includes(sub)) subjects.push(sub);
         });
       });
-      if (subjects.length) {
+      const backlogCount = Math.max(inferredCount, subjects.length);
+      if (backlogCount > 0) {
         rows.push({
           student_id: student.id,
           name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
           uid: student.uid,
-          subjects,
+          subjects: subjects.length > 0 ? subjects : [`${backlogCount} subjects`],
+          backlog_count: backlogCount,
         });
       }
     });
@@ -275,7 +519,7 @@ const buildGeneralReportRows = async (query = {}) => {
     academic_records: (s.post_admission_records || []).map((r) => ({
       semester: r.semester,
       sgpa: r.sgpa,
-      backlogs: parseBacklogSubjects(r.backlog_subjects).length,
+      backlogs: parseBacklogCount(r.backlog_subjects),
     })),
   }));
 };
@@ -302,13 +546,7 @@ const reportsIncomplete = async (req, res, next) => {
 
     const rows = students
       .map((s) => {
-        const missingFields = [];
-        if (!s.personal_info) missingFields.push('personal_info');
-        if (!(s.past_education_records || []).length) missingFields.push('past_education');
-        if (!(s.post_admission_records || []).length) missingFields.push('academic_records');
-        if (!s.skills) missingFields.push('skills');
-        if (!s.career_objective) missingFields.push('career_objective');
-        if (!s.swoc) missingFields.push('swoc');
+        const missingFields = getMissingRequiredFields(s);
 
         return {
           id: s.id,
@@ -356,17 +594,22 @@ const exportBacklogs = async (_req, res, next) => {
     const rows = [];
     students.forEach((student) => {
       const subjects = [];
+      let inferredCount = 0;
       (student.post_admission_records || []).forEach((r) => {
-        parseBacklogSubjects(r.backlog_subjects).forEach((sub) => {
+        const backlogInfo = parseBacklogInfo(r.backlog_subjects);
+        inferredCount = Math.max(inferredCount, backlogInfo.count);
+        backlogInfo.subjects.forEach((sub) => {
           if (!subjects.includes(sub)) subjects.push(sub);
         });
       });
-      if (subjects.length) {
+      const backlogCount = Math.max(inferredCount, subjects.length);
+      if (backlogCount > 0) {
         rows.push({
           student_id: student.id,
           uid: student.uid,
           name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
-          subjects: subjects.join('; '),
+          subjects: subjects.length > 0 ? subjects.join('; ') : `${backlogCount} subjects`,
+          backlog_count: backlogCount,
         });
       }
     });
@@ -391,13 +634,7 @@ const exportIncomplete = async (req, res, next) => {
 
     const rows = students
       .map((s) => {
-        const missingFields = [];
-        if (!s.personal_info) missingFields.push('personal_info');
-        if (!(s.past_education_records || []).length) missingFields.push('past_education');
-        if (!(s.post_admission_records || []).length) missingFields.push('academic_records');
-        if (!s.skills) missingFields.push('skills');
-        if (!s.career_objective) missingFields.push('career_objective');
-        if (!s.swoc) missingFields.push('swoc');
+        const missingFields = getMissingRequiredFields(s);
         if (!missingFields.length) return null;
         return {
           id: s.id,

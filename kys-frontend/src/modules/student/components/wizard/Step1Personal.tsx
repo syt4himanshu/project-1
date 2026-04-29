@@ -32,10 +32,7 @@ export default function Step1Personal() {
         setUploading(true)
         setUploadMsg('')
         try {
-            console.log('[UPLOAD] Uploading file:', file.name, file.type, file.size)
             const response = await uploadProfilePhoto(file)
-            console.log('[UPLOAD] Upload response:', response)
-            console.log('[UPLOAD] photoUrl from response:', response.data?.photoUrl)
             upd('photoUrl', response.data?.photoUrl || '')
             upd('photo_public_id', response.data?.photo_public_id || '')
             setUploadMsg('Photo uploaded successfully.')
