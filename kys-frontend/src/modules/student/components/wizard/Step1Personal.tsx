@@ -102,15 +102,16 @@ export default function Step1Personal() {
             <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Passport Size Photo</label>
                 {(pi.photoUrl as string) ? (
-                    <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3">
+                    <div className="mb-3 flex flex-col items-start gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3 sm:flex-row sm:items-center">
                         <img
                             src={String(pi.photoUrl)}
                             alt="Uploaded student profile"
-                            className="h-20 w-20 rounded-xl border border-[#d9e1ec] object-cover"
+                            className="rounded-xl border border-[#d9e1ec] object-cover"
+                            style={{ width: '96px', height: '96px', flexShrink: 0 }}
                         />
-                        <div className="min-w-0">
+                        <div className="w-full min-w-0">
                             <p className="text-sm font-medium text-[#32435f]">Current uploaded photo</p>
-                            <a className="text-sm text-[#2b5fa6] underline" href={String(pi.photoUrl)} target="_blank" rel="noreferrer">
+                            <a className="break-words text-sm text-[#2b5fa6] underline" href={String(pi.photoUrl)} target="_blank" rel="noreferrer">
                                 Open uploaded image
                             </a>
                         </div>

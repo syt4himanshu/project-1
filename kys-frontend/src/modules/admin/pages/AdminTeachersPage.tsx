@@ -28,6 +28,7 @@ export function AdminTeachersPage() {
   const [searchValue, setSearchValue] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [selectedFacultyId, setSelectedFacultyId] = useState<number | null>(null)
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'with' | 'without'>('all')
 
   useEffect(() => {
     document.title = 'Teachers Management - KYS'
@@ -37,16 +38,21 @@ export function AdminTeachersPage() {
 
   const filteredRows = useMemo(() => {
     const query = normalizeSearchValue(searchValue)
-    if (!query) return facultyQuery.data ?? []
 
     return (facultyQuery.data ?? []).filter((row) => {
       const haystack = [row.uid, row.name, row.email, row.contact]
         .map((entry) => sanitizeDisplayValue(entry).toLowerCase())
         .join(' ')
 
-      return haystack.includes(query)
+      const matchesQuery = !query || haystack.includes(query)
+      const matchesAssignment =
+        assignmentFilter === 'all' ||
+        (assignmentFilter === 'with' && row.assignedCount > 0) ||
+        (assignmentFilter === 'without' && row.assignedCount === 0)
+
+      return matchesQuery && matchesAssignment
     })
-  }, [facultyQuery.data, searchValue])
+  }, [assignmentFilter, facultyQuery.data, searchValue])
 
   const columns = useMemo<TableColumn<AdminFacultySummary>[]>(
     () => [
@@ -192,15 +198,47 @@ export function AdminTeachersPage() {
           </button>
         </div>
 
-        <div className={`role-toolbar__inline ${!showFilters ? 'mobile-hide' : ''}`}>
-          <button className="button button--ghost button--icon role-chip-button">
+        <div className={`role-toolbar__inline ${!showFilters ? 'mobile-hide' : ''}`} style={{ gap: '0.6rem' }}>
+          <button
+            type="button"
+            className="button button--ghost button--icon role-chip-button"
+            onClick={() => setShowFilters((current) => !current)}
+          >
             <span className="material-symbols-outlined" aria-hidden="true">filter_list</span> Filter
-          </button>
-          <button className="button button--ghost button--icon role-chip-button">
-            <span className="material-symbols-outlined" aria-hidden="true">download</span> Export
           </button>
         </div>
       </div>
+
+      {showFilters ? (
+        <div className="role-toolbar__card role-toolbar__card--filters admin-toolbar-block teacher-filters">
+          <div className="admin-filter-grid">
+            <label className="admin-field">
+              <span className="admin-field__label">Assignment Status</span>
+              <select
+                className="admin-input"
+                value={assignmentFilter}
+                onChange={(event) => setAssignmentFilter(event.target.value as 'all' | 'with' | 'without')}
+              >
+                <option value="all">All teachers</option>
+                <option value="with">With assigned students</option>
+                <option value="without">Without assigned students</option>
+              </select>
+            </label>
+            <div className="admin-filter-actions">
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => {
+                  setSearchValue('')
+                  setAssignmentFilter('all')
+                }}
+              >
+                Reset Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="admin-surface">
         <ResponsiveDataView
@@ -221,4 +259,3 @@ export function AdminTeachersPage() {
     </div>
   )
 }
-

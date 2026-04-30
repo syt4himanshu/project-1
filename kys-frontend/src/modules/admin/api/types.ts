@@ -298,9 +298,16 @@ export interface AdminMenteeApiResponse {
   id?: unknown
   uid?: unknown
   full_name?: unknown
+  fullName?: unknown
+  name?: unknown
   semester?: unknown
+  current_semester?: unknown
+  currentSemester?: unknown
   section?: unknown
+  class_section?: unknown
+  classSection?: unknown
   year_of_admission?: unknown
+  yearOfAdmission?: unknown
 }
 
 export interface AdminAllocationApiResponse {

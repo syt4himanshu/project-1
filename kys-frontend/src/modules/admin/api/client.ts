@@ -186,9 +186,10 @@ async function getFacultyMentees({ token, facultyId }: AdminApiRequestOptions & 
 }
 
 async function getFacultyDetail({ token, facultyId }: AdminApiRequestOptions & { facultyId: number }): Promise<AdminFacultyDetail> {
-  const [facultyRows, mentees] = await Promise.all([
+  const [facultyRows, mentees, studentSummaries] = await Promise.all([
     listFaculty({ token }),
     getFacultyMentees({ token, facultyId }),
+    listStudentSummaries({ token }),
   ])
 
   const faculty = facultyRows.find((row) => row.id === facultyId)
@@ -196,9 +197,48 @@ async function getFacultyDetail({ token, facultyId }: AdminApiRequestOptions & {
     throw new Error('Faculty record not found.')
   }
 
+  const summarizedMentees = studentSummaries
+    .filter((row) => row.mentorId === facultyId)
+    .map((row) => ({
+      id: row.id,
+      uid: row.uid,
+      fullName: row.name,
+      semester: row.semester,
+      section: row.section,
+      yearOfAdmission: row.yearOfAdmission,
+    }))
+
+  const summaryById = new Map(studentSummaries.map((row) => [row.id, row]))
+  const summaryByUid = new Map(studentSummaries.map((row) => [row.uid, row]))
+  const detailById = new Map<number, AdminStudentDetail>()
+
+  await Promise.all(
+    mentees.map(async (mentee) => {
+      if (!mentee.id) return
+      try {
+        const detail = await getStudentDetail({ token, studentId: mentee.id })
+        detailById.set(mentee.id, detail)
+      } catch {
+        // Keep rendering from summary/mentee data if a single detail fetch fails.
+      }
+    }),
+  )
+
+  const menteeBase = summarizedMentees.length > 0 ? summarizedMentees : mentees
+  const mergedMentees = menteeBase.map((mentee) => {
+    const fallback = summaryById.get(mentee.id) ?? summaryByUid.get(mentee.uid)
+    const detailed = mentee.id ? detailById.get(mentee.id) : undefined
+    return {
+      ...mentee,
+      semester: detailed?.semester ?? mentee.semester ?? fallback?.semester ?? null,
+      section: mentee.section || fallback?.section || 'N/A',
+      yearOfAdmission: detailed?.yearOfAdmission ?? mentee.yearOfAdmission ?? fallback?.yearOfAdmission ?? null,
+    }
+  })
+
   return {
     faculty,
-    mentees,
+    mentees: mergedMentees,
   }
 }
 

@@ -233,10 +233,10 @@ export function normalizeMenteeSummary(raw: AdminMenteeApiResponse): AdminMentee
   return {
     id: toNumber(raw.id, 0),
     uid: normalizeDisplayText(raw.uid, 'UNKNOWN_UID'),
-    fullName: normalizeDisplayText(raw.full_name, 'Unknown Student'),
-    semester: toNullableNumber(raw.semester),
-    section: normalizeDisplayText(raw.section, 'N/A'),
-    yearOfAdmission: toNullableNumber(raw.year_of_admission),
+    fullName: normalizeDisplayText(raw.full_name ?? raw.fullName ?? raw.name, 'Unknown Student'),
+    semester: toNullableNumber(raw.semester ?? raw.current_semester ?? raw.currentSemester),
+    section: normalizeDisplayText(raw.section ?? raw.class_section ?? raw.classSection, 'N/A'),
+    yearOfAdmission: toNullableNumber(raw.year_of_admission ?? raw.yearOfAdmission),
   }
 }
 
@@ -435,6 +435,10 @@ export function normalizeGeneralReportFilters(filters: Partial<AdminGeneralRepor
 }
 
 export function normalizeForDisplay(value: unknown, fallback = 'N/A'): string {
+  if (value === null || value === undefined) return fallback
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : fallback
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+
   const text = normalizeDisplayText(value)
   return text || fallback
 }

@@ -6,14 +6,17 @@ export function DeveloperPage() {
   const facultyMentors = [
     {
       name: 'Dr. Manoj Bramhe',
+      designation: 'Professor & HoD, CSE',
       image: '/faculty-mentor-manoj.jpg',
     },
     {
       name: 'Dr. Kapil Gupta',
+      designation: 'Associate Professor, CSE',
       image: '/faculty-mentor-kapil.jpeg',
     },
     {
       name: 'Ayaz Ahmed Khan',
+      designation: 'Assistant Professor, CSE',
       image: '/faculty-mentor-ayaz.jpg',
     },
   ]
@@ -39,7 +42,7 @@ export function DeveloperPage() {
   ]
 
   return (
-    <section className="kys-landing">
+    <section className="kys-landing kys-landing--developer">
       <div className="kys-landing__ambient kys-landing__ambient--left" />
       <div className="kys-landing__ambient kys-landing__ambient--right" />
 
@@ -70,6 +73,7 @@ export function DeveloperPage() {
                     />
                   </div>
                   <h3 className="kys-developer__mentor-name">{mentor.name}</h3>
+                  <p className="kys-developer__mentor-designation">{mentor.designation}</p>
                 </article>
               ))}
             </div>

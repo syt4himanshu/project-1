@@ -2,10 +2,12 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/providers/auth-context'
 import { toDashboardPath } from '../../shared/auth/roleGuards'
 import type { UserRole } from '../../shared/auth/session'
+import { ShieldCheck, GraduationCap, Users } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 type RoleCard = {
   role: UserRole
-  letter: string
+  icon: LucideIcon
   accentClass: string
   title: string
   description: string
@@ -14,21 +16,21 @@ type RoleCard = {
 const ROLE_CARDS: RoleCard[] = [
   {
     role: 'admin',
-    letter: 'A',
+    icon: ShieldCheck,
     accentClass: 'role-select-kys__badge--admin',
     title: 'Administrator',
     description: 'Comprehensive system management with full access to user administration, system settings, and advanced analytics.',
   },
   {
     role: 'student',
-    letter: 'S',
+    icon: GraduationCap,
     accentClass: 'role-select-kys__badge--student',
     title: 'Student',
     description: 'Streamline your acadamic journey with our comprehensive system. Form Submission, Mentoring, and more.',
   },
   {
     role: 'faculty',
-    letter: 'T',
+    icon: Users,
     accentClass: 'role-select-kys__badge--teacher',
     title: 'Teacher',
     description: 'Manage your classes, track student performance, create assessments, and communicate with students and parents.',
@@ -84,7 +86,9 @@ export function RoleSelectionPage() {
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
             onClick={() => navigate(`/login?role=${card.role}`)}
           >
-            <div className={`role-select-kys__badge ${card.accentClass}`}>{card.letter}</div>
+            <div className={`role-select-kys__badge ${card.accentClass}`}>
+              <card.icon size={24} strokeWidth={2} />
+            </div>
             <h2 className="role-select-kys__card-title">{card.title}</h2>
             <p className="role-select-kys__card-text">{card.description}</p>
           </button>
