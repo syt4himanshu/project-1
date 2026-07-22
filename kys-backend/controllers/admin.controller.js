@@ -1038,9 +1038,9 @@ const deleteUser = async (req, res, next) => {
       await user.destroy({ transaction: tx });
       await tx.commit();
       return res.status(200).json({ message: 'User deleted successfully' });
-    } catch (_error) {
+    } catch (deleteError) {
       await tx.rollback();
-      return res.status(500).json({ error: 'Database error' });
+      return res.status(500).json({ error: 'Database error', detail: deleteError.message });
     }
   } catch (error) {
     return next(error);
