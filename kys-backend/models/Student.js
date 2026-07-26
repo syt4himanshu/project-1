@@ -14,6 +14,8 @@ class Student extends Model {
         section: { type: DataTypes.STRING(10), allowNull: true },
         year_of_admission: { type: DataTypes.INTEGER, allowNull: true },
         current_year: { type: DataTypes.INTEGER, allowNull: true },
+        passout_year: { type: DataTypes.INTEGER, allowNull: true },
+        admission_type: { type: DataTypes.STRING(20), allowNull: true },
         user_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
         mentor_id: { type: DataTypes.INTEGER, allowNull: true },
       },

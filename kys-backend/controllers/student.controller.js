@@ -151,6 +151,7 @@ const getStudentsMe = async (req, res, next) => {
       data: decodeStudentProfilePayload({
         id: student.id,
         uid: student.uid,
+        updated_at: student.updatedAt,
         full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
         semester: student.semester,
         section: student.section,
@@ -204,7 +205,8 @@ const putStudentsMe = async (req, res, next) => {
           if (student.personal_info) {
             await student.personal_info.update(payload, { transaction: tx });
           } else {
-            await StudentPersonalInfo.create({ ...payload, student_id: student.id }, { transaction: tx });
+            student.personal_info = await ensureStudentPersonalInfo(student.id);
+            await student.personal_info.update(payload, { transaction: tx });
           }
         }
       }
@@ -342,6 +344,7 @@ const getStudentMe = async (req, res, next) => {
     const responseData = decodeStudentProfilePayload({
       id: student.id,
       uid: student.uid,
+      updated_at: student.updatedAt,
       first_name: student.first_name,
       middle_name: student.middle_name,
       last_name: student.last_name,
@@ -445,6 +448,9 @@ const putStudentMe = async (req, res, next) => {
           const existing = student[relName];
           if (existing) {
             await existing.update(relPayload, { transaction: tx });
+          } else if (relName === 'personal_info') {
+            student[relName] = await ensureStudentPersonalInfo(student.id);
+            await student[relName].update(relPayload, { transaction: tx });
           } else {
             await modelClass.create({ ...relPayload, student_id: student.id }, { transaction: tx });
           }

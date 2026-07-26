@@ -69,6 +69,31 @@ function extractBacklogSubjects(record: AnyRecord): string[] {
     .filter((item) => !isEmpty(item) && item !== '0')
 }
 
+function getProjectLabel(index: number): string {
+  if (index === 0) return 'Mini Project'
+  if (index === 1) return 'Major Project'
+  if (index === 2) return 'UBA / Collaborative Project'
+  return 'Project'
+}
+
+function getProjectSubtitle(project: AnyRecord, label: string): string {
+  const description = showValue(project.description)
+  return description !== 'N/A' ? `Project Guide: ${description}` : 'Project Guide: N/A'
+}
+
+function getProjectBadgeClass(label: string) {
+  switch (label) {
+    case 'UBA / Collaborative Project':
+      return 'border-[#7a5c00] bg-[#fff4cc] text-[#7a5c00]'
+    case 'Mini Project':
+      return 'border-[#4a6b9a] bg-[#e8f0fb] text-[#315484]'
+    case 'Major Project':
+      return 'border-[#7b4fd6] bg-[#efe7ff] text-[#5a35a8]'
+    default:
+      return 'border-[#bfd1ea] bg-[#edf4fb] text-[#355b8f]'
+  }
+}
+
 function InfoTable({ rows }: { rows: InfoRow[] }) {
   return (
     <table className="detail-table">
@@ -98,7 +123,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
   const [isExporting, setIsExporting] = useState(false)
 
   const detailQuery = useAdminStudentDetailQuery(studentId)
-    const student = detailQuery.data
+  const student = detailQuery.data
 
   const personalInfo = useMemo(() => student?.personalInfo ?? {}, [student?.personalInfo])
   const studentPhotoUrl = useMemo(() => extractStudentPhotoUrl({ personal_info: personalInfo }), [personalInfo])
@@ -106,33 +131,23 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
   const swoc = useMemo(() => student?.swoc ?? {}, [student?.swoc])
   const careerObjective = useMemo(() => student?.careerObjective ?? {}, [student?.careerObjective])
 
+  // Sort academic records ascending by semester number (1 → 2 → 3 → ...)
   const academicRecords = useMemo<AnyRecord[]>(() => {
-    return (student?.academicRecords as AnyRecord[] | undefined) ?? []
+    const raw = (student?.academicRecords as AnyRecord[] | undefined) ?? []
+    return [...raw].sort((a, b) => Number(a.semester ?? 0) - Number(b.semester ?? 0))
   }, [student?.academicRecords])
 
-  const latestAcademicRecord = useMemo<AnyRecord | undefined>(() => {
-    if (!academicRecords.length) return undefined
-    return [...academicRecords].sort((a, b) => Number(a.semester ?? 0) - Number(b.semester ?? 0)).at(-1)
+  // Aggregate academic awards across all semesters
+  const allAcademicAwards = useMemo(() => {
+    const awards: string[] = []
+    for (const record of academicRecords) {
+      const award = toText(record.academic_awards)
+      if (!isEmpty(award)) {
+        awards.push(`Sem ${toText(record.semester)}: ${award}`)
+      }
+    }
+    return awards.length > 0 ? awards.join(' | ') : 'N/A'
   }, [academicRecords])
-
-  const backlogSubjects = useMemo(() => {
-    if (latestAcademicRecord) return extractBacklogSubjects(latestAcademicRecord)
-    return Array.from(new Set(academicRecords.flatMap((record) => extractBacklogSubjects(record))))
-  }, [latestAcademicRecord, academicRecords])
-
-  const activeBacklogs = useMemo(() => {
-    const direct = Number(
-      pick(
-        latestAcademicRecord,
-        'number_of_active_backlogs',
-        'active_backlogs',
-        'current_backlogs',
-        'backlogs',
-      ),
-    )
-    if (Number.isFinite(direct) && direct >= 0) return direct
-    return backlogSubjects.length
-  }, [latestAcademicRecord, backlogSubjects])
 
   const personalRows = useMemo<InfoRow[]>(() => {
     if (!student) return []
@@ -353,6 +368,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                 <thead>
                   <tr>
                     <th>Exam</th>
+                    <th>Exam Type</th>
                     <th>Board</th>
                     <th>Percentage</th>
                     <th>Year</th>
@@ -362,6 +378,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                   {student.pastEducation.map((record, index) => (
                     <tr key={`past-${index}`}>
                       <td>{showValue(record.exam ?? record.exam_name)}</td>
+                      <td>{showValue((record as AnyRecord).exam_type)}</td>
                       <td>{showValue((record as AnyRecord).board)}</td>
                       <td>{showValue(record.percentage)}</td>
                       <td>{showValue(record.year_of_passing)}</td>
@@ -375,8 +392,9 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
           </DetailSection>
 
           <DetailSection title="Academic Records">
-            {student.academicRecords.length > 0 ? (
+            {academicRecords.length > 0 ? (
               <>
+                {/* Table sorted semester 1 → 2 → 3 → ... with College Rank as a column */}
                 <table className="table detail-list-table">
                   <thead>
                     <tr>
@@ -384,29 +402,29 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                       <th>SGPA</th>
                       <th>Season</th>
                       <th>Year</th>
+                      <th>College Rank</th>
                       <th>Backlogs</th>
-                      <th>Subjects</th>
+                      <th>Backlog Subjects</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {student.academicRecords.map((record, index) => (
+                    {academicRecords.map((record, index) => (
                       <tr key={`academic-${index}`}>
                         <td>{showValue(record.semester)}</td>
                         <td>{showValue(record.sgpa)}</td>
-                        <td>{showValue((record as AnyRecord).season)}</td>
-                        <td>{showValue((record as AnyRecord).year_of_passing)}</td>
-                        <td>{showValue(record.backlogs)}</td>
+                        <td>{showValue(record.season)}</td>
+                        <td>{showValue(record.year_of_passing)}</td>
+                        <td>{showValue(record.college_rank)}</td>
+                        <td>{showValue(record.backlogs ?? (extractBacklogSubjects(record).length || undefined))}</td>
                         <td>{showValue(record.backlog_subjects)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                {/* Academic Awards aggregated across all semesters */}
                 <InfoTable
                   rows={[
-                    { label: 'Number of Active Backlogs', value: String(activeBacklogs) },
-                    { label: 'Backlog Subject Names', value: backlogSubjects.length > 0 ? backlogSubjects.join(', ') : 'N/A' },
-                    { label: 'College Rank', value: showValue(latestAcademicRecord?.college_rank) },
-                    { label: 'Academic Awards', value: showValue(latestAcademicRecord?.academic_awards) },
+                    { label: 'Academic Awards', value: allAcademicAwards },
                   ]}
                 />
               </>
@@ -420,8 +438,22 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
               <div className="detail-card-list">
                 {student.projects.map((project, index) => (
                   <article key={`project-${index}`} className="detail-card">
-                    <h5>{showValue(project.title)}</h5>
-                    <p>{showValue(project.description)}</p>
+                    {(() => {
+                      const label = getProjectLabel(index)
+                      const subtitle = getProjectSubtitle(project, label)
+
+                      return (
+                        <>
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <h5 className="m-0">{showValue(project.title)}</h5>
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${getProjectBadgeClass(label)}`}>
+                              {label}
+                            </span>
+                          </div>
+                          <p className="text-sm text-[#5f6f86]">{subtitle}</p>
+                        </>
+                      )
+                    })()}
                   </article>
                 ))}
               </div>
@@ -532,4 +564,3 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
     </Modal>
   )
 }
-

@@ -36,8 +36,6 @@ const studentProfileSchema = Joi.object({
     mother_mobile_no: Joi.string().trim().max(20).allow('', null),
     mother_email: text255,
     mother_occupation: Joi.string().trim().max(255).allow('', null),
-    emergency_contact_name: Joi.string().trim().max(120).allow('', null),
-    emergency_contact_number: Joi.string().trim().max(20).allow('', null),
     blood_group: Joi.string().trim().max(5).allow('', null),
     category: Joi.string().trim().max(20).allow('', null),
     aadhar_number: Joi.string().trim().max(14).allow('', null),

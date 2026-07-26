@@ -5,6 +5,7 @@ import { getMentor, getMentoringMinutes, getProfile } from '../api/student'
 import ChangePasswordModal from '../components/ChangePasswordModal'
 import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
 import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
+import { isDraftResetMarked } from '../utils/studentProfileDraft'
 import { ThemeToggleButton } from '../../../shared/ui/theme-toggle'
 
 interface MentoringMinute {
@@ -61,6 +62,7 @@ export default function Dashboard() {
 
     const [showPwModal, setShowPwModal] = useState(false)
     const [showLogoutModal, setShowLogoutModal] = useState(false)
+    const resetMarked = useMemo(() => isDraftResetMarked(), [])
 
     useEffect(() => {
         getProfile()
@@ -91,9 +93,10 @@ export default function Dashboard() {
     }, [profile?.full_name, user?.username])
 
     const studentPhotoUrl = useMemo(() => {
+        if (resetMarked) return ''
         const resolved = extractStudentPhotoUrl(profile)
         return resolved ?? ''
-    }, [profile])
+    }, [profile, resetMarked])
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] text-[var(--text)] transition-colors duration-300">

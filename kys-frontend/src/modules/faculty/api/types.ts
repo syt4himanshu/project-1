@@ -55,6 +55,7 @@ export interface MenteePayload {
   internships?: unknown[]
   cocurricular_participations?: unknown[]
   cocurricular_organizations?: unknown[]
+  skill_programs?: unknown[]
   career_objective?: unknown
   skills?: unknown
   swoc?: unknown

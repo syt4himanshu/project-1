@@ -14,7 +14,7 @@ function toggleCsv(values: string[], item: string) {
 }
 
 export default function Step8CareerSkills() {
-    const { data, update } = useStudentProfileDraft()
+    const { data, update, getFieldValidation } = useStudentProfileDraft()
     const co = (data.career_objective as Record<string, unknown>) || {}
     const sk = (data.skills as Record<string, unknown>) || {}
 
@@ -30,7 +30,7 @@ export default function Step8CareerSkills() {
         <div className="space-y-5">
             <section className={sectionCardCls}>
                 <div className="space-y-4">
-                    {field('Career Goal *', select(['Campus / Off-Campus Placement', 'Higher Studies', 'Entrepreneurship'], (co.career_goal as string) || '', v => updCo('career_goal', v), 'Select Career Goal'))}
+                    {field('Career Goal *', select(['Campus / Off-Campus Placement', 'Higher Studies', 'Entrepreneurship'], (co.career_goal as string) || '', v => updCo('career_goal', v), 'Select Career Goal', getFieldValidation('career_objective.career_goal')))}
 
                     {field('Specific Details / Notes', (
                         <textarea
@@ -43,8 +43,8 @@ export default function Step8CareerSkills() {
                     ))}
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                        {field('Clarity and Preparedness Level *', select(['Unsatisfactory', 'Satisfactory', 'Good', 'Excellent'], (co.clarity_preparedness as string) || '', v => updCo('clarity_preparedness', v), 'Select Level'))}
-                        {field('Interested in Campus Placement? *', select(['Yes', 'No'], interested, v => updCo('interested_in_campus_placement', v === 'Yes' ? true : v === 'No' ? false : null), 'Select Option'))}
+                        {field('Clarity and Preparedness Level *', select(['Unsatisfactory', 'Satisfactory', 'Good', 'Excellent'], (co.clarity_preparedness as string) || '', v => updCo('clarity_preparedness', v), 'Select Level', getFieldValidation('career_objective.clarity_preparedness')))}
+                        {field('Interested in Campus Placement? *', select(['Yes', 'No'], interested, v => updCo('interested_in_campus_placement', v === 'Yes' ? true : v === 'No' ? false : null), 'Select Option', getFieldValidation('career_objective.interested_in_campus_placement')))}
                     </div>
 
                     <div>
@@ -69,7 +69,7 @@ export default function Step8CareerSkills() {
                         </div>
                     </div>
 
-                    {field('Would you be interested in being a student mentor?', select(['Yes', 'No', 'Maybe'], (co.student_mentor_interest as string) || '', v => updCo('student_mentor_interest', v), 'Select Option'))}
+                    {field('Would you be interested in being a student mentor?', select(['Yes', 'No', 'Maybe'], (co.student_mentor_interest as string) || '', v => updCo('student_mentor_interest', v), 'Select Option', getFieldValidation('career_objective.student_mentor_interest')))}
 
                     {field('Expectations from the Institute', (
                         <textarea

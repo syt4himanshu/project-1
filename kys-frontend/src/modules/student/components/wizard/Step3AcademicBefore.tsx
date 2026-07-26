@@ -5,7 +5,7 @@ const BOARDS = ['CBSE', 'State Board', 'ICSE', 'Other']
 const ENTRANCE_EXAMS = ['MHT-CET', 'JEE']
 
 export default function Step3AcademicBefore() {
-    const { data, update } = useStudentProfileDraft()
+    const { data, update, error } = useStudentProfileDraft()
     const records = (data.past_education_records as Record<string, unknown>[]) || []
     const derivedAdmissionType = records.some(r => r.exam_name === 'DIPLOMA')
         ? 'diploma'
@@ -50,6 +50,20 @@ export default function Step3AcademicBefore() {
         update({ admission_type: value })
     }
 
+    const getValidation = (fieldName: string) => {
+        let normalizedFieldName = fieldName
+        if (fieldName.startsWith('HSSC')) {
+            normalizedFieldName = fieldName.replace('HSSC', 'HSC')
+        }
+        if (error && error.includes(normalizedFieldName)) {
+            return {
+                error: `${normalizedFieldName} is required`,
+                touched: true
+            }
+        }
+        return undefined
+    }
+
     const handlePercentageChange = (examKey: string, v: string) => {
         if (v === '') {
             upd(examKey, 'percentage', null)
@@ -81,14 +95,26 @@ export default function Step3AcademicBefore() {
                             ? input('text', (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder)
                             : select(BOARDS, (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder),
                     )}
-                    {field('Percentage / Grade', input('text', rec.percentage != null ? String(rec.percentage) : '', v => handlePercentageChange(examKey, v), 'e.g. 85.50'))}
-                    {field('Year of Passing', input('number', String(rec.year_of_passing || ''), v => upd(examKey, 'year_of_passing', v === '' ? null : Number(v)), 'e.g. 2024'))}
+                    {field('Percentage / Grade *', input('text', rec.percentage != null ? String(rec.percentage) : '', v => handlePercentageChange(examKey, v), 'e.g. 85.50', getValidation(`${examKey} Percentage / Grade`)))}
+                    {field('Year of Passing *', input('number', String(rec.year_of_passing || ''), v => upd(examKey, 'year_of_passing', v === '' ? null : Number(v)), 'e.g. 2024', getValidation(`${examKey} Year of Passing`)))}
                 </div>
             </section>
         )
     }
 
     const entrance = getRecord('ENTRANCE_EXAM') as Record<string, unknown>
+    const currentSem = Number(data.semester || 8)
+    const postAdmissionRecords = (data.post_admission_records as Record<string, unknown>[]) || []
+
+    const getPostAdmissionRecord = (sem: number) => postAdmissionRecords.find(r => Number(r.semester) === sem) || {}
+
+    const updPostAdmission = (sem: number, key: string, value: unknown) => {
+        const existing = postAdmissionRecords.filter(r => Number(r.semester) !== sem)
+        const current = getPostAdmissionRecord(sem)
+        update({ post_admission_records: [...existing, { ...current, semester: sem, [key]: value }] })
+    }
+
+    const semesters = Array.from({ length: Math.max(currentSem - 1, 0) }, (_, i) => i + 1)
 
     return (
         <div className="space-y-5">
@@ -97,16 +123,21 @@ export default function Step3AcademicBefore() {
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-2xl font-semibold text-[#223b60]">What did you do after 10th?</h3>
                 <div className="grid grid-cols-1 gap-4 sm:max-w-md">
-                    {field('Admission Type', (
-                        <select
-                            value={admissionType}
-                            onChange={e => setAdmissionType(e.target.value)}
-                            className={inputCls}
-                        >
-                            <option value="">Select Admission Type</option>
-                            <option value="hsc">12th (HSC)</option>
-                            <option value="diploma">Diploma (Direct Second Year)</option>
-                        </select>
+                    {field('Admission Type *', (
+                        <div className="space-y-1">
+                            <select
+                                value={admissionType}
+                                onChange={e => setAdmissionType(e.target.value)}
+                                className={`${inputCls} ${getValidation('Admission Type (after 10th)') ? 'border-[#ef4444] focus:border-[#dc2626] focus:ring-[#ef4444]/20' : ''}`}
+                            >
+                                <option value="">Select Admission Type</option>
+                                <option value="hsc">12th (HSC)</option>
+                                <option value="diploma">Diploma (Direct Second Year)</option>
+                            </select>
+                            {getValidation('Admission Type (after 10th)') && (
+                                <p className="text-xs font-medium text-[#dc2626]">{getValidation('Admission Type (after 10th)')?.error}</p>
+                            )}
+                        </div>
                     ))}
                 </div>
             </section>
@@ -118,15 +149,53 @@ export default function Step3AcademicBefore() {
                     <section className={sectionCardCls}>
                         <h3 className="mb-4 border-b-2 border-[#df981e] pb-2 text-3xl font-semibold text-[#223b60]">Entrance Exam & Admission Details</h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
-                            {field('Entrance Exam Type', select(ENTRANCE_EXAMS, (entrance.exam_type as string) || '', v => upd('ENTRANCE_EXAM', 'exam_type', v), 'Select Exam'))}
-                            {field('Percentile', input('text', entrance.percentage != null ? String(entrance.percentage) : '', v => handlePercentageChange('ENTRANCE_EXAM', v), 'Score / Percentile'))}
-                            {field('Year of Passing', input('number', String(entrance.year_of_passing || ''), v => upd('ENTRANCE_EXAM', 'year_of_passing', v === '' ? null : Number(v)), 'Year of Passing'))}
+                            {field('Entrance Exam Type *', select(ENTRANCE_EXAMS, (entrance.exam_type as string) || '', v => upd('ENTRANCE_EXAM', 'exam_type', v), 'Select Exam', getValidation('Entrance Exam Type')))}
+                            {field('Percentile *', input('text', entrance.percentage != null ? String(entrance.percentage) : '', v => handlePercentageChange('ENTRANCE_EXAM', v), 'Score / Percentile', getValidation('Entrance Percentile')))}
+                            {field('Year of Passing *', input('number', String(entrance.year_of_passing || ''), v => upd('ENTRANCE_EXAM', 'year_of_passing', v === '' ? null : Number(v)), 'Year of Passing', getValidation('Entrance Exam Year of Passing')))}
                         </div>
                     </section>
                 </>
             )}
+            
 
             {admissionType === 'diploma' && renderEducationSection('Diploma Details', 'DIPLOMA', 'Diploma Board', 'Enter Diploma Board', true)}
+
+            <section className={sectionCardCls}>
+                <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">Academic Information - After Admission</h3>
+                {semesters.length === 0 ? (
+                    <p className="text-sm text-[#6e7e95]">No records needed for Semester 1 students.</p>
+                ) : (
+                    <div className="space-y-5">
+                        {semesters.map(sem => {
+                            const rec = getPostAdmissionRecord(sem) as Record<string, unknown>
+                            return (
+                                <section key={sem} className={sectionCardCls}>
+                                    <h3 className="mb-4 text-xl font-semibold text-[#223b60]">Semester {sem}</h3>
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                                        {field('SGPA / Percentage', input('number', String(rec.sgpa || ''), v => updPostAdmission(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86'))}
+
+                                        <div>
+                                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Season & Year of Passing</label>
+                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                {select(['Summer', 'Winter'], (rec.season as string) || '', v => updPostAdmission(sem, 'season', v), 'Season')}
+                                                {input('number', String(rec.year_of_passing || ''), v => updPostAdmission(sem, 'year_of_passing', v === '' ? null : Number(v)), 'Year e.g. 2023')}
+                                            </div>
+                                        </div>
+
+                                        {field('College Rank', input('text', (rec.college_rank as string) || '', v => updPostAdmission(sem, 'college_rank', v), 'Rank (if any)'))}
+                                        {field('Academic Awards', input('text', (rec.academic_awards as string) || '', v => updPostAdmission(sem, 'academic_awards', v), 'Awards received (if any)'))}
+
+                                        <div className="sm:col-span-2">
+                                            {field('Backlog Subjects', input('text', (rec.backlog_subjects as string) || '', v => updPostAdmission(sem, 'backlog_subjects', v), 'e.g. N/A or list subjects'))}
+                                        </div>
+                                    </div>
+                                </section>
+                            )
+                        })}
+                    </div>
+                )}
+            </section>
         </div>
+       
     )
 }

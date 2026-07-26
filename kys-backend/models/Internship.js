@@ -12,6 +12,8 @@ class Internship extends Model {
         paid_unpaid: { type: DataTypes.STRING(10), allowNull: true },
         start_date: { type: DataTypes.DATEONLY, allowNull: true },
         end_date: { type: DataTypes.DATEONLY, allowNull: true },
+        designation: { type: DataTypes.STRING(120), allowNull: true },
+        description: { type: DataTypes.TEXT, allowNull: true },
       },
       { sequelize, modelName: 'Internship', tableName: 'internship', timestamps: false },
     );

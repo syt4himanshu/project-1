@@ -24,7 +24,7 @@ module.exports = {
     await queryInterface.changeColumn(tableName, 'faculty_id', {
       type: Sequelize.INTEGER,
       allowNull: true,
-      references: { model: 'Faculty', key: 'id' },
+      references: { model: 'faculty', key: 'id' },
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
@@ -43,7 +43,7 @@ module.exports = {
       `UPDATE "${tableName}" m
        SET faculty_name_snapshot = TRIM(CONCAT(COALESCE(f.first_name, ''), ' ', COALESCE(f.last_name, ''))),
            faculty_email_snapshot = f.email
-       FROM "Faculty" f
+       FROM faculty f
        WHERE m.faculty_id = f.id
          AND (m.faculty_name_snapshot IS NULL OR m.faculty_email_snapshot IS NULL)`,
     );
@@ -58,10 +58,9 @@ module.exports = {
     await queryInterface.changeColumn(tableName, 'faculty_id', {
       type: Sequelize.INTEGER,
       allowNull: false,
-      references: { model: 'Faculty', key: 'id' },
+      references: { model: 'faculty', key: 'id' },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });
   },
 };
-

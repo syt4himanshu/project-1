@@ -6,8 +6,9 @@ class Project extends Model {
       {
         id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
         student_id: { type: DataTypes.INTEGER, allowNull: false },
-        title: { type: DataTypes.STRING(255), allowNull: true },
-        description: { type: DataTypes.STRING(255), allowNull: true },
+        title: { type: DataTypes.TEXT, allowNull: true },
+        description: { type: DataTypes.TEXT, allowNull: true },
+        project_guide: { type: DataTypes.STRING(255), allowNull: true },
       },
       { sequelize, modelName: 'Project', tableName: 'project', timestamps: false },
     );

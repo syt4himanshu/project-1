@@ -3,13 +3,28 @@ import Joi from 'joi'
 const text200 = Joi.string().trim().max(200).allow('', null)
 const text255 = Joi.string().trim().max(255).allow('', null)
 const text500 = Joi.string().trim().max(500).allow('', null)
+const phoneNumber = Joi.string()
+  .trim()
+  .allow('', null)
+  .pattern(/^(?:\+91[\s-]?)?[6-9]\d{9}$/)
+  .messages({
+    'string.pattern.base': '{#label} must be a valid 10 digit phone number',
+  })
 const optionalEmail = Joi.string()
   .trim()
   .max(255)
   .allow('', null)
   .pattern(/^(|n\/a|na|-|[^\s@]+@[^\s@]+\.[^\s@]+)$/i)
   .messages({
-    'string.pattern.base': 'must be a valid email',
+    'string.pattern.base': '{#label} must be a valid email',
+  })
+const collegeEmail = Joi.string()
+  .trim()
+  .max(255)
+  .allow('', null)
+  .pattern(/^(|n\/a|na|-|[^\s@]+@stvincentngp\.edu\.in)$/i)
+  .messages({
+    'string.pattern.base': '{#label} must be a valid college email ending with @stvincentngp.edu.in',
   })
 
 const studentProfileSchema = Joi.object({
@@ -20,32 +35,42 @@ const studentProfileSchema = Joi.object({
   admission_type: Joi.string().valid('hsc', 'diploma').allow('', null),
 
   personal_info: Joi.object({
-    mobile_no: Joi.string().trim().max(20).allow('', null),
+    mobile_no: phoneNumber,
     personal_email: optionalEmail,
-    college_email: optionalEmail,
+    college_email: collegeEmail,
     linked_in_id: Joi.string().trim().max(255).allow('', null),
     permanent_address: text500,
     present_address: text500,
     dob: Joi.string().trim().max(20).allow('', null),
     gender: Joi.string().trim().max(20).allow('', null),
     father_name: Joi.string().trim().max(120).allow('', null),
-    father_mobile_no: Joi.string().trim().max(20).allow('', null),
-    father_email: text255,
+    father_mobile_no: phoneNumber,
+    father_email: optionalEmail,
     father_occupation: Joi.string().trim().max(255).allow('', null),
     mother_name: Joi.string().trim().max(120).allow('', null),
-    mother_mobile_no: Joi.string().trim().max(20).allow('', null),
-    mother_email: text255,
+    mother_mobile_no: phoneNumber,
+    mother_email: optionalEmail,
     mother_occupation: Joi.string().trim().max(255).allow('', null),
-    emergency_contact_name: Joi.string().trim().max(120).allow('', null),
-    emergency_contact_number: Joi.string().trim().max(20).allow('', null),
     blood_group: Joi.string().trim().max(5).allow('', null),
     category: Joi.string().trim().max(20).allow('', null),
-    aadhar_number: Joi.string().trim().max(14).allow('', null),
-    mis_uid: Joi.string().trim().max(50).allow('', null),
+    aadhar_number: Joi.string()
+      .trim()
+      .allow('', null)
+      .pattern(/^(?:\d{12}|-\-|n\/a|na)?$/i)
+      .messages({
+        'string.pattern.base': '{#label} must be a valid 12 digit Aadhaar number',
+      }),
+    mis_uid: Joi.string()
+      .trim()
+      .allow('', null)
+      .pattern(/^(?:\d{8}|-\-|n\/a|na)?$/i)
+      .messages({
+        'string.pattern.base': '{#label} must be an 8 digit MIS UID',
+      }),
     github_id: Joi.string().trim().max(255).allow('', null),
     guardian_name: Joi.string().trim().max(120).allow('', null),
-    guardian_mobile: Joi.string().trim().max(20).allow('', null),
-    guardian_email: text255,
+    guardian_mobile: phoneNumber,
+    guardian_email: optionalEmail,
   }).unknown(true),
 
   past_education_records: Joi.array().items(Joi.object({
@@ -165,5 +190,212 @@ export function validateStudentProfileData(data: Record<string, unknown>) {
 
   const joiErrors = error ? error.details.map((detail) => detail.message.replace(/\"/g, '')) : []
   const errors = [...new Set([...joiErrors, ...dynamicErrors])]
+  return { isValid: false, errors }
+}
+
+export interface StudentProfileValidationIssue {
+  path: string
+  message: string
+  severity: 'error' | 'warning'
+}
+
+function normalizePath(path: Array<string | number>) {
+  return path.map((part) => String(part)).join('.')
+}
+
+export function validateStudentProfileDataDetailed(data: Record<string, unknown>) {
+  const { error } = studentProfileSchema.validate(data, {
+    abortEarly: false,
+    convert: true,
+  })
+
+  const issues: StudentProfileValidationIssue[] = []
+
+  if (error) {
+    for (const detail of error.details) {
+      issues.push({
+        path: normalizePath(detail.path),
+        message: detail.message.replace(/\"/g, ''),
+        severity: 'error',
+      })
+    }
+  }
+
+  const records = ((data.past_education_records as Record<string, unknown>[]) || [])
+  const admissionType = String(data.admission_type || '').trim()
+  const hasHssc = records.some((record) => record.exam_name === 'HSSC')
+  const hasDiploma = records.some((record) => record.exam_name === 'DIPLOMA')
+
+  if (admissionType === 'hsc' && hasDiploma) {
+    issues.push({
+      path: 'past_education_records',
+      message: 'Diploma details are not allowed for HSC admission type',
+      severity: 'error',
+    })
+  }
+
+  if (admissionType === 'diploma' && hasHssc) {
+    issues.push({
+      path: 'past_education_records',
+      message: 'HSC details are not allowed for Diploma admission type',
+      severity: 'error',
+    })
+  }
+
+  return {
+    isValid: issues.length === 0,
+    issues,
+  }
+}
+
+/**
+ * Step-0-specific format validation.
+ * Only checks the format of fields visible on Step 1 (Personal Info).
+ * Required-field presence is handled separately by getMissingRequiredFields.
+ */
+const step0Schema = Joi.object({
+  personal_info: Joi.object({
+    mobile_no: phoneNumber,
+    personal_email: optionalEmail,
+    college_email: collegeEmail,
+    father_mobile_no: phoneNumber,
+    father_email: optionalEmail,
+    mother_mobile_no: phoneNumber,
+    mother_email: optionalEmail,
+    guardian_mobile: phoneNumber,
+    guardian_email: optionalEmail,
+    aadhar_number: Joi.string()
+      .trim()
+      .allow('', null)
+      .pattern(/^(?:\d{12}|-\-|n\/a|na)?$/i)
+      .messages({ 'string.pattern.base': 'must be a valid 12 digit Aadhaar number' }),
+    mis_uid: Joi.string()
+      .trim()
+      .allow('', null)
+      .pattern(/^(?:\d{8}|-\-|n\/a|na)?$/i)
+      .messages({ 'string.pattern.base': 'must be an 8 digit MIS UID' }),
+  }).unknown(true),
+}).unknown(true)
+
+export function validateStep0FormatErrors(data: Record<string, unknown>): { isValid: boolean; errors: string[] } {
+  const { error } = step0Schema.validate(data, { abortEarly: false, convert: true })
+  if (!error) return { isValid: true, errors: [] }
+  const errors = error.details.map((d) => d.message.replace(/\"/g, ''))
+  return { isValid: false, errors }
+}
+
+/**
+ * Step-1-specific format validation (Academic Before Admission).
+ * Only validates past_education_records percentages, years, and admission_type.
+ */
+const step1Schema = Joi.object({
+  admission_type: Joi.string().valid('hsc', 'diploma').allow('', null),
+  past_education_records: Joi.array().items(Joi.object({
+    exam_name: Joi.string().trim().max(100).allow('', null),
+    percentage: Joi.number().min(0).max(100).allow(null),
+    year_of_passing: Joi.number().integer().min(1990).max(2100).allow(null),
+    board: Joi.string().trim().max(100).allow('', null),
+    exam_type: Joi.string().trim().max(100).allow('', null),
+  }).unknown(true)),
+}).unknown(true)
+
+export function validateStep1FormatErrors(data: Record<string, unknown>): { isValid: boolean; errors: string[] } {
+  const { error } = step1Schema.validate(data, { abortEarly: false, convert: true })
+
+  const dynamicErrors: string[] = []
+  const records = ((data.past_education_records as Record<string, unknown>[]) || [])
+  const admissionType = String(data.admission_type || '').trim()
+  const hasHssc = records.some((r) => r.exam_name === 'HSSC')
+  const hasDiploma = records.some((r) => r.exam_name === 'DIPLOMA')
+
+  if (admissionType === 'hsc' && hasDiploma) {
+    dynamicErrors.push('Diploma details are not allowed for HSC admission type')
+  }
+  if (admissionType === 'diploma' && hasHssc) {
+    dynamicErrors.push('HSC details are not allowed for Diploma admission type')
+  }
+
+  if (!error && dynamicErrors.length === 0) return { isValid: true, errors: [] }
+  const joiErrors = error ? error.details.map((d) => d.message.replace(/\"/g, '')) : []
+  return { isValid: false, errors: [...joiErrors, ...dynamicErrors] }
+}
+
+/**
+ * Step-2-specific format validation (Projects, Internships, Co-curriculars, Skill Programs).
+ * Only validates array field formats for step 2 content.
+ */
+const step2Schema = Joi.object({
+  projects: Joi.array().items(Joi.object({
+    title: text255,
+    description: text200,
+  }).unknown(true)),
+  internships: Joi.array().items(Joi.object({
+    company_name: text255,
+    domain: text255,
+    start_date: Joi.string().trim().max(20).allow('', null),
+    end_date: Joi.string().trim().max(20).allow('', null),
+    description: text200,
+  }).unknown(true)),
+  cocurricular_participations: Joi.array().items(Joi.object({
+    name: text255,
+    date: Joi.string().trim().max(20).allow('', null),
+    awards: text255,
+  }).unknown(true)),
+  cocurricular_organizations: Joi.array().items(Joi.object({
+    name: text255,
+    date: Joi.string().trim().max(20).allow('', null),
+    remark: text255,
+  }).unknown(true)),
+  skill_programs: Joi.array().items(Joi.object({
+    course_title: text255,
+    platform: text255,
+    duration_hours: Joi.number().min(0).max(10000).allow(null),
+    date_from: Joi.string().trim().max(20).allow('', null),
+    date_to: Joi.string().trim().max(20).allow('', null),
+  }).unknown(true)),
+}).unknown(true)
+
+export function validateStep2FormatErrors(data: Record<string, unknown>): { isValid: boolean; errors: string[] } {
+  const { error } = step2Schema.validate(data, { abortEarly: false, convert: true })
+  if (!error) return { isValid: true, errors: [] }
+  const errors = error.details.map((d) => d.message.replace(/\"/g, ''))
+  return { isValid: false, errors }
+}
+
+/**
+ * Step-3-specific format validation (SWOC, Career Objective, Skills).
+ */
+const step3Schema = Joi.object({
+  swoc: Joi.object({
+    strengths: text500,
+    weaknesses: text500,
+    opportunities: text500,
+    challenges: text500,
+  }).unknown(true),
+  career_objective: Joi.object({
+    career_goal: Joi.string().trim().max(50).allow('', null),
+    specific_details: text200,
+    clarity_preparedness: Joi.string().trim().max(20).allow('', null),
+    interested_in_campus_placement: Joi.boolean().allow(null),
+    campus_placement_reasons: text200,
+    non_technical_areas: text255,
+    student_mentor_interest: Joi.string().trim().max(20).allow('', null),
+    expectations_from_institute: text200,
+  }).unknown(true),
+  skills: Joi.object({
+    programming_languages: text500,
+    technologies_frameworks: text500,
+    domains_of_interest: text255,
+    familiar_tools_platforms: text500,
+    technical_soft_skills_overall: text500,
+    additional_technical_skills: text500,
+    additional_soft_skills: text500,
+  }).unknown(true),
+}).unknown(true)
+
+export function validateStep3FormatErrors(data: Record<string, unknown>): { isValid: boolean; errors: string[] } {
+  const { error } = step3Schema.validate(data, { abortEarly: false, convert: true })
+  if (!error) return { isValid: true, errors: [] }
+  const errors = error.details.map((d) => d.message.replace(/\"/g, ''))
   return { isValid: false, errors }
 }

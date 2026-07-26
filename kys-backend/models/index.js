@@ -14,6 +14,9 @@ const CareerObjective = require('./CareerObjective');
 const Skills = require('./Skills');
 const SWOC = require('./SWOC');
 const MentoringMinute = require('./MentoringMinute');
+const CareerActivity = require('./CareerActivity');
+const CareerDevActivity = require('./CareerDevActivity');
+const PasswordResetToken = require('./PasswordResetToken');
 
 [
   User,
@@ -30,6 +33,9 @@ const MentoringMinute = require('./MentoringMinute');
   Skills,
   SWOC,
   MentoringMinute,
+  CareerActivity,
+  CareerDevActivity,
+  PasswordResetToken,
 ].forEach((model) => model.initModel(sequelize));
 
 User.hasOne(Student, { foreignKey: 'user_id', as: 'student_profile', onDelete: 'CASCADE' });
@@ -89,6 +95,15 @@ MentoringMinute.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
 Faculty.hasMany(MentoringMinute, { foreignKey: 'faculty_id', as: 'mentoring_minutes_written', onDelete: 'SET NULL' });
 MentoringMinute.belongsTo(Faculty, { foreignKey: 'faculty_id', as: 'faculty', onDelete: 'SET NULL' });
 
+Student.hasMany(CareerActivity, { foreignKey: 'student_id', as: 'career_activities', onDelete: 'CASCADE' });
+CareerActivity.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
+
+Student.hasMany(CareerDevActivity, { foreignKey: 'student_id', as: 'career_dev_activities', onDelete: 'CASCADE' });
+CareerDevActivity.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
+
+User.hasMany(PasswordResetToken, { foreignKey: 'user_id', as: 'password_reset_tokens', onDelete: 'CASCADE' });
+PasswordResetToken.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 module.exports = {
   sequelize,
   User,
@@ -105,4 +120,7 @@ module.exports = {
   Skills,
   SWOC,
   MentoringMinute,
+  CareerActivity,
+  CareerDevActivity,
+  PasswordResetToken,
 };

@@ -3,18 +3,29 @@ import { authExpired, logoutCurrentUser, selectAuthUser } from '../../../app/sto
 import type { RootState } from '../../../app/store'
 import { enqueueToast } from '../../../app/store/toastSlice'
 import { getProfile, updateProfile } from '../api/student'
-import { validateStudentProfileData } from '../validation/studentProfileSchema'
+import {
+  validateStep0FormatErrors,
+  validateStep1FormatErrors,
+  validateStep2FormatErrors,
+  validateStep3FormatErrors,
+  validateStudentProfileData,
+} from '../validation/studentProfileSchema'
+import { clearDraft, clearDraftResetMark, getDraftMetadata, isDraftNewerThan, isDraftResetMarked, loadDraft } from '../utils/studentProfileDraft'
 
-const DRAFT_RETENTION_DAYS = 180
-const DRAFT_VERSION = 1
-export const STUDENT_PROFILE_STEP_COUNT = 9
+export const STUDENT_PROFILE_STEP_COUNT = 5
+const DRAFT_RESTORE_TOAST_SUPPRESSION_MS = 3000
 
-interface DraftPayload {
-  version: number
-  savedAt: number
-  expiresAt: number
-  step: number
-  data: Record<string, unknown>
+const recentDraftRestoreToasts = new Map<string, number>()
+
+function shouldShowDraftRestoreToast(draftKey: string) {
+  const now = Date.now()
+  const lastShownAt = recentDraftRestoreToasts.get(draftKey) || 0
+  if (now - lastShownAt < DRAFT_RESTORE_TOAST_SUPPRESSION_MS) {
+    return false
+  }
+
+  recentDraftRestoreToasts.set(draftKey, now)
+  return true
 }
 
 interface StudentProfileState {
@@ -25,6 +36,8 @@ interface StudentProfileState {
   saveStatus: 'idle' | 'saving'
   submitStatus: 'idle' | 'submitting'
   draftKey: string
+  draftUpdatedAt: string | null
+  draftRestored: boolean
 }
 
 const initialState: StudentProfileState = {
@@ -35,6 +48,8 @@ const initialState: StudentProfileState = {
   saveStatus: 'idle',
   submitStatus: 'idle',
   draftKey: '',
+  draftUpdatedAt: null,
+  draftRestored: false,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -98,17 +113,18 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
   if (step === 0) {
     const missing: string[] = []
     if (isBlank(data.full_name)) missing.push('Full Name')
+    if (isBlank(data.semester)) missing.push('Semester')
+    if (isBlank(data.section)) missing.push('Section')
+    if (isBlank(pi.category)) missing.push('Category')
+    if (isBlank(pi.mis_uid)) missing.push('MIS UID')
     if (isBlank(pi.dob)) missing.push('Date of Birth')
     if (isBlank(pi.gender)) missing.push('Gender')
     if (isBlank(pi.mobile_no)) missing.push('WhatsApp Mobile No.')
     if (isBlank(pi.personal_email)) missing.push('Personal Email')
     if (isBlank(pi.college_email)) missing.push('College Email (Professional)')
     if (isBlank(pi.permanent_address)) missing.push('Permanent Address')
-    return missing
-  }
-
-  if (step === 1) {
-    const missing: string[] = []
+    
+    // Parents Info (formerly step 1)
     if (isBlank(pi.father_name)) missing.push("Father's Name")
     if (isBlank(pi.father_mobile_no)) missing.push("Father's WhatsApp Mobile No.")
     if (isBlank(pi.father_occupation)) missing.push("Father's Occupation")
@@ -118,7 +134,7 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     return missing
   }
 
-  if (step === 2) {
+  if (step === 1) {
     const missing: string[] = []
     const ssc = getPast('SSC')
     if (isBlank(ssc.percentage)) missing.push('SSC Percentage / Grade')
@@ -144,17 +160,12 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     return missing
   }
 
-  if (step === 6) {
+  if (step === 3) {
     const missing: string[] = []
     if (isBlank(swoc.strengths)) missing.push('Strengths')
     if (isBlank(swoc.weaknesses)) missing.push('Weaknesses / Areas of Improvement')
     if (isBlank(swoc.opportunities)) missing.push('Opportunities')
     if (isBlank(swoc.challenges)) missing.push('Challenges')
-    return missing
-  }
-
-  if (step === 7) {
-    const missing: string[] = []
     if (isBlank(co.career_goal)) missing.push('Career Goal')
     if (isBlank(co.clarity_preparedness)) missing.push('Clarity and Preparedness Level')
     if (co.interested_in_campus_placement !== true && co.interested_in_campus_placement !== false) {
@@ -181,128 +192,91 @@ function getPayloadForStep(step: number, data: Record<string, unknown>) {
   }
 
   if (step === 1) {
-    if (personalInfo) payload.personal_info = personalInfo
-    return payload
-  }
-
-  if (step === 2) {
     if ('admission_type' in data) payload.admission_type = data.admission_type
     if ('past_education_records' in data) payload.past_education_records = data.past_education_records
     return payload
   }
 
+  if (step === 2) {
+    if ('projects' in data) payload.projects = data.projects
+    if ('internships' in data) payload.internships = data.internships
+    if ('cocurricular_participations' in data) payload.cocurricular_participations = data.cocurricular_participations
+    if ('cocurricular_organizations' in data) payload.cocurricular_organizations = data.cocurricular_organizations
+    if ('skill_programs' in data) payload.skill_programs = data.skill_programs
+    return payload
+  }
+
   if (step === 3) {
-    if ('post_admission_records' in data) payload.post_admission_records = data.post_admission_records
+    if ('swoc' in data) payload.swoc = data.swoc
+    if ('career_objective' in data) payload.career_objective = data.career_objective
+    if ('skills' in data) payload.skills = data.skills
     return payload
   }
 
   if (step === 4) {
-    if ('projects' in data) payload.projects = data.projects
-    if ('internships' in data) payload.internships = data.internships
-    return payload
-  }
-
-  if (step === 5) {
-    if ('cocurricular_participations' in data) payload.cocurricular_participations = data.cocurricular_participations
-    if ('cocurricular_organizations' in data) payload.cocurricular_organizations = data.cocurricular_organizations
-    return payload
-  }
-
-  if (step === 6) {
-    if ('swoc' in data) payload.swoc = data.swoc
-    return payload
-  }
-
-  if (step === 7) {
-    if ('career_objective' in data) payload.career_objective = data.career_objective
-    if ('skills' in data) payload.skills = data.skills
     return payload
   }
 
   return data
 }
 
-function readDraft(draftKey: string): { data: Record<string, unknown>; step: number } | null {
-  try {
-    const raw = window.localStorage.getItem(draftKey)
-    if (!raw) return null
-
-    const parsed = JSON.parse(raw) as DraftPayload
-    const validVersion = parsed?.version === DRAFT_VERSION
-    const validData = parsed?.data && typeof parsed.data === 'object'
-    const notExpired = Number(parsed?.expiresAt || 0) > Date.now()
-    if (!validVersion || !validData || !notExpired) {
-      window.localStorage.removeItem(draftKey)
-      return null
-    }
-
-    return {
-      data: parsed.data,
-      step: Math.max(0, Math.min(Number(parsed.step || 0), STUDENT_PROFILE_STEP_COUNT - 1)),
-    }
-  } catch {
-    window.localStorage.removeItem(draftKey)
-    return null
-  }
-}
-
-function saveDraft(draftKey: string, data: Record<string, unknown>, nextStep: number): boolean {
-  try {
-    const now = Date.now()
-    const payload: DraftPayload = {
-      version: DRAFT_VERSION,
-      savedAt: now,
-      expiresAt: now + DRAFT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
-      step: nextStep,
-      data,
-    }
-
-    window.localStorage.setItem(draftKey, JSON.stringify(payload))
-    return true
-  } catch {
-    return false
-  }
-}
-
 export const loadStudentProfileWizard = createAsyncThunk(
   'studentProfile/loadStudentProfileWizard',
   async (_arg: void, { dispatch, getState }): Promise<{
     data: Record<string, unknown>
+    draftUpdatedAt: string | null
+    draftRestored: boolean
     draftKey: string
     step: number
   }> => {
     const state = getState() as RootState
     const draftKey = deriveDraftKey(state)
-    const draft = readDraft(draftKey)
+    const draft = loadDraft()
+    const draftMetadata = getDraftMetadata()
+    const resetMarked = isDraftResetMarked()
+
+    if (resetMarked) {
+      return {
+        data: {},
+        draftUpdatedAt: null,
+        draftRestored: false,
+        draftKey,
+        step: 0,
+      }
+    }
 
     try {
       const response = await getProfile()
-      if (draft) {
-        dispatch(enqueueToast({ title: 'Info', message: 'Draft restored from local storage.', intent: 'info' }))
-        return {
-          data: mergeStudentProfileData((response.data || {}) as Record<string, unknown>, draft.data),
-          draftKey,
-          step: draft.step,
-        }
-      }
+      const serverData = (response.data || {}) as Record<string, unknown>
+      const serverUpdatedAt = typeof serverData.updated_at === 'string' ? serverData.updated_at : null
+      const draftUpdatedAt = draft ? draft.updatedAt : null
+      const shouldRestoreDraft = Boolean(draft && draftMetadata?.updatedAt && isDraftNewerThan(draftUpdatedAt, serverUpdatedAt))
 
       return {
-        data: (response.data || {}) as Record<string, unknown>,
+        data: shouldRestoreDraft && draft ? mergeStudentProfileData(serverData, draft.data) : serverData,
+        draftUpdatedAt: shouldRestoreDraft ? draftUpdatedAt : serverUpdatedAt,
+        draftRestored: shouldRestoreDraft,
         draftKey,
         step: 0,
       }
     } catch {
-      if (draft) {
-        dispatch(enqueueToast({ title: 'Info', message: 'Draft restored from local storage.', intent: 'info' }))
+      if (draft && draftMetadata?.updatedAt) {
+        if (shouldShowDraftRestoreToast(draftKey)) {
+          dispatch(enqueueToast({ title: 'Info', message: 'Draft restored from local storage.', intent: 'info' }))
+        }
         return {
           data: draft.data,
+          draftUpdatedAt: draft.updatedAt,
+          draftRestored: true,
           draftKey,
-          step: draft.step,
+          step: 0,
         }
       }
 
       return {
         data: {},
+        draftUpdatedAt: null,
+        draftRestored: false,
         draftKey,
         step: 0,
       }
@@ -329,33 +303,40 @@ export const saveStudentProfileStep = createAsyncThunk<
       return rejectWithValue(message)
     }
 
-    if (state.step >= 2) {
-      const validation = validateStudentProfileData(state.data)
-      if (!validation.isValid) {
-        const message = validation.errors[0] || 'Please correct invalid values in the form.'
-        dispatch(enqueueToast({
-          title: 'Error',
-          message: 'Please fix highlighted validation issues before proceeding.',
-          intent: 'error',
-        }))
-        return rejectWithValue(message)
-      }
+    // Run format validation scoped specifically to the current step's fields.
+    // This prevents format validation errors from other steps from bleeding into this step.
+    let formatCheck: { isValid: boolean; errors: string[] } = { isValid: true, errors: [] }
+    if (state.step === 0) {
+      formatCheck = validateStep0FormatErrors(state.data)
+    } else if (state.step === 1) {
+      formatCheck = validateStep1FormatErrors(state.data)
+    } else if (state.step === 2) {
+      formatCheck = validateStep2FormatErrors(state.data)
+    } else if (state.step === 3) {
+      formatCheck = validateStep3FormatErrors(state.data)
+    }
+
+    if (!formatCheck.isValid) {
+      const message = formatCheck.errors[0] || 'Please fix highlighted validation issues before proceeding.'
+      dispatch(enqueueToast({
+        title: 'Error',
+        message: 'Please fix highlighted validation issues before proceeding.',
+        intent: 'error',
+      }))
+      return rejectWithValue(message)
     }
 
     const payload = getPayloadForStep(state.step, state.data)
 
     try {
       await updateProfile(payload)
-      const nextStep = Math.min(state.step + 1, STUDENT_PROFILE_STEP_COUNT - 1)
-      const draftSaved = saveDraft(state.draftKey, state.data, nextStep)
-
       dispatch(enqueueToast({
         title: 'Success',
-        message: draftSaved ? 'Step saved.' : 'Step saved on server. Unable to save local draft.',
-        intent: draftSaved ? 'success' : 'info',
+        message: 'Step saved.',
+        intent: 'success',
       }))
 
-      return { nextStep }
+      return { nextStep: Math.min(state.step + 1, STUDENT_PROFILE_STEP_COUNT - 1) }
     } catch (error) {
       const message = error instanceof Error
         ? error.message || 'Failed to save this step on server. Please try again.'
@@ -391,7 +372,7 @@ export const submitStudentProfile = createAsyncThunk<
 
     try {
       await updateProfile(state.data)
-      window.localStorage.removeItem(state.draftKey)
+      clearDraft()
     } catch (error) {
       const message = error instanceof Error ? error.message || 'Failed to save profile' : 'Failed to save profile'
       dispatch(enqueueToast({
@@ -414,6 +395,14 @@ const studentProfileSlice = createSlice({
         ...action.payload,
       }
     },
+    restoreStudentProfileDraft(state, action: PayloadAction<Record<string, unknown>>) {
+      state.data = {
+        ...action.payload,
+      }
+    },
+    clearStudentProfileDraft(state) {
+      state.data = {}
+    },
     goToPreviousStudentProfileStep(state) {
       state.error = ''
       state.step = Math.max(state.step - 1, 0)
@@ -430,6 +419,8 @@ const studentProfileSlice = createSlice({
         state.data = action.payload.data
         state.step = action.payload.step
         state.draftKey = action.payload.draftKey
+        state.draftUpdatedAt = action.payload.draftUpdatedAt
+        state.draftRestored = action.payload.draftRestored
       })
       .addCase(saveStudentProfileStep.pending, (state) => {
         state.saveStatus = 'saving'
@@ -451,6 +442,9 @@ const studentProfileSlice = createSlice({
       .addCase(submitStudentProfile.fulfilled, (state) => {
         state.submitStatus = 'idle'
         state.error = ''
+        state.draftUpdatedAt = null
+        state.draftRestored = false
+        clearDraftResetMark()
       })
       .addCase(submitStudentProfile.rejected, (state, action) => {
         state.submitStatus = 'idle'
@@ -477,7 +471,7 @@ export const selectStudentProfileCanSubmit = (state: RootState) =>
 
 export const selectStudentProfileProgress = createSelector(
   [selectStudentProfileStep],
-  (step) => Math.round(((step + 1) / STUDENT_PROFILE_STEP_COUNT) * 100),
+  (step) => Math.round((step / Math.max(STUDENT_PROFILE_STEP_COUNT - 1, 1)) * 100),
 )
 
 export default studentProfileSlice.reducer

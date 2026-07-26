@@ -1,7 +1,9 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../shared/ui'
+import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
+import { sanitizeDisplayValue } from '../../../shared/utils/render'
 import { useMentee } from '../hooks'
 
 interface StudentPreviewModalProps {
@@ -39,20 +41,11 @@ function toText(value: unknown): string {
 
 function isEmpty(value: unknown): boolean {
   const text = toText(value).toLowerCase()
-  return (
-    text === '' ||
-    text === 'n/a' ||
-    text === 'na' ||
-    text === 'none' ||
-    text === '-' ||
-    text === '--' ||
-    text === 'null' ||
-    text === 'undefined'
-  )
+  return text === '' || text === 'n/a' || text === 'na' || text === 'none' || text === '-' || text === '--' || text === 'null' || text === 'undefined'
 }
 
 function showValue(value: unknown): string {
-  return isEmpty(value) ? 'N/A' : toText(value)
+  return isEmpty(value) ? 'N/A' : sanitizeDisplayValue(toText(value))
 }
 
 function pick(record: AnyRecord | undefined, ...keys: string[]): unknown {
@@ -63,18 +56,51 @@ function pick(record: AnyRecord | undefined, ...keys: string[]): unknown {
   return undefined
 }
 
-function asRecord(value: unknown): AnyRecord {
-  if (value && typeof value === 'object' && !Array.isArray(value)) return value as AnyRecord
-  return {}
+function fixedSlots(records: AnyRecord[] | undefined, count: number): AnyRecord[] {
+  return Array.from({ length: count }, (_, index) => records?.[index] ?? {})
 }
 
-function asRecordArray(value: unknown): AnyRecord[] {
-  if (!Array.isArray(value)) return []
-  return value.map((entry) => asRecord(entry))
+function extractBacklogSubjects(record: AnyRecord): string[] {
+  const raw = toText(pick(record, 'backlog_subjects', 'subjects', 'backlogSubjects'))
+  if (!raw) return []
+  return raw
+    .split(/[\n,;]+/)
+    .map((item) => item.trim())
+    .filter((item) => !isEmpty(item) && item !== '0')
 }
 
-function fixedSlots(records: AnyRecord[], count: number): AnyRecord[] {
-  return Array.from({ length: count }, (_, index) => records[index] ?? {})
+function toNumberOrFallback(value: unknown, fallback = 0): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function sortAcademicRecords(records: AnyRecord[]): AnyRecord[] {
+  return [...records].sort((a, b) => toNumberOrFallback(a.semester) - toNumberOrFallback(b.semester))
+}
+
+function getProjectLabel(index: number): string {
+  if (index === 0) return 'Mini Project'
+  if (index === 1) return 'Major Project'
+  if (index === 2) return 'UBA / Collaborative Project'
+  return 'Project'
+}
+
+function getProjectSubtitle(project: AnyRecord, label: string): string {
+  const description = showValue(project.description)
+  return description !== 'N/A' ? `Project Guide: ${description}` : 'Project Guide: N/A'
+}
+
+function getProjectBadgeClass(label: string) {
+  switch (label) {
+    case 'UBA / Collaborative Project':
+      return 'border-[#7a5c00] bg-[#fff4cc] text-[#7a5c00]'
+    case 'Mini Project':
+      return 'border-[#4a6b9a] bg-[#e8f0fb] text-[#315484]'
+    case 'Major Project':
+      return 'border-[#7b4fd6] bg-[#efe7ff] text-[#5a35a8]'
+    default:
+      return 'border-[#bfd1ea] bg-[#edf4fb] text-[#355b8f]'
+  }
 }
 
 function InfoTable({ rows }: { rows: InfoRow[] }) {
@@ -92,7 +118,7 @@ function InfoTable({ rows }: { rows: InfoRow[] }) {
   )
 }
 
-function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="faculty-preview__section">
       <h5>{title}</h5>
@@ -108,17 +134,18 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
   const menteeQuery = useMentee(uid)
   const student = menteeQuery.data
 
-  const personalInfo = useMemo(() => asRecord(student?.personal_info), [student?.personal_info])
-  const skills = useMemo(() => asRecord(student?.skills), [student?.skills])
-  const swoc = useMemo(() => asRecord(student?.swoc), [student?.swoc])
-  const careerObjective = useMemo(() => asRecord(student?.career_objective), [student?.career_objective])
+  const personalInfo = useMemo(() => (student?.personal_info && typeof student.personal_info === 'object' ? student.personal_info as AnyRecord : {}), [student?.personal_info])
+  const skills = useMemo(() => (student?.skills && typeof student.skills === 'object' ? student.skills as AnyRecord : {}), [student?.skills])
+  const swoc = useMemo(() => (student?.swoc && typeof student.swoc === 'object' ? student.swoc as AnyRecord : {}), [student?.swoc])
+  const careerObjective = useMemo(() => (student?.career_objective && typeof student.career_objective === 'object' ? student.career_objective as AnyRecord : {}), [student?.career_objective])
 
-  const pastEducation = useMemo(() => asRecordArray(student?.past_education_records), [student?.past_education_records])
-  const academicRecords = useMemo(() => asRecordArray(student?.post_admission_records), [student?.post_admission_records])
-  const projects = useMemo(() => asRecordArray(student?.projects), [student?.projects])
-  const internships = useMemo(() => asRecordArray(student?.internships), [student?.internships])
-  const participations = useMemo(() => fixedSlots(asRecordArray(student?.cocurricular_participations), 3), [student?.cocurricular_participations])
-  const organizations = useMemo(() => fixedSlots(asRecordArray(student?.cocurricular_organizations), 3), [student?.cocurricular_organizations])
+  const pastEducation = useMemo(() => (Array.isArray(student?.past_education_records) ? student.past_education_records as AnyRecord[] : []), [student?.past_education_records])
+  const academicRecords = useMemo(() => sortAcademicRecords(Array.isArray(student?.post_admission_records) ? student.post_admission_records as AnyRecord[] : []), [student?.post_admission_records])
+  const projects = useMemo(() => (Array.isArray(student?.projects) ? student.projects as AnyRecord[] : []), [student?.projects])
+  const internships = useMemo(() => (Array.isArray(student?.internships) ? student.internships as AnyRecord[] : []), [student?.internships])
+  const participations = useMemo(() => fixedSlots(Array.isArray(student?.cocurricular_participations) ? student.cocurricular_participations as AnyRecord[] : [], 3), [student?.cocurricular_participations])
+  const organizations = useMemo(() => fixedSlots(Array.isArray(student?.cocurricular_organizations) ? student.cocurricular_organizations as AnyRecord[] : [], 3), [student?.cocurricular_organizations])
+  const programRows = useMemo(() => fixedSlots(Array.isArray(student?.skill_programs) ? student.skill_programs as AnyRecord[] : [], 3), [student?.skill_programs])
 
   const personalRows = useMemo<InfoRow[]>(() => {
     if (!student) return []
@@ -177,7 +204,6 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
     if (!contentRef.current || !student) return
 
     setIsExporting(true)
-
     try {
       const printWindow = window.open('', '_blank', 'width=1200,height=900')
       if (!printWindow) return
@@ -217,7 +243,6 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
     if (!contentRef.current || !student) return
 
     setIsExporting(true)
-
     try {
       const { default: html2canvas } = await import('html2canvas')
       const { default: JsPdf } = await import('jspdf')
@@ -264,30 +289,20 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
   return (
     <Modal
       open={open}
-      title="Student Information"
-      subtitle={student ? `${student.full_name} (${student.uid})` : 'Loading student details...'}
       onClose={onClose}
+      title="Student Detail"
+      subtitle={student ? `${student.full_name} (${student.uid})` : 'Loading student details...'}
       size="xl"
       footer={(
         <div className="faculty-preview__footer-actions">
-          <button
-            type="button"
-            className="button button--soft"
-            onClick={() => void handlePrint()}
-            disabled={menteeQuery.isPending || menteeQuery.isError || isExporting || !student}
-          >
+          <button type="button" className="button button--soft" onClick={() => void handlePrint()} disabled={menteeQuery.isPending || menteeQuery.isError || isExporting || !student}>
             Print
-          </button>
-          <button
-            type="button"
-            className="button button--soft"
-            onClick={() => void handlePdf()}
-            disabled={menteeQuery.isPending || menteeQuery.isError || isExporting || !student}
-          >
-            {isExporting ? 'Exporting...' : 'Download PDF'}
           </button>
           <button type="button" className="button button--soft" onClick={goToMentoringPanel} disabled={!student}>
             Give Remarks
+          </button>
+          <button type="button" className="button button--soft" onClick={() => void handlePdf()} disabled={menteeQuery.isPending || menteeQuery.isError || isExporting || !student}>
+            {isExporting ? 'Exporting...' : 'Download PDF'}
           </button>
           <button type="button" className="button button--soft" onClick={onClose}>
             Close
@@ -295,10 +310,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
         </div>
       )}
     >
-      {menteeQuery.isPending ? (
-        <QueryState title="Loading student profile" description="Fetching latest student record..." />
-      ) : null}
-
+      {menteeQuery.isPending ? <QueryState title="Loading student profile" description="Fetching latest student record..." /> : null}
       {menteeQuery.isError ? (
         <QueryState
           tone="error"
@@ -311,7 +323,25 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
 
       {student ? (
         <div className="faculty-preview" ref={contentRef}>
-          <DetailSection title="Student's Personal Information">
+          <DetailSection title="Photo">
+            <div className="admin-student-photo-wrap">
+              <img
+                src={extractStudentPhotoUrl({ personal_info: personalInfo }) || ''}
+                alt={`${student.full_name} profile`}
+                className="admin-student-photo-preview__image"
+                loading="eager"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none'
+                }}
+              />
+              <div className="admin-student-photo-meta">
+                <p className="admin-student-photo-meta__title">Current photo</p>
+                <p className="admin-student-photo-meta__hint">Photo is shown if available.</p>
+              </div>
+            </div>
+          </DetailSection>
+
+          <DetailSection title="Personal Information">
             <InfoTable rows={personalRows} />
           </DetailSection>
 
@@ -325,6 +355,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                 <thead>
                   <tr>
                     <th>Exam</th>
+                    <th>Exam Type</th>
                     <th>Board</th>
                     <th>Percentage</th>
                     <th>Year</th>
@@ -333,10 +364,11 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                 <tbody>
                   {pastEducation.map((record, index) => (
                     <tr key={`past-${index}`}>
-                      <td>{showValue(record.exam ?? record.exam_name)}</td>
-                      <td>{showValue(record.board)}</td>
-                      <td>{showValue(record.percentage)}</td>
-                      <td>{showValue(record.year_of_passing)}</td>
+                      <td>{showValue(pick(record, 'exam', 'exam_name'))}</td>
+                      <td>{showValue(pick(record, 'exam_type', 'entrance_exam_type'))}</td>
+                      <td>{showValue(pick(record, 'board', 'board_name', 'exam_board'))}</td>
+                      <td>{showValue(pick(record, 'percentage', 'exam_score', 'marks'))}</td>
+                      <td>{showValue(pick(record, 'year_of_passing', 'year', 'passing_year'))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -355,19 +387,21 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                     <th>SGPA</th>
                     <th>Season</th>
                     <th>Year</th>
+                    <th>College Rank</th>
                     <th>Backlogs</th>
-                    <th>Subjects</th>
+                    <th>Backlog Subjects</th>
                   </tr>
                 </thead>
                 <tbody>
                   {academicRecords.map((record, index) => (
                     <tr key={`academic-${index}`}>
-                      <td>{showValue(record.semester)}</td>
-                      <td>{showValue(record.sgpa)}</td>
-                      <td>{showValue(record.season)}</td>
-                      <td>{showValue(record.year_of_passing)}</td>
-                      <td>{showValue(record.backlogs)}</td>
-                      <td>{showValue(record.backlog_subjects)}</td>
+                      <td>{showValue(pick(record, 'semester', 'sem'))}</td>
+                      <td>{showValue(pick(record, 'sgpa', 'grade_point'))}</td>
+                      <td>{showValue(pick(record, 'season', 'term'))}</td>
+                      <td>{showValue(pick(record, 'year_of_passing', 'year', 'academic_year'))}</td>
+                      <td>{showValue(pick(record, 'college_rank', 'rank'))}</td>
+                      <td>{showValue(pick(record, 'backlogs', 'backlog_count', 'backlogCount') ?? (extractBacklogSubjects(record).length || undefined))}</td>
+                      <td>{showValue(pick(record, 'backlog_subjects', 'subjects', 'backlogSubjects'))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -380,12 +414,22 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
           <DetailSection title="Projects">
             {projects.length > 0 ? (
               <div className="detail-card-list">
-                {projects.map((project, index) => (
-                  <article key={`project-${index}`} className="detail-card">
-                    <h5>{showValue(project.title)}</h5>
-                    <p>{showValue(project.description)}</p>
-                  </article>
-                ))}
+                {projects.map((project, index) => {
+                  const label = getProjectLabel(index)
+                  const subtitle = getProjectSubtitle(project, label)
+
+                  return (
+                    <article key={`project-${index}`} className="detail-card">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <h5 className="m-0">{showValue(project.title)}</h5>
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${getProjectBadgeClass(label)}`}>
+                          {label}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[#5f6f86]">{subtitle}</p>
+                    </article>
+                  )
+                })}
               </div>
             ) : (
               <p className="faculty-preview__empty">No projects submitted.</p>
@@ -398,7 +442,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                 {internships.map((internship, index) => (
                   <article key={`internship-${index}`} className="detail-card">
                     <h5>Internship {index + 1}</h5>
-                    <p>{showValue(internship.company_name ?? internship.company)}</p>
+                    <p>{showValue(pick(internship, 'company_name', 'company'))}</p>
                     <p>{showValue(internship.designation)}</p>
                     <p>{showValue(internship.domain)}</p>
                     <p>{showValue(internship.description)}</p>
@@ -416,7 +460,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
               {participations.map((entry, index) => (
                 <article key={`participation-${index}`} className="detail-card">
                   <h5>Activity {index + 1}</h5>
-                  <p>Name: {showValue(entry.name ?? entry.activity)}</p>
+                  <p>Name: {showValue(pick(entry, 'name', 'activity'))}</p>
                   <p>Date: {formatDate(entry.date)}</p>
                   <p>Level: {showValue(entry.level)}</p>
                   <p>Awards: {showValue(entry.awards)}</p>
@@ -430,10 +474,25 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
               {organizations.map((entry, index) => (
                 <article key={`organization-${index}`} className="detail-card">
                   <h5>Activity {index + 1}</h5>
-                  <p>Name: {showValue(entry.name ?? entry.organization)}</p>
+                  <p>Name: {showValue(pick(entry, 'name', 'organization'))}</p>
                   <p>Date: {formatDate(entry.date)}</p>
                   <p>Level: {showValue(entry.level)}</p>
-                  <p>Remark / Role: {showValue(entry.remark ?? entry.role ?? entry.position)}</p>
+                  <p>Remark / Role: {showValue(pick(entry, 'remark', 'role', 'position'))}</p>
+                </article>
+              ))}
+            </div>
+          </DetailSection>
+
+          <DetailSection title="Skill Development Program (SDP) / Training / MOOC">
+            <div className="detail-card-list">
+              {programRows.map((entry, index) => (
+                <article key={`program-${index}`} className="detail-card">
+                  <h5>Program {index + 1}</h5>
+                  <p>Title: {showValue(pick(entry, 'course_title', 'title', 'name'))}</p>
+                  <p>Platform: {showValue(pick(entry, 'platform', 'provider', 'organization'))}</p>
+                  <p>Duration (Hours): {showValue(pick(entry, 'duration_hours', 'duration', 'hours'))}</p>
+                  <p>From: {formatDate(pick(entry, 'date_from', 'from_date', 'start_date'))}</p>
+                  <p>To: {formatDate(pick(entry, 'date_to', 'to_date', 'end_date'))}</p>
                 </article>
               ))}
             </div>

@@ -30,7 +30,7 @@ export function LandingPage() {
         <div className="kys-landing__card">
           <div className="kys-landing__logo-wrap">
              <div className="kys-landing__logo-ring">
-               <img src="/college-logo.png" alt="College logo" className="kys-landing__logo" />
+               <img src="/college-logo.jpg" alt="College logo" className="kys-landing__logo" />
              </div>
           </div>
 

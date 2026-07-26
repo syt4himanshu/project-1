@@ -1081,6 +1081,16 @@ a:hover {
   width: min(380px, calc(100vw - 1.8rem));
 }
 
+@media (max-width: 639px) {
+  .toast-stack {
+    top: 0.9rem;
+    bottom: auto;
+    left: 0.9rem;
+    right: 0.9rem;
+    width: auto;
+  }
+}
+
 .toast {
   border: 1px solid #cbd5e1;
   border-radius: 11px;
@@ -1569,10 +1579,10 @@ a:hover {
 }
 
 .kys-landing__logo-ring {
-  width: 118px;
-  height: 118px;
+  width: 124px; 
+  height: 124px;
   border-radius: 999px;
-  padding: 4px;
+  padding: 2px;
 }
 
 .kys-landing__logo {
@@ -1882,6 +1892,7 @@ a:hover {
   background: linear-gradient(180deg, #111a33 0%, #0d1630 100%);
   color: #e2e8f0;
   padding: 2.2rem 1rem;
+  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 .role-select-kys__shell {
@@ -1905,6 +1916,9 @@ a:hover {
   text-align: center;
   font-size: clamp(1.4rem, 5vw, 2.4rem);
   color: white;
+  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
 .role-select-kys__spacer {
@@ -2002,6 +2016,8 @@ a:hover {
   margin: 0;
   font-size: 1.45rem;
   color: #fff;
+  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
 }
 
 .role-select-kys__card-text {
@@ -2009,6 +2025,8 @@ a:hover {
   font-size: 0.92rem;
   line-height: 1.55;
   color: #cbd5e1;
+  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  text-align: center;
 }
 
 @keyframes spin {
@@ -2081,19 +2099,6 @@ a:hover {
 }
 
 @media (max-width: 720px) {
-  .kys-landing--developer {
-    height: auto;
-    min-height: 100vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-  }
-
-  .kys-landing--developer .kys-landing__main {
-    align-items: flex-start;
-  }
-
   .admin-section__header {
     flex-direction: column;
   }
@@ -4549,8 +4554,68 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
     grid-template-columns: 1fr;
   }
 
+  .faculty-shell .faculty-overview__quick-links {
+    width: 100%;
+  }
+
+  .faculty-shell .faculty-overview__quick-links .button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
   .faculty-preview__table th {
     width: 40%;
+  }
+}
+
+@media (max-width: 560px) {
+  .faculty-shell .dashboard-topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .faculty-shell .dashboard-topbar__left,
+  .faculty-shell .dashboard-topbar__right {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .faculty-shell .dashboard-topbar__right {
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .faculty-shell .faculty-dashboard__title,
+  .faculty-shell .dashboard-topbar__subtitle,
+  .faculty-shell .faculty-student-row__name {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .faculty-shell .faculty-overview__students-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .faculty-shell .faculty-overview__students-badge {
+    align-self: flex-start;
+  }
+
+  .faculty-shell .faculty-student-row {
+    align-items: stretch;
+  }
+
+  .faculty-shell .faculty-student-row__left {
+    width: 100%;
+  }
+
+  .faculty-shell .faculty-student-row__name {
+    white-space: normal;
+  }
+
+  .faculty-shell .faculty-student-row .button {
+    width: fit-content;
   }
 }
 /* Faculty mentoring panel page */
@@ -5237,4 +5302,16 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
     overflow-y: auto !important;
     overflow-x: hidden !important;
   }
+}
+
+/* Custom class to hide number input spinners */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }

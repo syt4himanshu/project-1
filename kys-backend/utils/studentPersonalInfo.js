@@ -18,8 +18,6 @@ const REQUIRED_PERSONAL_INFO_FIELDS = [
   'mother_name',
   'mother_mobile_no',
   'mother_occupation',
-  'emergency_contact_name',
-  'emergency_contact_number',
 ];
 
 const createControlledError = ({ message, statusCode, code, details }) => {
@@ -49,11 +47,19 @@ const buildCandidatePersonalInfo = ({ student, user }) => ({
   mother_name: pickFirstPresent(student.mother_name),
   mother_mobile_no: pickFirstPresent(student.mother_mobile_no),
   mother_occupation: pickFirstPresent(student.mother_occupation),
-  emergency_contact_name: pickFirstPresent(student.emergency_contact_name, student.father_name, student.mother_name),
+  emergency_contact_name: pickFirstPresent(
+    student.emergency_contact_name,
+    student.father_name,
+    student.mother_name,
+    user?.name,
+    user?.full_name,
+  ),
   emergency_contact_number: pickFirstPresent(
     student.emergency_contact_number,
     student.father_mobile_no,
     student.mother_mobile_no,
+    student.mobile_no,
+    student.contact_number,
   ),
 });
 

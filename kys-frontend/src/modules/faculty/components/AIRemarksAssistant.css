@@ -328,3 +328,29 @@
     padding: 0.8rem;
   }
 }
+
+@media (max-width: 480px) {
+  .ai-remarks-input-form {
+    padding: 0.75rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 36px;
+    column-gap: 0.5rem;
+    align-items: end;
+  }
+
+  .ai-remarks-input-label {
+    grid-column: 1 / -1;
+  }
+
+  .ai-remarks-input {
+    grid-column: 1 / 2;
+  }
+
+  .ai-remarks-send {
+    position: static;
+    grid-column: 2 / 3;
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+  }
+}
