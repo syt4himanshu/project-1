@@ -363,7 +363,7 @@ const reportsToppers = async (req, res, next) => {
 
     // 2. Determine if the requested semester tab is currently in progress
     const isTabInCycle = (currentCycle === 'odd' && semTab % 2 !== 0) ||
-                         (currentCycle === 'even' && semTab % 2 === 0);
+      (currentCycle === 'even' && semTab % 2 === 0);
 
     if (isTabInCycle) {
       return res.status(200).json({
@@ -1009,18 +1009,38 @@ const updateUser = async (req, res, next) => {
 
 const deleteUser = async (req, res, next) => {
   try {
-    const user = await User.findByPk(Number(req.params.id));
+    const user = await User.findByPk(Number(req.params.id), {
+      include: ['student_profile', 'faculty_profile'],
+    });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     if (user.id === req.currentUser.id) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
+    const tx = await sequelize.transaction();
     try {
-      await user.destroy();
+      // Nullify mentor references before deleting a faculty user so that
+      // student.mentor_id is set to NULL (FK: ON DELETE SET NULL handles this
+      // at the DB level, but we do it explicitly for clarity and safety).
+      if (user.role === 'faculty' && user.faculty_profile) {
+        await Student.update(
+          { mentor_id: null },
+          { where: { mentor_id: user.faculty_profile.id }, transaction: tx },
+        );
+        await user.faculty_profile.destroy({ transaction: tx });
+      }
+
+      if (user.role === 'student' && user.student_profile) {
+        await user.student_profile.destroy({ transaction: tx });
+      }
+
+      await user.destroy({ transaction: tx });
+      await tx.commit();
       return res.status(200).json({ message: 'User deleted successfully' });
-    } catch (_error) {
-      return res.status(500).json({ error: 'Database error' });
+    } catch (deleteError) {
+      await tx.rollback();
+      return res.status(500).json({ error: 'Database error', detail: deleteError.message });
     }
   } catch (error) {
     return next(error);
