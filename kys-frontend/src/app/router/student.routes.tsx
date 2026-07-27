@@ -4,16 +4,19 @@ import RequireAuth from './guards/RequireAuth'
 import RequireRole from './guards/RequireRole'
 
 // Lazy load student pages for better code splitting
+// eslint-disable-next-line react-refresh/only-export-components
 const StudentDashboardPage = lazy(async () => {
   const { StudentDashboardPage } = await import('../../modules/student/routes')
   return { default: StudentDashboardPage }
 })
 
+// eslint-disable-next-line react-refresh/only-export-components
 const StudentProfilePage = lazy(async () => {
   const { StudentProfilePage } = await import('../../modules/student/routes')
   return { default: StudentProfilePage }
 })
 
+// eslint-disable-next-line react-refresh/only-export-components
 const PageLoader = ({ message = 'Loading...' }: { message?: string }) => (
   <div className="route-loader">
     <div className="route-loader__spinner" />

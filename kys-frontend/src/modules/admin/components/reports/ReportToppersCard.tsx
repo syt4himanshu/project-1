@@ -30,6 +30,8 @@ export function ReportToppersCard() {
       if (toppersQuery.data.is_in_progress) {
         const cycle = toppersQuery.data.current_cycle
         const firstAvailable = cycle === 'odd' ? 2 : 1
+        // The semester must be derived from API state after the first load.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSemester(firstAvailable)
       }
       setHasAutoSelected(true)

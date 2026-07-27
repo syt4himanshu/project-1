@@ -6,7 +6,7 @@ const text500 = Joi.string().trim().max(500).allow('', null)
 const phoneNumber = Joi.string()
   .trim()
   .allow('', null)
-  .pattern(/^(?:\+91[\s-]?)?[6-9]\d{9}$/)
+      .pattern(/^(?:\+91[\s-]?)?[6-9]\d{9}$/)
   .messages({
     'string.pattern.base': '{#label} must be a valid 10 digit phone number',
   })
@@ -56,14 +56,14 @@ const studentProfileSchema = Joi.object({
     aadhar_number: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^(?:\d{12}|-\-|n\/a|na)?$/i)
+      .pattern(/^(?:\d{12}|--|n\/a|na)?$/i)
       .messages({
         'string.pattern.base': '{#label} must be a valid 12 digit Aadhaar number',
       }),
     mis_uid: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^(?:\d{8}|-\-|n\/a|na)?$/i)
+      .pattern(/^(?:\d{8}|--|n\/a|na)?$/i)
       .messages({
         'string.pattern.base': '{#label} must be an 8 digit MIS UID',
       }),
@@ -188,7 +188,7 @@ export function validateStudentProfileData(data: Record<string, unknown>) {
     return { isValid: true, errors: [] as string[] }
   }
 
-  const joiErrors = error ? error.details.map((detail) => detail.message.replace(/\"/g, '')) : []
+  const joiErrors = error ? error.details.map((detail) => detail.message.replace(/"/g, '')) : []
   const errors = [...new Set([...joiErrors, ...dynamicErrors])]
   return { isValid: false, errors }
 }
@@ -215,7 +215,7 @@ export function validateStudentProfileDataDetailed(data: Record<string, unknown>
     for (const detail of error.details) {
       issues.push({
         path: normalizePath(detail.path),
-        message: detail.message.replace(/\"/g, ''),
+        message: detail.message.replace(/"/g, ''),
         severity: 'error',
       })
     }
@@ -267,12 +267,12 @@ const step0Schema = Joi.object({
     aadhar_number: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^(?:\d{12}|-\-|n\/a|na)?$/i)
+      .pattern(/^(?:\d{12}|--|n\/a|na)?$/i)
       .messages({ 'string.pattern.base': 'must be a valid 12 digit Aadhaar number' }),
     mis_uid: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^(?:\d{8}|-\-|n\/a|na)?$/i)
+      .pattern(/^(?:\d{8}|--|n\/a|na)?$/i)
       .messages({ 'string.pattern.base': 'must be an 8 digit MIS UID' }),
   }).unknown(true),
 }).unknown(true)
@@ -280,7 +280,7 @@ const step0Schema = Joi.object({
 export function validateStep0FormatErrors(data: Record<string, unknown>): { isValid: boolean; errors: string[] } {
   const { error } = step0Schema.validate(data, { abortEarly: false, convert: true })
   if (!error) return { isValid: true, errors: [] }
-  const errors = error.details.map((d) => d.message.replace(/\"/g, ''))
+  const errors = error.details.map((d) => d.message.replace(/"/g, ''))
   return { isValid: false, errors }
 }
 
@@ -316,7 +316,7 @@ export function validateStep1FormatErrors(data: Record<string, unknown>): { isVa
   }
 
   if (!error && dynamicErrors.length === 0) return { isValid: true, errors: [] }
-  const joiErrors = error ? error.details.map((d) => d.message.replace(/\"/g, '')) : []
+  const joiErrors = error ? error.details.map((d) => d.message.replace(/"/g, '')) : []
   return { isValid: false, errors: [...joiErrors, ...dynamicErrors] }
 }
 
@@ -358,7 +358,7 @@ const step2Schema = Joi.object({
 export function validateStep2FormatErrors(data: Record<string, unknown>): { isValid: boolean; errors: string[] } {
   const { error } = step2Schema.validate(data, { abortEarly: false, convert: true })
   if (!error) return { isValid: true, errors: [] }
-  const errors = error.details.map((d) => d.message.replace(/\"/g, ''))
+  const errors = error.details.map((d) => d.message.replace(/"/g, ''))
   return { isValid: false, errors }
 }
 
@@ -396,6 +396,6 @@ const step3Schema = Joi.object({
 export function validateStep3FormatErrors(data: Record<string, unknown>): { isValid: boolean; errors: string[] } {
   const { error } = step3Schema.validate(data, { abortEarly: false, convert: true })
   if (!error) return { isValid: true, errors: [] }
-  const errors = error.details.map((d) => d.message.replace(/\"/g, ''))
+  const errors = error.details.map((d) => d.message.replace(/"/g, ''))
   return { isValid: false, errors }
 }

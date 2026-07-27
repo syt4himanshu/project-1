@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../providers/auth-context'
 
 const ADMIN_TABS = [
@@ -14,12 +14,7 @@ const ADMIN_TABS = [
 export default function AdminLayout() {
   const { logout } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
-
-  useEffect(() => {
-    setIsMobileNavOpen(false)
-  }, [location.pathname])
 
   useEffect(() => {
     if (!isMobileNavOpen) return

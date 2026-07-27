@@ -37,6 +37,8 @@ export function useStudentProfileDraft() {
 
   useEffect(() => {
     if (loading) {
+      // Validation should pause while the wizard data is still loading.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValidationReady(false)
       return
     }

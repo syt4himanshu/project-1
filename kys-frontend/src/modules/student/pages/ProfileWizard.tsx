@@ -29,6 +29,7 @@ const STEP_SUBTEXT = [
 
 export default function ProfileWizard() {
     const navigate = useNavigate()
+    const toast = useToast()
     const {
         step,
         loading,
@@ -50,6 +51,8 @@ export default function ProfileWizard() {
 
     useEffect(() => {
         if (draftWasRestored && draftRestoredAt) {
+            // Showing this banner is a one-time UI sync after draft restore.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setShowDraftBanner(true)
         }
     }, [draftRestoredAt, draftWasRestored])
@@ -63,8 +66,6 @@ export default function ProfileWizard() {
             </div>
         )
     }
-
-    const toast = useToast()
 
     const handleSubmit = async () => {
         const submitted = await submit()

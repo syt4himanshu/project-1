@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 interface PhotoAvatarProps {
   alt: string
@@ -9,23 +9,27 @@ interface PhotoAvatarProps {
 }
 
 export function PhotoAvatar({ alt, className, fallback, url, loading = 'lazy' }: PhotoAvatarProps) {
-  const [hasError, setHasError] = useState(false)
-
-  useEffect(() => {
-    setHasError(false)
-  }, [url])
-
-  if (url && !hasError) {
+  if (url) {
     return (
-      <img
-        src={url}
-        alt={alt}
-        className={className}
-        loading={loading}
-        onError={() => setHasError(true)}
-      />
+      <AvatarImage key={url} src={url} alt={alt} className={className} loading={loading} />
     )
   }
 
   return <>{fallback}</>
+}
+
+function AvatarImage({ src, alt, className, loading }: { src: string; alt: string; className: string; loading: 'eager' | 'lazy' }) {
+  const [hasError, setHasError] = useState(false)
+
+  if (hasError) return null
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      loading={loading}
+      onError={() => setHasError(true)}
+    />
+  )
 }

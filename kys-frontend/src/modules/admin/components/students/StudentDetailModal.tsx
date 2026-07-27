@@ -76,7 +76,7 @@ function getProjectLabel(index: number): string {
   return 'Project'
 }
 
-function getProjectSubtitle(project: AnyRecord, label: string): string {
+function getProjectSubtitle(project: AnyRecord): string {
   const description = showValue(project.description)
   return description !== 'N/A' ? `Project Guide: ${description}` : 'Project Guide: N/A'
 }
@@ -440,7 +440,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                   <article key={`project-${index}`} className="detail-card">
                     {(() => {
                       const label = getProjectLabel(index)
-                      const subtitle = getProjectSubtitle(project, label)
+                      const subtitle = getProjectSubtitle(project)
 
                       return (
                         <>

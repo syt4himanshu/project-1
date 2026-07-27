@@ -11,7 +11,7 @@ export function sanitizeDisplayValue(value: unknown): string {
 
   // Strip [[KYS_META]] / [[KYS_*]] metadata blocks and JSON artifacts
   const cleaned = value
-    .replace(/\[\[KYS[_A-Z]*\]\]\s*[\[\{][^)\]]*[\]\}]/g, '')
+    .replace(/\[\[KYS[_A-Z]*\]\][\s\S]*?\]\]/g, '')
     .replace(/\[\[KYS[_A-Z]*\]\]/g, '')
     .replace(/\{"season":[^}]+\}/g, '')
     .trim()

@@ -11,7 +11,7 @@ const emptySections = (): ParsedSections => ({
 const normalizeSectionKey = (raw: string): SectionKey | null => {
     const key = raw
         .toLowerCase()
-        .replace(/^[\s>*#\-\d\.\)\(]+/, '')
+        .replace(/^[\s>*#\-\d.)(]+/, '')
         .replace(/[*_`]+/g, '')
         .trim()
         .replace(/:$/, '')

@@ -5,4 +5,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return children
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = useSharedAuth

@@ -85,7 +85,7 @@ function getProjectLabel(index: number): string {
   return 'Project'
 }
 
-function getProjectSubtitle(project: AnyRecord, label: string): string {
+function getProjectSubtitle(project: AnyRecord): string {
   const description = showValue(project.description)
   return description !== 'N/A' ? `Project Guide: ${description}` : 'Project Guide: N/A'
 }
@@ -416,7 +416,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
               <div className="detail-card-list">
                 {projects.map((project, index) => {
                   const label = getProjectLabel(index)
-                  const subtitle = getProjectSubtitle(project, label)
+                  const subtitle = getProjectSubtitle(project)
 
                   return (
                     <article key={`project-${index}`} className="detail-card">

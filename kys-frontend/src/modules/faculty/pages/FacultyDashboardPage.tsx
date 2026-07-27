@@ -17,7 +17,7 @@ export function FacultyDashboardPage() {
   const [sectionFilter, setSectionFilter] = useState('')
   const [activeUid, setActiveUid] = useState('')
 
-  const mentees = menteesQuery.data ?? []
+  const mentees = useMemo(() => menteesQuery.data ?? [], [menteesQuery.data])
 
   const semesterOptions = useMemo(
     () => [...new Set(mentees.map((row) => row.semester).filter((v) => Number.isFinite(v)))].sort((a, b) => a - b),
