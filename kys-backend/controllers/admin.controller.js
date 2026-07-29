@@ -1283,19 +1283,29 @@ const generateAllocation = async (req, res, next) => {
     const faculty = await Faculty.findByPk(facultyId);
     if (!faculty) return res.status(404).json({ error: 'Faculty not found' });
 
-    // n = number of faculties that currently have zero mentees
     const faculties = await Faculty.findAll({
       include: [{ model: Student, as: 'mentees', attributes: ['id'], required: false }],
+      order: [['id', 'ASC']],
     });
-    const n = faculties.filter((f) => !(f.mentees || []).length).length;
-    if (n === 0) return res.status(400).json({ error: 'No faculties without mentees available' });
+    const selectedFaculty = faculties.find((f) => f.id === facultyId) || faculty;
+    const assignedCount = (selectedFaculty.mentees || []).length;
+    const capacity = 20;
+    const remainingCapacity = Math.max(0, capacity - assignedCount);
+
+    if (remainingCapacity === 0) {
+      return res.status(400).json({ error: 'Selected faculty has no remaining capacity' });
+    }
 
     const unassigned = await Student.findAll({
       where: { mentor_id: null },
       order: [['id', 'ASC']],
     });
 
-    // Group by semester + section and assign k = floor(m/n) from each group.
+    if (!unassigned.length) {
+      return res.status(404).json({ error: 'No unassigned students available' });
+    }
+
+    // Group by semester + section and spread suggestions across the remaining seats.
     const grouped = unassigned.reduce((acc, s) => {
       const key = `${s.semester ?? 'NA'}::${s.section ?? 'NA'}`;
       if (!acc[key]) acc[key] = [];
@@ -1304,27 +1314,30 @@ const generateAllocation = async (req, res, next) => {
     }, {});
 
     const suggestions = [];
-
-    Object.values(grouped).forEach((students) => {
-      const m = students.length;
-      const k = Math.floor(m / n);
-      if (k <= 0) return;
-
-      // Fisher-Yates shuffle to keep distribution fair.
+    const buckets = Object.values(grouped).map((students) => {
       const shuffled = [...students];
       for (let i = shuffled.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
 
-      shuffled.slice(0, k).forEach((student) => {
-        suggestions.push({
-          id: student.id,
-          uid: student.uid,
-          name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
-        });
-      });
+      return shuffled;
     });
+
+    let bucketIndex = 0;
+    while (suggestions.length < remainingCapacity && buckets.some((bucket) => bucket.length > 0)) {
+      const bucket = buckets[bucketIndex % buckets.length];
+      bucketIndex += 1;
+
+      const student = bucket.shift();
+      if (!student) continue;
+
+      suggestions.push({
+        id: student.id,
+        uid: student.uid,
+        name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+      });
+    }
 
     return res.status(200).json(suggestions);
   } catch (error) {

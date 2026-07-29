@@ -299,7 +299,11 @@ const putStudentsMe = async (req, res, next) => {
       });
     } catch (_error) {
       await tx.rollback();
-      return sendResponse(res, { success: false, status: 500, error: 'Failed to update profile' });
+      const status = _error?.statusCode && Number.isInteger(_error.statusCode) ? _error.statusCode : 500;
+      const errorMessage = typeof _error?.message === 'string' && _error.message.trim()
+        ? _error.message
+        : 'Failed to update profile';
+      return sendResponse(res, { success: false, status, error: errorMessage });
     }
   } catch (error) {
     return next(error);
@@ -473,7 +477,11 @@ const putStudentMe = async (req, res, next) => {
       });
     } catch (_error) {
       await tx.rollback();
-      return sendResponse(res, { success: false, status: 500, error: 'Failed to update profile' });
+      const status = _error?.statusCode && Number.isInteger(_error.statusCode) ? _error.statusCode : 500;
+      const errorMessage = typeof _error?.message === 'string' && _error.message.trim()
+        ? _error.message
+        : 'Failed to update profile';
+      return sendResponse(res, { success: false, status, error: errorMessage });
     }
   } catch (error) {
     return next(error);

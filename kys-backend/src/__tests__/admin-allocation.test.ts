@@ -64,6 +64,19 @@ describe('admin allocation APIs', () => {
     expect(Array.isArray(menteesBefore.body)).toBe(true);
   });
 
+  it('generate suggestions still works when faculty already has mentees and remaining capacity', async () => {
+    const target = seededStudents.find((s) => s.studentId);
+    if (!target?.studentId) return;
+
+    const assign = await request('PUT', `/api/students/${target.studentId}`, { mentor_id: facultyId }, adminToken);
+    expect([200, 404]).toContain(assign.status);
+
+    const res = await request<any[]>('POST', `/api/admin/faculty/${facultyId}/mentees/generate`, {}, adminToken);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThan(0);
+  });
+
   it('generate random order differs across runs (best-effort)', async () => {
     const orders: string[] = [];
     for (let i = 0; i < 5; i += 1) {
