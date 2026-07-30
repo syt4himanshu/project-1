@@ -23,6 +23,7 @@ export {
   useExportBacklogsMutation,
   useExportIncompleteReportsMutation,
   useGenerateAllocationMutation,
+  useAutoAllocateUnassignedMutation,
   useRemoveAllocationMutation,
   useResetPasswordMutation,
 } from './useAdminQueries'

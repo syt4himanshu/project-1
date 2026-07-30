@@ -357,6 +357,32 @@ export function useGenerateAllocationMutation() {
   })
 }
 
+export function useAutoAllocateUnassignedMutation() {
+  const { token } = useAuth()
+  const queryClient = useQueryClient()
+  const toast = useToast()
+
+  return useMutation({
+    mutationKey: ['admin', 'mutation', 'allocation-auto-assign'],
+    scope: { id: 'admin-allocation-writes' },
+    mutationFn: ({ preview }: { preview?: boolean }) =>
+      adminApi.autoAllocateUnassigned({ token: ensureToken(token), preview }),
+    onSuccess: async (result, { preview }) => {
+      if (!preview) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: adminQueryKeys.allocation() }),
+          queryClient.invalidateQueries({ queryKey: adminQueryKeys.faculty() }),
+          queryClient.invalidateQueries({ queryKey: adminQueryKeys.students() }),
+        ])
+        toast.success(result.message || 'Auto-allocation completed successfully.')
+      }
+    },
+    onError: (error) => {
+      toast.error(toApiErrorMessage(error, 'Unable to auto-allocate unassigned students.'))
+    },
+  })
+}
+
 export function useConfirmAllocationMutation() {
   const { token } = useAuth()
   const queryClient = useQueryClient()

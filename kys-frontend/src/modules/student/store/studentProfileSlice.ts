@@ -137,6 +137,7 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
   if (step === 1) {
     const missing: string[] = []
     const ssc = getPast('SSC')
+    if (isBlank(ssc.board)) missing.push('SSC Board')
     if (isBlank(ssc.percentage)) missing.push('SSC Percentage / Grade')
     if (isBlank(ssc.year_of_passing)) missing.push('SSC Year of Passing')
     if (isBlank(admissionType)) missing.push('Admission Type (after 10th)')
@@ -144,6 +145,7 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     if (admissionType === 'hsc') {
       const hssc = getPast('HSSC')
       const entrance = getPast('ENTRANCE_EXAM')
+      if (isBlank(hssc.board)) missing.push('HSC Board')
       if (isBlank(hssc.percentage)) missing.push('HSC Percentage / Grade')
       if (isBlank(hssc.year_of_passing)) missing.push('HSC Year of Passing')
       if (isBlank(entrance.exam_type)) missing.push('Entrance Exam Type')
@@ -153,9 +155,32 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
 
     if (admissionType === 'diploma') {
       const diploma = getPast('DIPLOMA')
+      if (isBlank(diploma.board)) missing.push('Diploma Board')
       if (isBlank(diploma.percentage)) missing.push('Diploma Percentage / Grade')
       if (isBlank(diploma.year_of_passing)) missing.push('Diploma Year of Passing')
     }
+
+    const currentSem = Number(data.semester || 8)
+    const postAdmissionRecords = (data.post_admission_records as Record<string, unknown>[]) || []
+    const semesters = Array.from({ length: Math.max(currentSem - 1, 0) }, (_, i) => i + 1)
+    for (const sem of semesters) {
+      const rec = postAdmissionRecords.find((r) => Number(r.semester) === sem) || {}
+      if (isBlank(rec.sgpa)) {
+        missing.push(`Semester ${sem} SGPA / Percentage`)
+      }
+    }
+
+    return missing
+  }
+
+  if (step === 2) {
+    const missing: string[] = []
+    const projects = (data.projects as Record<string, unknown>[]) || []
+    const miniProject = projects[0] || {}
+    const majorProject = projects[1] || {}
+
+    if (isBlank(miniProject.title)) missing.push('Mini Project Title')
+    if (isBlank(majorProject.title)) missing.push('Major Project Title')
 
     return missing
   }
@@ -393,6 +418,15 @@ const studentProfileSlice = createSlice({
       state.data = {
         ...state.data,
         ...action.payload,
+      }
+      
+      if (state.error && state.error.startsWith('Please fill required fields:')) {
+        const missing = getMissingRequiredFields(state.step, state.data)
+        if (missing.length === 0) {
+          state.error = ''
+        } else {
+          state.error = `Please fill required fields: ${missing.join(', ')}`
+        }
       }
     },
     restoreStudentProfileDraft(state, action: PayloadAction<Record<string, unknown>>) {

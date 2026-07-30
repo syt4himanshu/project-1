@@ -306,6 +306,41 @@ async function generateAllocation(
   return rows.map((row) => normalizeAllocationStudent(row))
 }
 
+async function autoAllocateUnassigned(
+  { token, preview }: AdminApiRequestOptions & { preview?: boolean },
+): Promise<AdminAutoAllocationResult> {
+  const payload = await requestJson<Record<string, unknown>>(`${ENDPOINTS.admin.allocation}/auto-assign`, {
+    method: 'POST',
+    token,
+    body: { preview: Boolean(preview) },
+  })
+
+  const rawAllocations = Array.isArray(payload.allocations) ? payload.allocations : []
+  const rawAllFaculty = Array.isArray(payload.all_faculty) ? payload.all_faculty : []
+
+  const normalizeItem = (item: Record<string, unknown>): AdminAutoAllocationSummaryItem => ({
+    facultyId: Number(item.faculty_id || 0),
+    facultyName: String(item.faculty_name || ''),
+    email: String(item.email || ''),
+    initialCount: Number(item.initial_count || 0),
+    newAssignedCount: Number(item.new_assigned_count || 0),
+    finalCount: Number(item.final_count || 0),
+    capacity: Number(item.capacity || 20),
+    studentIds: Array.isArray(item.student_ids) ? item.student_ids.map(Number) : [],
+    students: Array.isArray(item.students)
+      ? item.students.map((s) => normalizeAllocationStudent(s as Record<string, unknown>))
+      : [],
+  })
+
+  return {
+    message: String(payload.message || ''),
+    unassignedCount: Number(payload.unassigned_count || 0),
+    distributedCount: Number(payload.distributed_count || 0),
+    allocations: rawAllocations.map((item) => normalizeItem(item as Record<string, unknown>)),
+    allFaculty: rawAllFaculty.map((item) => normalizeItem(item as Record<string, unknown>)),
+  }
+}
+
 async function confirmAllocation(
   { token, payload }: AdminApiRequestOptions & { payload: AdminAllocationUpdateInput },
 ): Promise<AdminMutationResult> {
@@ -478,6 +513,7 @@ export const adminApi = {
   uploadStudentPhoto,
   listAllocation,
   generateAllocation,
+  autoAllocateUnassigned,
   confirmAllocation,
   removeAllocation,
   listAssignedStudents,

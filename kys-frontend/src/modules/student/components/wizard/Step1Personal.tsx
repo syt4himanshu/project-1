@@ -30,7 +30,12 @@ export default function Step1Personal() {
         if (joiVal.error && joiVal.touched) {
             return joiVal
         }
-        if (error && error.includes(fieldName)) {
+
+        const missingFields = error && error.startsWith('Please fill required fields: ')
+            ? error.replace('Please fill required fields: ', '').split(', ')
+            : []
+
+        if (missingFields.includes(fieldName)) {
             return {
                 error: `${fieldName} is required`,
                 touched: true
@@ -158,33 +163,64 @@ export default function Step1Personal() {
 
             <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Passport Size Photo</label>
+                
                 {(pi.photoUrl as string) ? (
-                    <div className="mb-3 flex flex-col items-start gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3 sm:flex-row sm:items-center">
-                        <img
-                            src={String(pi.photoUrl)}
-                            alt="Uploaded student profile"
-                            className="rounded-xl border border-[#d9e1ec] object-cover"
-                            style={{ width: '96px', height: '96px', flexShrink: 0 }}
-                        />
-                        <div className="w-full min-w-0">
-                            <p className="text-sm font-medium text-[#32435f]">Current uploaded photo</p>
-                            <a className="break-words text-sm text-[#2b5fa6] underline" href={String(pi.photoUrl)} target="_blank" rel="noreferrer">
-                                Open uploaded image
-                            </a>
+                    <>
+                        <div className="mb-3 flex flex-col items-start gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3 sm:flex-row sm:items-center">
+                            <img
+                                src={String(pi.photoUrl)}
+                                alt="Uploaded student profile"
+                                className="rounded-xl border border-[#d9e1ec] object-cover"
+                                style={{ width: '96px', height: '96px', flexShrink: 0 }}
+                            />
+                            <div className="w-full min-w-0">
+                                <p className="text-sm font-medium text-[#32435f]">Current uploaded photo</p>
+                                <a className="break-words text-sm text-[#2b5fa6] underline" href={String(pi.photoUrl)} target="_blank" rel="noreferrer">
+                                    Open uploaded image
+                                </a>
+                            </div>
                         </div>
-                    </div>
+
+                        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                            <p className="flex items-center gap-2 font-medium">
+                                <span>✅</span> Passport photo uploaded successfully.
+                            </p>
+                            <p className="mt-1 text-green-700">You can upload another file to replace the existing photo.</p>
+                        </div>
+                    </>
                 ) : (
                     <p className="mb-2 text-sm text-[#7a879c]">No photo uploaded yet.</p>
                 )}
-                <p className="mb-2 text-xs text-[#8796ac]">Upload only if you want to add/replace your photo. Max size: 2MB.</p>
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    disabled={uploading}
-                    className={`${inputCls} file:mr-3 file:rounded-lg file:border-0 file:bg-[#1f355f] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white`}
-                />
+
+                <div>
+                    <input
+                        type="file"
+                        id="passport-photo-upload"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        disabled={uploading}
+                        style={{ display: 'none' }}
+                    />
+                    <label 
+                        htmlFor="passport-photo-upload"
+                        className={`${inputCls} m-0 flex cursor-pointer items-center`}
+                        style={{ padding: '0.375rem 1rem 0.375rem 0.375rem' }}
+                    >
+                        <div className={`mr-3 rounded-lg bg-[#1f355f] px-3 py-2 text-sm font-semibold text-white transition-opacity ${uploading ? 'opacity-50' : 'hover:opacity-90'}`}>
+                            {(pi.photoUrl as string) ? 'Choose Another File' : 'Choose File'}
+                        </div>
+                        <span className="truncate text-sm text-slate-500 dark:text-slate-400">
+                            {uploading ? 'Uploading...' : 'No file chosen'}
+                        </span>
+                    </label>
+                </div>
+
                 {uploadMsg && <p className="mt-2 text-sm text-[#5f6f86]">{uploadMsg}</p>}
+                
+                <div className="mt-2 flex flex-col gap-0.5 text-xs text-[#8796ac]">
+                    <p>Supported formats: PNG, JPG, JPEG</p>
+                    <p>Maximum file size: 2 MB</p>
+                </div>
             </div>
         </div>
     )

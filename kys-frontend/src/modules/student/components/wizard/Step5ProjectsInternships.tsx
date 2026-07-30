@@ -3,7 +3,7 @@ import { field, input, inputCls, sectionCardCls, select } from './shared'
 import Step6CoCurricular from './Step6CoCurricular'
 
 export default function Step5ProjectsInternships() {
-    const { data, update } = useStudentProfileDraft()
+    const { data, update, error } = useStudentProfileDraft()
     const projects = (data.projects as Record<string, unknown>[]) || [{}, {}, {}]
     const internships = (data.internships as Record<string, unknown>[]) || [{}, {}]
     const hasUbaProject =
@@ -23,6 +23,20 @@ export default function Step5ProjectsInternships() {
                 internship.end_date,
             ),
         )
+
+    const getValidation = (fieldName: string) => {
+        const missingFields = error && error.startsWith('Please fill required fields: ')
+            ? error.replace('Please fill required fields: ', '').split(', ')
+            : []
+
+        if (missingFields.includes(fieldName)) {
+            return {
+                error: `${fieldName} is required`,
+                touched: true
+            }
+        }
+        return undefined
+    }
 
     const updProject = (i: number, key: string, value: unknown) => {
         const updated = [...projects]
@@ -61,7 +75,7 @@ export default function Step5ProjectsInternships() {
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#1ea85b] pb-2 text-3xl font-semibold text-[#223b60]">Mini Project</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                    {field('Mini Project Title', input('text', (projects[0]?.title as string) || '', v => updProject(0, 'title', v), 'e.g. Hostel Payment System'))}
+                    {field('Mini Project Title *', input('text', (projects[0]?.title as string) || '', v => updProject(0, 'title', v), 'e.g. Hostel Payment System', getValidation('Mini Project Title')))}
                     {field('Project Guide', input('text', (projects[0]?.description as string) || '', v => updProject(0, 'description', v), 'Name of project guide / mentor'))}
                 </div>
             </section>
@@ -69,7 +83,7 @@ export default function Step5ProjectsInternships() {
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">Major Project</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                    {field('Major Project Title', input('text', (projects[1]?.title as string) || '', v => updProject(1, 'title', v), 'e.g. Know Your Student System'))}
+                    {field('Major Project Title *', input('text', (projects[1]?.title as string) || '', v => updProject(1, 'title', v), 'e.g. Know Your Student System', getValidation('Major Project Title')))}
                     {field('Project Guide', input('text', (projects[1]?.description as string) || '', v => updProject(1, 'description', v), 'Name of project guide / mentor'))}
                 </div>
             </section>

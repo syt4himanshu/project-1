@@ -54,8 +54,15 @@ export default function Step3AcademicBefore() {
         let normalizedFieldName = fieldName
         if (fieldName.startsWith('HSSC')) {
             normalizedFieldName = fieldName.replace('HSSC', 'HSC')
+        } else if (fieldName.startsWith('DIPLOMA')) {
+            normalizedFieldName = fieldName.replace('DIPLOMA', 'Diploma')
         }
-        if (error && error.includes(normalizedFieldName)) {
+
+        const missingFields = error && error.startsWith('Please fill required fields: ')
+            ? error.replace('Please fill required fields: ', '').split(', ')
+            : []
+
+        if (missingFields.includes(normalizedFieldName)) {
             return {
                 error: `${normalizedFieldName} is required`,
                 touched: true
@@ -90,10 +97,10 @@ export default function Step3AcademicBefore() {
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">{title}</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
                     {field(
-                        boardLabel,
+                        `${boardLabel} *`,
                         useBoardInput
-                            ? input('text', (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder)
-                            : select(BOARDS, (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder),
+                            ? input('text', (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder, getValidation(`${examKey} Board`))
+                            : select(BOARDS, (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder, getValidation(`${examKey} Board`)),
                     )}
                     {field('Percentage / Grade *', input('text', rec.percentage != null ? String(rec.percentage) : '', v => handlePercentageChange(examKey, v), 'e.g. 85.50', getValidation(`${examKey} Percentage / Grade`)))}
                     {field('Year of Passing *', input('number', String(rec.year_of_passing || ''), v => upd(examKey, 'year_of_passing', v === '' ? null : Number(v)), 'e.g. 2024', getValidation(`${examKey} Year of Passing`)))}
@@ -172,7 +179,7 @@ export default function Step3AcademicBefore() {
                                 <section key={sem} className={sectionCardCls}>
                                     <h3 className="mb-4 text-xl font-semibold text-[#223b60]">Semester {sem}</h3>
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                                        {field('SGPA / Percentage', input('number', String(rec.sgpa || ''), v => updPostAdmission(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86'))}
+                                        {field('SGPA / Percentage *', input('number', String(rec.sgpa || ''), v => updPostAdmission(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86', getValidation(`Semester ${sem} SGPA / Percentage`)))}
 
                                         <div>
                                             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Season & Year of Passing</label>

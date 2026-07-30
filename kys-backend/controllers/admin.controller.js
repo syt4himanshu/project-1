@@ -1345,6 +1345,142 @@ const generateAllocation = async (req, res, next) => {
   }
 };
 
+const autoAllocateUnassigned = async (req, res, next) => {
+  try {
+    const preview = req.body?.preview === true;
+
+    // Fetch all unassigned students
+    const unassigned = await Student.findAll({
+      where: { mentor_id: null },
+      order: [['semester', 'ASC'], ['section', 'ASC'], ['id', 'ASC']],
+    });
+
+    if (!unassigned.length) {
+      return res.status(200).json({
+        message: 'All students are already assigned to mentors.',
+        unassigned_count: 0,
+        distributed_count: 0,
+        allocations: [],
+      });
+    }
+
+    // Fetch all faculty members with current assigned mentees
+    const faculties = await Faculty.findAll({
+      include: [{ model: Student, as: 'mentees', attributes: ['id'], required: false }],
+      order: [['id', 'ASC']],
+    });
+
+    if (!faculties.length) {
+      return res.status(400).json({ error: 'No faculty records available for allocation' });
+    }
+
+    const CAPACITY = 20;
+
+    const facultyState = faculties.map((f) => ({
+      faculty_id: f.id,
+      faculty_name: `${f.first_name || ''} ${f.last_name || ''}`.trim() || String(f.email).split('@')[0],
+      email: f.email,
+      initial_count: (f.mentees || []).length,
+      current_count: (f.mentees || []).length,
+      capacity: CAPACITY,
+      assigned_students: [],
+    }));
+
+    const eligibleFaculty = facultyState.filter((f) => f.current_count < CAPACITY);
+    if (!eligibleFaculty.length) {
+      return res.status(400).json({ error: 'All faculty members have reached maximum capacity (20).' });
+    }
+
+    // Group unassigned students by semester + section to maintain balanced section mix
+    const grouped = unassigned.reduce((acc, s) => {
+      const key = `${s.semester ?? 'NA'}::${s.section ?? 'NA'}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(s);
+      return acc;
+    }, {});
+
+    const buckets = Object.values(grouped).map((students) => {
+      const shuffled = [...students];
+      for (let i = shuffled.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    });
+
+    const orderedStudents = [];
+    let bIndex = 0;
+    while (buckets.some((b) => b.length > 0)) {
+      const b = buckets[bIndex % buckets.length];
+      bIndex += 1;
+      const st = b.shift();
+      if (st) orderedStudents.push(st);
+    }
+
+    for (const student of orderedStudents) {
+      const available = facultyState.filter((f) => f.current_count < CAPACITY);
+      if (!available.length) break;
+
+      available.sort((a, b) => a.current_count - b.current_count);
+      const minCount = available[0].current_count;
+
+      const tiedCandidates = available.filter((f) => f.current_count === minCount);
+      const targetFaculty = tiedCandidates[Math.floor(Math.random() * tiedCandidates.length)];
+
+      targetFaculty.current_count += 1;
+      targetFaculty.assigned_students.push({
+        id: student.id,
+        uid: student.uid,
+        name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+      });
+    }
+
+    const summaryAllocations = facultyState.map((f) => ({
+      faculty_id: f.faculty_id,
+      faculty_name: f.faculty_name,
+      email: f.email,
+      initial_count: f.initial_count,
+      new_assigned_count: f.assigned_students.length,
+      final_count: f.current_count,
+      capacity: f.capacity,
+      student_ids: f.assigned_students.map((s) => s.id),
+      students: f.assigned_students,
+    }));
+
+    const totalAssigned = summaryAllocations.reduce((sum, item) => sum + item.new_assigned_count, 0);
+
+    if (preview) {
+      return res.status(200).json({
+        message: `Preview: Distributed ${totalAssigned} unassigned students across faculty.`,
+        unassigned_count: unassigned.length,
+        distributed_count: totalAssigned,
+        allocations: summaryAllocations.filter((a) => a.new_assigned_count > 0),
+        all_faculty: summaryAllocations,
+      });
+    }
+
+    await sequelize.transaction(async (tx) => {
+      for (const f of summaryAllocations) {
+        if (f.student_ids.length > 0) {
+          await Student.update(
+            { mentor_id: f.faculty_id },
+            { where: { id: { [Op.in]: f.student_ids } }, transaction: tx },
+          );
+        }
+      }
+    });
+
+    return res.status(200).json({
+      message: `Successfully distributed ${totalAssigned} unassigned students among faculty.`,
+      unassigned_count: unassigned.length,
+      distributed_count: totalAssigned,
+      allocations: summaryAllocations.filter((a) => a.new_assigned_count > 0),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const confirmAllocation = async (req, res, next) => {
   try {
     const facultyId = Number(req.body?.faculty_id);
@@ -1475,6 +1611,7 @@ module.exports = {
   removeMentees,
   listAllocation,
   generateAllocation,
+  autoAllocateUnassigned,
   confirmAllocation,
   removeAllocation,
   listAllocationAssignedStudents,

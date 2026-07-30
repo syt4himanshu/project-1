@@ -1,10 +1,11 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toApiErrorMessage } from '../../../../shared/api/errorMapper'
 import { QueryState, ResponsiveDataView, type TableColumn } from '../../../../shared/ui'
 import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import type { AdminAllocationEntry } from '../../api'
 import { useAdminAllocationQuery } from '../../hooks'
 import { AllocationAssignModal } from './AllocationAssignModal'
+import { AllocationAutoModal } from './AllocationAutoModal'
 import { AllocationRemoveModal } from './AllocationRemoveModal'
 
 interface PanelState {
@@ -24,6 +25,7 @@ function getInitials(value: string): string {
 export function AllocationPageContent() {
   const allocationQuery = useAdminAllocationQuery()
   const [panelState, setPanelState] = useState<PanelState | null>(null)
+  const [isAutoModalOpen, setIsAutoModalOpen] = useState(false)
 
   const columns = useMemo<TableColumn<AdminAllocationEntry>[]>(
     () => [
@@ -159,9 +161,20 @@ export function AllocationPageContent() {
 
   return (
     <div className="admin-page">
-      <div className="admin-page__header">
-        <h3 className="admin-page__title">Student-Faculty Allocation</h3>
-        <p className="admin-page__subtitle">Generate, confirm, and remove student-faculty allocations.</p>
+      <div className="admin-page__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h3 className="admin-page__title">Student-Faculty Allocation</h3>
+          <p className="admin-page__subtitle">Generate, confirm, and remove student-faculty allocations.</p>
+        </div>
+        <button
+          type="button"
+          className="button button--primary"
+          onClick={() => setIsAutoModalOpen(true)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>auto_awesome</span>
+          Auto-Allocate Remaining
+        </button>
       </div>
 
       <div className="admin-surface">
@@ -186,6 +199,11 @@ export function AllocationPageContent() {
         open={panelState?.type === 'remove'}
         faculty={panelState?.type === 'remove' ? panelState.faculty : null}
         onClose={() => setPanelState(null)}
+      />
+
+      <AllocationAutoModal
+        open={isAutoModalOpen}
+        onClose={() => setIsAutoModalOpen(false)}
       />
     </div>
   )

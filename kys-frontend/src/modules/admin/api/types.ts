@@ -471,3 +471,23 @@ export interface AdminIncompleteProfileApiResponse {
   year_of_admission?: unknown
   missing_fields?: unknown
 }
+
+export interface AdminAutoAllocationSummaryItem {
+  facultyId: number
+  facultyName: string
+  email: string
+  initialCount: number
+  newAssignedCount: number
+  finalCount: number
+  capacity: number
+  studentIds: number[]
+  students: AdminAllocationStudent[]
+}
+
+export interface AdminAutoAllocationResult {
+  message: string
+  unassignedCount: number
+  distributedCount: number
+  allocations: AdminAutoAllocationSummaryItem[]
+  allFaculty?: AdminAutoAllocationSummaryItem[]
+}

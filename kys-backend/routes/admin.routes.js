@@ -14,6 +14,7 @@ const {
   removeMentees,
   listAllocation,
   generateAllocation,
+  autoAllocateUnassigned,
   confirmAllocation,
   removeAllocation,
   listAllocationAssignedStudents,
@@ -48,6 +49,7 @@ router.post('/faculty/:id/mentees/confirm', confirmMentees);
 router.post('/faculty/:id/mentees/remove', removeMentees);
 router.get('/allocation', listAllocation);
 router.post('/allocation/generate', generateAllocation);
+router.post('/allocation/auto-assign', autoAllocateUnassigned);
 router.post('/allocation/confirm', confirmAllocation);
 router.post('/allocation/remove', removeAllocation);
 router.get('/allocation/:faculty_id/students', listAllocationAssignedStudents);
