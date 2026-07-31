@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '../../../../shared/ui'
-import type { AdminAutoAllocationResult } from '../../api'
+import type { AdminAutoAllocationResult, AdminAutoAllocationSummaryItem } from '../../api'
 import { useAutoAllocateUnassignedMutation } from '../../hooks'
 
 interface AllocationAutoModalProps {
@@ -111,7 +111,7 @@ export function AllocationAutoModal({ open, onClose }: AllocationAutoModalProps)
                 </tr>
               </thead>
               <tbody>
-                {allocations.map((item) => (
+                {allocations.map((item: AdminAutoAllocationSummaryItem) => (
                   <tr key={item.facultyId} style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <td style={{ padding: '0.625rem 1rem' }}>
                       <div style={{ fontWeight: 600 }}>{item.facultyName}</div>

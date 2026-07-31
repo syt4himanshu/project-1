@@ -26,6 +26,8 @@ import type {
   AdminAllocationStudent,
   AdminAllocationStudentApiResponse,
   AdminAllocationUpdateInput,
+  AdminAutoAllocationResult,
+  AdminAutoAllocationSummaryItem,
   AdminBacklogEntry,
   AdminBacklogEntryApiResponse,
   AdminExportedFile,

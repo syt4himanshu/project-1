@@ -10,6 +10,8 @@ export type {
   AdminAllocationEntry,
   AdminAllocationStudent,
   AdminAllocationUpdateInput,
+  AdminAutoAllocationResult,
+  AdminAutoAllocationSummaryItem,
   AdminBacklogEntry,
   AdminExportedFile,
   AdminFacultyDetail,
