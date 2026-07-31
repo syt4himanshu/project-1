@@ -78,6 +78,14 @@ export default function Dashboard() {
             .catch(() => { })
             .finally(() => setLoadingMinutes(false))
 
+            .catch(() => { })
+            .finally(() => setLoadingProfile(false))
+
+        getMentoringMinutes()
+            .then(r => setMinutes(r.data as unknown as MentoringMinute[]))
+            .catch(() => { })
+            .finally(() => setLoadingMinutes(false))
+
         getMentor()
             .then(r => setMentor(r.data as unknown as Mentor))
             .catch(() => { })
@@ -88,9 +96,21 @@ export default function Dashboard() {
         const fullName = profile?.full_name?.trim()
         if (fullName) return fullName
 
+        const parts = [
+            (profile as Record<string, unknown>)?.first_name,
+            (profile as Record<string, unknown>)?.middle_name,
+            (profile as Record<string, unknown>)?.last_name
+        ].filter(Boolean).map(s => String(s).trim()).filter(Boolean).join(' ')
+        if (parts) return parts
+
+        const pInfoName = ((profile as Record<string, unknown>)?.personal_info as Record<string, unknown>)?.full_name
+        if (typeof pInfoName === 'string' && pInfoName.trim()) return pInfoName.trim()
+
         const username = user?.username?.trim()
-        return username || 'Student'
-    }, [profile?.full_name, user?.username])
+        if (username && !/^\d+$/.test(username)) return username
+
+        return username ? `Student (${username})` : 'Student'
+    }, [profile, user])
 
     const studentPhotoUrl = useMemo(() => {
         if (resetMarked) return ''
