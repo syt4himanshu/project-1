@@ -66,6 +66,28 @@ export function AllocationAutoModal({ open, onClose }: AllocationAutoModalProps)
         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
           Calculating balanced allocation preview...
         </div>
+      ) : autoAllocateMutation.isError && !previewData ? (
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <p style={{ fontWeight: 600, fontSize: '1.1rem', color: '#ef4444', marginBottom: '0.5rem' }}>
+            Unable to Load Allocation Preview
+          </p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+            Could not communicate with auto-allocation endpoint. Please verify backend service is restarted on the server.
+          </p>
+          <button
+            type="button"
+            className="button button--soft"
+            onClick={() => {
+              void autoAllocateMutation.mutateAsync({ preview: true }).then((res) => {
+                setPreviewData(res)
+              }).catch(() => {
+                setPreviewData(null)
+              })
+            }}
+          >
+            Retry Preview
+          </button>
+        </div>
       ) : unassignedCount === 0 ? (
         <div style={{ padding: '2rem', textAlign: 'center' }}>
           <p style={{ fontWeight: 600, fontSize: '1.1rem', color: '#10b981', marginBottom: '0.5rem' }}>
