@@ -180,13 +180,6 @@ export default function Step1Personal() {
                                 </a>
                             </div>
                         </div>
-
-                        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-                            <p className="flex items-center gap-2 font-medium">
-                                <span>✅</span> Passport photo uploaded successfully.
-                            </p>
-                            <p className="mt-1 text-green-700">You can upload another file to replace the existing photo.</p>
-                        </div>
                     </>
                 ) : (
                     <p className="mb-2 text-sm text-[#7a879c]">No photo uploaded yet.</p>
@@ -215,7 +208,20 @@ export default function Step1Personal() {
                     </label>
                 </div>
 
-                {uploadMsg && <p className="mt-2 text-sm text-[#5f6f86]">{uploadMsg}</p>}
+                {uploadMsg && (
+                    <p
+                        className="mt-2 text-sm font-semibold"
+                        style={{
+                            color: uploadMsg.includes('successfully')
+                                ? '#10b981'
+                                : uploadMsg.includes('Uploading')
+                                ? '#8796ac'
+                                : '#ef4444',
+                        }}
+                    >
+                        {uploadMsg}
+                    </p>
+                )}
                 
                 <div className="mt-2 flex flex-col gap-0.5 text-xs text-[#8796ac]">
                     <p>Supported formats: PNG, JPG, JPEG</p>
