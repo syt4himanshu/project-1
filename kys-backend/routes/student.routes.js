@@ -18,7 +18,7 @@ const {
 } = require('../controllers/student.controller');
 const { verifyToken, roleRequired } = require('../middleware/auth');
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: Math.floor(2.5 * 1024 * 1024) } });
 
 const handlePhotoUpload = (req, res, next) => {
   upload.single('photo')(req, res, (error) => {
