@@ -46,7 +46,7 @@ export default function Step4AcademicAfter() {
                             {field('Academic Awards', input('text', (rec.academic_awards as string) || '', v => upd(sem, 'academic_awards', v), 'Awards received (if any)'))}
 
                             <div className="sm:col-span-2">
-                                {field('Backlog Subjects', input('text', (rec.backlog_subjects as string) || '', v => upd(sem, 'backlog_subjects', v), 'e.g. N/A or list subjects'))}
+                                {field('Backlog Subjects', input('text', (rec.backlog_subjects as string) || '', v => upd(sem, 'backlog_subjects', v), 'e.g. list subjects comma separated'))}
                             </div>
                         </div>
                     </section>

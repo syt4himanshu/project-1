@@ -51,6 +51,7 @@ export function useStudentProfileDraft() {
     }
 
     if (dataSignature === baselineSignatureRef.current) {
+      setValidationIssues({})
       return
     }
 

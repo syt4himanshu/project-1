@@ -78,6 +78,9 @@ export default function Step1Personal() {
     return (
         <div className="space-y-5">
             <section className={sectionCardCls}>
+                <p className="mb-4 text-xs font-medium text-[var(--text-muted)]">
+                    Fields marked with <span style={{ color: 'var(--danger)' }} className="font-bold">*</span> are required and need to be filled.
+                </p>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                     {field('Full Name *', input('text', (data.full_name as string) || '', v => update({ full_name: v }), 'Enter full name', getValidation('Full Name', 'full_name')))}
                     {field('Section *', select(['A', 'B'], (data.section as string) || '', v => update({ section: v }), 'Select Section', getValidation('Section', 'section')))}

@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import React, { type ReactNode } from 'react'
+
 
 export interface WizardStepProps {
     data: Record<string, unknown>
@@ -39,7 +40,7 @@ export function field(label: string, children: ReactNode) {
         <div key={label}>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">
                 {cleanLabel}
-                {isRequired && <span className="ml-1 text-[#dc2626]">*</span>}
+                {isRequired && <span className="ml-1" style={{ color: 'var(--danger)' }}>*</span>}
             </label>
             {children}
         </div>
@@ -54,24 +55,40 @@ export function input(
     validation?: FieldValidationState,
 ) {
     const isNumber = type === 'number'
+    const isDate = type === 'date'
     const combinedClassName = `${withValidationClass(inputCls, validation)} ${isNumber ? 'no-spinner' : ''}`.trim()
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value
+        // For date inputs, reject any value where the year part exceeds 4 digits.
+        // Native date inputs return YYYY-MM-DD; we guard against browsers allowing
+        // the user to type e.g. "202565" in the year segment.
+        if (isDate && val) {
+            const year = val.split('-')[0]
+            if (year && year.length > 4) return
+        }
+        onChange(val)
+    }
+
     return (
         <div className="space-y-1">
             <input
                 type={type}
                 value={value}
-                onChange={e => onChange(e.target.value)}
+                onChange={handleChange}
                 placeholder={placeholder}
                 className={combinedClassName}
                 aria-invalid={Boolean(validation?.error)}
                 onWheel={isNumber ? e => e.currentTarget.blur() : undefined}
+                {...(isDate ? { max: '9999-12-31' } : {})}
             />
             {validation?.error && validation.touched && (
-                <p className="text-xs font-medium text-[#dc2626]">{formatValidationMessage(validation.error)}</p>
+                <p className="text-xs font-medium" style={{ color: 'var(--danger)' }}>{formatValidationMessage(validation.error)}</p>
             )}
         </div>
     )
 }
+
 
 export function select(
     options: string[],
@@ -92,7 +109,7 @@ export function select(
                 {options.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
             {validation?.error && validation.touched && (
-                <p className="text-xs font-medium text-[#dc2626]">{formatValidationMessage(validation.error)}</p>
+                <p className="text-xs font-medium" style={{ color: 'var(--danger)' }}>{formatValidationMessage(validation.error)}</p>
             )}
         </div>
     )

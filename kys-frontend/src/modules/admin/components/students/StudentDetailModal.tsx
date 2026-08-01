@@ -56,9 +56,8 @@ function pick(record: AnyRecord | undefined, ...keys: string[]): unknown {
   return undefined
 }
 
-function fixedSlots(records: AnyRecord[] | undefined, count: number): AnyRecord[] {
-  return Array.from({ length: count }, (_, index) => records?.[index] ?? {})
-}
+
+
 
 function extractBacklogSubjects(record: AnyRecord): string[] {
   const raw = toText(record.backlog_subjects)
@@ -194,10 +193,10 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
     ]
   }, [student, personalInfo])
 
-  const participationRows = useMemo(() => fixedSlots(student?.coCurricularParticipations as AnyRecord[] | undefined, 3), [student?.coCurricularParticipations])
-  const organizationRows = useMemo(() => fixedSlots(student?.coCurricularOrganizations as AnyRecord[] | undefined, 3), [student?.coCurricularOrganizations])
-  const programRows = useMemo(() => fixedSlots(student?.skillPrograms as AnyRecord[] | undefined, 3), [student?.skillPrograms])
-  const internshipRows = useMemo(() => fixedSlots(student?.internships as AnyRecord[] | undefined, 2), [student?.internships])
+  const participationRows = useMemo(() => (student?.coCurricularParticipations as AnyRecord[] | undefined) ?? [], [student?.coCurricularParticipations])
+  const organizationRows = useMemo(() => (student?.coCurricularOrganizations as AnyRecord[] | undefined) ?? [], [student?.coCurricularOrganizations])
+  const programRows = useMemo(() => (student?.skillPrograms as AnyRecord[] | undefined) ?? [], [student?.skillPrograms])
+  const internshipRows = useMemo(() => (student?.internships as AnyRecord[] | undefined) ?? [], [student?.internships])
 
   const handlePrint = async () => {
     if (!contentRef.current || !student) return
@@ -463,68 +462,83 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
           </DetailSection>
 
           <DetailSection title="Internships">
-            <div className="detail-card-list">
-              {internshipRows.map((internship, index) => (
-                <article key={`internship-${index}`} className="detail-card">
-                  <h5>Internship {index + 1}</h5>
-                  <p>{showValue(internship.company_name ?? internship.company)}</p>
-                  <p>{showValue(internship.designation)}</p>
-                  <p>{showValue(internship.domain)}</p>
-                  <p>{showValue(internship.description)}</p>
-                  <p>{formatDate(internship.start_date)} to {formatDate(internship.end_date)}</p>
-                </article>
-              ))}
-            </div>
+            {internshipRows.length > 0 ? (
+              <div className="detail-card-list">
+                {internshipRows.map((internship, index) => (
+                  <article key={`internship-${index}`} className="detail-card">
+                    <h5>Internship {index + 1}</h5>
+                    <p>{showValue(internship.company_name ?? internship.company)}</p>
+                    <p>{showValue(internship.designation)}</p>
+                    <p>{showValue(internship.domain)}</p>
+                    <p>{showValue(internship.description)}</p>
+                    <p>{formatDate(internship.start_date)} to {formatDate(internship.end_date)}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="detail-empty">No internship details provided.</p>
+            )}
           </DetailSection>
 
           <DetailSection title="Participation Activities">
-            <div className="detail-card-list">
-              {participationRows.map((entry, index) => (
-                <article key={`participation-${index}`} className="detail-card">
-                  <h5>Activity {index + 1}</h5>
-                  <p>Name: {showValue(entry.name ?? entry.activity)}</p>
-                  <p>Date: {formatDate(entry.date)}</p>
-                  <p>Level: {showValue(entry.level)}</p>
-                  <p>Awards: {showValue(entry.awards)}</p>
-                </article>
-              ))}
-            </div>
+            {participationRows.length > 0 ? (
+              <div className="detail-card-list">
+                {participationRows.map((entry, index) => (
+                  <article key={`participation-${index}`} className="detail-card">
+                    <h5>Activity {index + 1}</h5>
+                    <p>Name: {showValue(entry.name ?? entry.activity)}</p>
+                    <p>Date: {formatDate(entry.date)}</p>
+                    <p>Level: {showValue(entry.level)}</p>
+                    <p>Awards: {showValue(entry.awards)}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="detail-empty">No participation activities provided.</p>
+            )}
           </DetailSection>
 
           <DetailSection title="Organized Activities">
-            <div className="detail-card-list">
-              {organizationRows.map((entry, index) => (
-                <article key={`organization-${index}`} className="detail-card">
-                  <h5>Activity {index + 1}</h5>
-                  <p>Name: {showValue(entry.name ?? entry.organization)}</p>
-                  <p>Date: {formatDate(entry.date)}</p>
-                  <p>Level: {showValue(entry.level)}</p>
-                  <p>Remark / Role: {showValue(entry.remark ?? entry.role ?? entry.position)}</p>
-                </article>
-              ))}
-            </div>
+            {organizationRows.length > 0 ? (
+              <div className="detail-card-list">
+                {organizationRows.map((entry, index) => (
+                  <article key={`organization-${index}`} className="detail-card">
+                    <h5>Activity {index + 1}</h5>
+                    <p>Name: {showValue(entry.name ?? entry.organization)}</p>
+                    <p>Date: {formatDate(entry.date)}</p>
+                    <p>Level: {showValue(entry.level)}</p>
+                    <p>Remark / Role: {showValue(entry.remark ?? entry.role ?? entry.position)}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="detail-empty">No organized activities provided.</p>
+            )}
           </DetailSection>
 
           <DetailSection title="Skill Development Program (SDP) / Training / MOOC">
-            <div className="detail-card-list">
-              {programRows.map((program, index) => (
-                <article key={`program-${index}`} className="detail-card">
-                  <h5>Program {index + 1}</h5>
-                  <p>Title: {showValue(program.course_title)}</p>
-                  <p>Platform: {showValue(program.platform)}</p>
-                  <p>Duration (Hours): {showValue(program.duration_hours)}</p>
-                  <p>From: {formatDate(program.date_from)}</p>
-                  <p>To: {formatDate(program.date_to)}</p>
-                </article>
-              ))}
-            </div>
+            {programRows.length > 0 ? (
+              <div className="detail-card-list">
+                {programRows.map((program, index) => (
+                  <article key={`program-${index}`} className="detail-card">
+                    <h5>Program {index + 1}</h5>
+                    <p>Title: {showValue(program.course_title)}</p>
+                    <p>Platform: {showValue(program.platform)}</p>
+                    <p>Duration (Hours): {showValue(program.duration_hours)}</p>
+                    <p>From: {formatDate(program.date_from)}</p>
+                    <p>To: {formatDate(program.date_to)}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="detail-empty">No skill development programs provided.</p>
+            )}
           </DetailSection>
 
           <DetailSection title="Skills and Career">
             <InfoTable
               rows={[
                 { label: 'Career Goal', value: showValue(student.careerGoal) },
-                { label: 'Domain of Interest', value: showValue(student.domainOfInterest) },
                 { label: 'Programming Languages', value: showValue(skills.programming_languages) },
                 { label: 'Technologies & Frameworks', value: showValue(skills.technologies ?? skills.technologies_frameworks) },
                 { label: 'Domains of Interest', value: showValue(skills.domains ?? skills.domains_of_interest) },
