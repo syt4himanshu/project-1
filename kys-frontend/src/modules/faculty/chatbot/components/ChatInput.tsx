@@ -10,7 +10,6 @@ import {
     selectFacultyChatIsStudentSelectionInvalid,
     selectFacultyChatLastPayloadExists,
     selectFacultyChatRequestError,
-    selectFacultyChatScopeMode,
     selectFacultyChatSelectedStudentUid,
     stopFacultyChatResponse,
     submitFacultyChatPayload,
@@ -26,7 +25,6 @@ export function ChatInput() {
     const canSend = useAppSelector(selectFacultyChatCanSend)
     const isStudentSelectionInvalid = useAppSelector(selectFacultyChatIsStudentSelectionInvalid)
     const hasLastPayload = useAppSelector(selectFacultyChatLastPayloadExists)
-    const scopeMode = useAppSelector(selectFacultyChatScopeMode)
     const selectedStudentUid = useAppSelector(selectFacultyChatSelectedStudentUid)
 
     const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -38,15 +36,17 @@ export function ChatInput() {
         dispatch(facultyChatActions.setComposerQuery(''))
         await dispatch(submitFacultyChatPayload({
             query: nextQuery,
-            studentId: scopeMode === 'student' ? selectedStudentUid : undefined,
+            studentId: selectedStudentUid,
         }))
     }
 
     return (
         <div className="faculty-chat__input-area">
-            <p className="faculty-chat__context-label">
-                Active context: <strong>{contextLabel}</strong>
-            </p>
+            {selectedStudentUid && (
+                <p className="faculty-chat__context-label">
+                    Active context: <strong>{contextLabel}</strong>
+                </p>
+            )}
 
             {requestError && (
                 <div className="faculty-chat__input-error">
@@ -60,7 +60,7 @@ export function ChatInput() {
 
             {isStudentSelectionInvalid && (
                 <p className="faculty-chat__warn">
-                    Select a student first, or switch scope to all assigned students.
+                    Select a student to begin generating mentoring insights.
                 </p>
             )}
 
@@ -73,7 +73,12 @@ export function ChatInput() {
                         onChange={(e) => dispatch(facultyChatActions.setComposerQuery(e.target.value))}
                         rows={4}
                         maxLength={2000}
-                        placeholder="Ask for mentoring insights, trends, concerns, or actionable suggestions..."
+                        placeholder={
+                            isStudentSelectionInvalid
+                                ? 'Select a student to begin...'
+                                : 'Ask for mentoring insights, trends, concerns, or actionable suggestions...'
+                        }
+                        disabled={isStudentSelectionInvalid}
                     />
                 </label>
 

@@ -12,36 +12,127 @@ const groqCircuitBreaker = new CircuitBreaker({
   name: 'groq-api',
 });
 
-const INSIGHTS_SYSTEM_PROMPT = `You are an expert academic mentor assistant for faculty.
+const INSIGHTS_SYSTEM_PROMPT = `You are MentorAI, an experienced faculty mentor and placement advisor for B.Tech Computer Engineering students.
 
-Return output in 4 explicit sections with exactly these headings:
-Summary:
-Key Observations:
-Concerns:
-Suggestions:
+You will receive:
+1. A student profile with academic records, skills, projects, internships, SWOC, and career goals.
+2. The faculty member's question.
+3. Optionally, previous conversation history.
 
-Rules:
-1. Under each heading, provide 2-4 concise bullet points.
-2. Use concrete, student-specific points from context.
-3. Keep tone professional, direct, and actionable.
-4. Do not leave sections empty. If data is limited, provide practical inferred guidance.
-5. Avoid generic filler text.`;
+== FIRST RESPONSE (when no conversation history is provided) ==
 
-const REMARKS_SYSTEM_PROMPT = `You are an expert academic mentor assistant designed for faculty.
+Respond in exactly this structure:
 
-Generate concise, practical mentoring remarks for a student:
-1. Maximum 4-5 lines total.
-2. Each line should contain one observation and one action.
-3. Tone should be professional, direct, and supportive.
-4. Avoid generic filler and long paragraphs.`;
+Direct Answer:
+[4–6 sentences that directly answer the faculty's question. Write as a faculty mentor speaking to another faculty member. Be specific, professional, and data-driven. Reference the student's actual data.]
 
-const buildUserMessage = ({ facultyQuery, studentDataset }) => {
-  const contextSummary = JSON.stringify({
-    totalCount: studentDataset.total_students,
-    focusMetric: 'Extracted basic stats from schema without dumping full PII',
-  });
+Student Overview:
+[2–4 bullet points summarizing the student's academic standing, background, and overall profile.]
 
-  return `Faculty Query: ${facultyQuery}\n\nContext Summary: ${contextSummary}\n\nFull Data Dump: ${JSON.stringify(studentDataset).substring(0, 5000)}... (truncated for safety)`;
+Strengths & Potential:
+[2–4 bullet points highlighting the student's strongest attributes, skills, achievements, and growth areas.]
+
+Areas for Improvement:
+[2–4 bullet points identifying specific gaps in academics, skills, projects, or placement readiness.]
+
+Faculty Recommendations:
+[2–4 bullet points with concrete, prioritized actions the student should take this semester.]
+
+== FOLLOW-UP RESPONSES (when conversation history is provided) ==
+
+Respond ONLY with a direct conversational answer to the faculty's latest question.
+Do NOT regenerate Student Overview, Strengths & Potential, Areas for Improvement, or Faculty Recommendations.
+Do NOT repeat information already covered unless the faculty explicitly asks.
+Use previous conversation context to give consistent, progressive answers.
+Keep the response focused and professional — 2–8 sentences unless the task requires more.
+
+== RULES FOR ALL RESPONSES ==
+• Write as a faculty mentor, not as an AI assistant.
+• Every point must reference the student's actual data — no generic filler.
+• Use phrasings like: "Your academic record indicates...", "Your CGPA of X suggests...", "Your work on [project] demonstrates..."
+• Strictly avoid: "Based on the schema...", "The database indicates...", "I extracted...", "According to the JSON..."
+• Do not fabricate data. If information is missing, infer practical guidance from what is available.
+• Tone: professional, warm, constructive, data-driven.
+
+== SNAPSHOT REFRESH ==
+If the faculty writes any of: "Refresh insights", "Analyze student again", "Regenerate student profile" — treat it as a first response and regenerate the full structure including all four sections.`;
+
+
+const REMARKS_SYSTEM_PROMPT = `You are MentorAI, an experienced faculty mentor, placement advisor, and career counselor for engineering students.
+
+Generate mentoring remarks for the student strictly following this sequence:
+1. Recognize strengths — highlight 1-2 specific achievements or positive attributes visible in the student's profile.
+2. Identify improvement opportunities — point out 1-2 specific areas that need attention, grounded in the student's data.
+3. Explain why improvement matters — briefly state the career or academic consequence of addressing each gap.
+4. Suggest practical next steps — give concrete, actionable recommendations tailored to the student's goals and profile.
+5. End with encouragement — close with a brief, genuine, personalized statement (no generic phrases like "You can do it!" or "Keep it up!").
+
+Tone rules:
+• Professional, warm, encouraging, constructive, and data-driven.
+• Write as a faculty mentor speaking directly to the student.
+• Every point must be specific to this student's profile — no generic filler.
+
+Language rules — always use phrasings like:
+• "Your academic record indicates..."
+• "Your current CGPA of X suggests..."
+• "Your participation in [activity] reflects..."
+• "Based on your profile..."
+• "Your experience with [skill/project] demonstrates..."
+
+Strictly avoid:
+• "Based on the schema..." / "The database indicates..." / "The prompt suggests..."
+• "I extracted..." / "According to the JSON..." / "The context shows..."
+• Any reference to internal systems, databases, schemas, or data extraction.
+• Generic motivational language not tied to the student's actual profile.
+
+Format:
+• 5-7 lines total. Each line is one clear, complete thought.
+• No bullet points, no section headers — write as flowing mentor remarks.
+• Do not fabricate data. If information is missing, infer practical guidance from what is available.`;
+
+
+const buildUserMessage = ({ facultyQuery, studentDataset, conversationHistory = [] }) => {
+  const studentProfile = studentDataset?.students?.[0] || {};
+
+  const profileSummary = [
+    studentProfile.name ? `Student Name: ${studentProfile.name}` : null,
+    studentProfile.semester ? `Semester: ${studentProfile.semester}` : null,
+    studentProfile.program ? `Program: ${studentProfile.program}` : null,
+    studentProfile.cgpa ? `CGPA: ${studentProfile.cgpa}` : null,
+    studentProfile.academicRecords?.length
+      ? `Semester-wise SGPA: ${studentProfile.academicRecords.map(r => `Sem ${r.semester}: ${r.sgpa}${r.backlogs && r.backlogs !== 'None' ? ` (backlogs: ${r.backlogs})` : ''}`).join(', ')}`
+      : null,
+    studentProfile.skills
+      ? `Skills: Programming — ${studentProfile.skills.programming || 'N/A'}; Technologies — ${studentProfile.skills.technologies || 'N/A'}; Domains — ${studentProfile.skills.domains || 'N/A'}`
+      : null,
+    studentProfile.projects?.length
+      ? `Projects: ${studentProfile.projects.map(p => p.title).join(', ')}`
+      : null,
+    studentProfile.internships?.length
+      ? `Internships: ${studentProfile.internships.map(i => i.title || JSON.stringify(i)).join(', ')}`
+      : null,
+    studentProfile.careerObjective
+      ? `Career Goal: ${studentProfile.careerObjective.goal || 'N/A'}; Placement Interest: ${studentProfile.careerObjective.placement_interest}`
+      : null,
+    studentProfile.swoc
+      ? `Strengths: ${studentProfile.swoc.strengths || 'N/A'}; Weaknesses: ${studentProfile.swoc.weaknesses || 'N/A'}; Opportunities: ${studentProfile.swoc.opportunities || 'N/A'}; Challenges: ${studentProfile.swoc.challenges || 'N/A'}`
+      : null,
+    studentProfile.recentMinutes?.length
+      ? `Recent Mentoring Notes: ${studentProfile.recentMinutes.map(m => m.remarks).filter(Boolean).join(' | ')}`
+      : null,
+  ].filter(Boolean).join('\n');
+
+  // Build the messages array: system + optional history + current user message
+  const isFirstQuery = !conversationHistory || conversationHistory.length === 0;
+  const contextNote = isFirstQuery
+    ? ''
+    : '\n\n[This is a follow-up question. Respond conversationally using the context above. Do NOT regenerate the four sections.]';
+
+  return {
+    profileSummary,
+    currentUserMessage: `Faculty Request: ${facultyQuery}\n\nStudent Profile:\n${profileSummary}${contextNote}`,
+    isFirstQuery,
+  };
 };
 
 const buildNonBreakerError = (message) => {
@@ -50,7 +141,7 @@ const buildNonBreakerError = (message) => {
   return error;
 };
 
-const generateFacultyInsights = async ({ facultyQuery, studentDataset, mode = 'insights' }) => {
+const generateFacultyInsights = async ({ facultyQuery, studentDataset, mode = 'insights', conversationHistory = [] }) => {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey || !String(apiKey).trim()) {
     throw new Error('Missing GROQ_API_KEY');
@@ -58,9 +149,17 @@ const generateFacultyInsights = async ({ facultyQuery, studentDataset, mode = 'i
 
   const groq = new Groq({ apiKey: String(apiKey).trim() });
 
+  const systemPrompt = mode === 'remarks' ? REMARKS_SYSTEM_PROMPT : INSIGHTS_SYSTEM_PROMPT;
+  const { currentUserMessage } = buildUserMessage({ facultyQuery, studentDataset, conversationHistory });
+
+  // Build messages: system → history turns → current user message
+  const MAX_HISTORY_TURNS = 6; // keep last 3 exchanges (6 messages) to stay within token budget
+  const trimmedHistory = conversationHistory.slice(-MAX_HISTORY_TURNS);
+
   const messages = [
-    { role: 'system', content: mode === 'remarks' ? REMARKS_SYSTEM_PROMPT : INSIGHTS_SYSTEM_PROMPT },
-    { role: 'user', content: buildUserMessage({ facultyQuery, studentDataset }) },
+    { role: 'system', content: systemPrompt },
+    ...trimmedHistory,
+    { role: 'user', content: currentUserMessage },
   ];
 
   return groqCircuitBreaker.execute(async () => {

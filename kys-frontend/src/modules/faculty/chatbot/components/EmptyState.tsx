@@ -1,5 +1,7 @@
+import type { QuickPrompt } from '../constants'
+
 interface EmptyStateProps {
-    prompts: string[]
+    prompts: QuickPrompt[]
     onPromptClick: (prompt: string) => void
 }
 
@@ -11,12 +13,12 @@ export function EmptyState({ prompts, onPromptClick }: EmptyStateProps) {
             <div className="faculty-chat__prompts">
                 {prompts.map((prompt) => (
                     <button
-                        key={prompt}
+                        key={prompt.label}
                         type="button"
                         className="button button--ghost faculty-chat__prompt-btn"
-                        onClick={() => onPromptClick(prompt)}
+                        onClick={() => onPromptClick(prompt.text)}
                     >
-                        {prompt}
+                        {prompt.label}
                     </button>
                 ))}
             </div>

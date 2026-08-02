@@ -6,16 +6,13 @@ import {
     selectFacultyChatMenteeError,
     selectFacultyChatMenteeLoading,
     selectFacultyChatMentees,
-    selectFacultyChatScopeMode,
     selectFacultyChatSelectedStudentUid,
     selectFacultyChatStudentSearch,
 } from '../../store/facultyChatSlice'
-import { ScopeToggle } from './ScopeToggle'
 import { ErrorState } from './ErrorState'
 
 export function StudentSelector() {
     const dispatch = useAppDispatch()
-    const scopeMode = useAppSelector(selectFacultyChatScopeMode)
     const mentees = useAppSelector(selectFacultyChatMentees)
     const filteredMentees = useAppSelector(selectFacultyChatFilteredMentees)
     const selectedStudentUid = useAppSelector(selectFacultyChatSelectedStudentUid)
@@ -28,14 +25,6 @@ export function StudentSelector() {
 
     return (
         <div className="faculty-selector">
-            <div className="faculty-selector__group">
-                <p className="faculty-selector__label">Scope</p>
-                <ScopeToggle
-                    value={scopeMode}
-                    onChange={(scope) => dispatch(facultyChatActions.setScopeMode(scope))}
-                />
-            </div>
-
             <div className="faculty-selector__group">
                 <p className="faculty-selector__label">Student selection</p>
                 <label className="admin-field" htmlFor="faculty-student-search">
@@ -51,14 +40,13 @@ export function StudentSelector() {
                     <span>Student</span>
                     <select
                         id="faculty-student-select"
-                        value={scopeMode === 'all' ? '__all__' : selectedStudentUid}
+                        value={selectedStudentUid}
                         disabled={menteeLoading || mentees.length === 0}
                         onChange={(e) => {
-                            const v = e.target.value
-                            dispatch(facultyChatActions.setSelectedStudentUid(v === '__all__' ? '' : v))
+                            dispatch(facultyChatActions.setSelectedStudentUid(e.target.value))
                         }}
                     >
-                        <option value="__all__">All assigned students</option>
+                        <option value="">Select a student</option>
                         {filteredMentees.map((r) => (
                             <option key={r.id} value={r.uid}>
                                 {r.full_name} | {r.uid} | Sem {r.semester}
@@ -67,11 +55,6 @@ export function StudentSelector() {
                     </select>
                 </label>
 
-                {scopeMode === 'student' && !selectedStudentUid && (
-                    <p className="faculty-selector__hint faculty-selector__hint--warn">
-                        Select a student or switch to all assigned.
-                    </p>
-                )}
                 {noMatches && (
                     <p className="faculty-selector__hint">No student matches your search.</p>
                 )}
@@ -82,11 +65,6 @@ export function StudentSelector() {
                         onRetry={() => void dispatch(loadFacultyChatMentees())}
                     />
                 )}
-            </div>
-
-            <div className="faculty-selector__future">
-                <p className="faculty-selector__future-title">Tip</p>
-                <p className="faculty-selector__hint">Use student scope when you need individual guidance.</p>
             </div>
         </div>
     )

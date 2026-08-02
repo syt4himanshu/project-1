@@ -20,6 +20,23 @@ const mockMentees = [
     { id: 2, uid: 'S002', full_name: 'Bob Jones', semester: 5 },
 ]
 
+const FIRST_RESPONSE = [
+    'Direct Answer:',
+    'Alice is performing well with a CGPA of 8.1.',
+    '',
+    'Student Overview:',
+    'Semester 3, B.Tech CSE.',
+    '',
+    'Strengths & Potential:',
+    'Strong in Python.',
+    '',
+    'Areas for Improvement:',
+    'Needs more projects.',
+    '',
+    'Faculty Recommendations:',
+    'Work on DSA problems.',
+].join('\n')
+
 function createWrapper() {
     const store = createAppStore()
 
@@ -45,32 +62,40 @@ describe('useFacultyChat', () => {
         expect(result.current.mentees[0].full_name).toBe('Alice Smith')
     })
 
-    it('starts with all-scope mode', async () => {
+    it('starts with no student selected', async () => {
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
-        expect(result.current.scopeMode).toBe('all')
         expect(result.current.selectedStudentUid).toBe('')
+        expect(result.current.isStudentSelectionInvalid).toBe(true)
     })
 
-    it('switches scope to student when uid is selected', async () => {
+    it('selects a student by uid', async () => {
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         act(() => { result.current.setSelectedStudentUid('S001') })
 
-        expect(result.current.scopeMode).toBe('student')
         expect(result.current.selectedStudentUid).toBe('S001')
+        expect(result.current.isStudentSelectionInvalid).toBe(false)
     })
 
-    it('clears student uid when scope set back to all', async () => {
+    it('clears messages when a different student is selected', async () => {
+        vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: FIRST_RESPONSE })
+
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         act(() => { result.current.setSelectedStudentUid('S001') })
-        act(() => { result.current.setScopeMode('all') })
+        await act(async () => {
+            await result.current.submitPayload({ query: 'Analyze student', studentId: 'S001' })
+        })
 
-        expect(result.current.selectedStudentUid).toBe('')
+        expect(result.current.messages.length).toBeGreaterThan(0)
+
+        // Switch to a different student — messages should reset
+        act(() => { result.current.setSelectedStudentUid('S002') })
+        expect(result.current.messages).toHaveLength(0)
     })
 
     it('filters mentees by search query', async () => {
@@ -83,38 +108,74 @@ describe('useFacultyChat', () => {
         expect(result.current.filteredMentees[0].uid).toBe('S001')
     })
 
-    it('submits a payload and appends user + assistant messages', async () => {
-        vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: 'Summary\nAll good.' })
+    it('first response produces isSnapshot message with directAnswer and sections', async () => {
+        vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: FIRST_RESPONSE })
 
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
         await act(async () => {
-            await result.current.submitPayload({ query: 'How are my mentees?' })
+            await result.current.submitPayload({ query: 'Analyze student', studentId: 'S001' })
         })
 
-        expect(result.current.messages).toHaveLength(2)
-        expect(result.current.messages[0].role).toBe('user')
-        expect(result.current.messages[0].content).toBe('How are my mentees?')
-        expect(result.current.messages[1].role).toBe('assistant')
-        expect(result.current.messages[1].loading).toBe(false)
+        const assistantMsg = result.current.messages.find((m) => m.role === 'assistant')
+        expect(assistantMsg?.isSnapshot).toBe(true)
+        expect(assistantMsg?.directAnswer).toContain('CGPA of 8.1')
+        expect(assistantMsg?.sections?.['Student Overview']).toContain('Semester 3')
+        expect(assistantMsg?.sections?.['Strengths & Potential']).toContain('Python')
     })
 
-    it('sets contextLabel to "All assigned students" for all-scope', async () => {
-        vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: 'OK' })
+    it('follow-up response produces plain content with no sections', async () => {
+        vi.mocked(facultyClient.askChatbot)
+            .mockResolvedValueOnce({ response: FIRST_RESPONSE })
+            .mockResolvedValueOnce({ response: 'Here is the rewritten remark.' })
 
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
         await act(async () => {
-            await result.current.submitPayload({ query: 'Test' })
+            await result.current.submitPayload({ query: 'Analyze student', studentId: 'S001' })
+        })
+        await act(async () => {
+            await result.current.submitPayload({ query: 'Rewrite professionally', studentId: 'S001' })
         })
 
-        expect(result.current.messages[0].contextLabel).toBe('All assigned students')
+        const msgs = result.current.messages.filter((m) => m.role === 'assistant')
+        expect(msgs).toHaveLength(2)
+        expect(msgs[0].isSnapshot).toBe(true)
+        expect(msgs[1].isSnapshot).toBeUndefined()
+        expect(msgs[1].sections).toBeUndefined()
+        expect(msgs[1].content).toBe('Here is the rewritten remark.')
     })
 
-    it('sets contextLabel to student name for student-scope', async () => {
-        vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: 'OK' })
+    it('second askChatbot call includes conversationHistory', async () => {
+        vi.mocked(facultyClient.askChatbot)
+            .mockResolvedValueOnce({ response: FIRST_RESPONSE })
+            .mockResolvedValueOnce({ response: 'Follow-up answer.' })
+
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
+        await waitFor(() => expect(result.current.menteeLoading).toBe(false))
+
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
+        await act(async () => {
+            await result.current.submitPayload({ query: 'First query', studentId: 'S001' })
+        })
+        await act(async () => {
+            await result.current.submitPayload({ query: 'Follow-up query', studentId: 'S001' })
+        })
+
+        const secondCall = vi.mocked(facultyClient.askChatbot).mock.calls[1][0]
+        expect(secondCall.conversationHistory).toBeDefined()
+        expect(secondCall.conversationHistory?.length).toBeGreaterThan(0)
+    })
+
+    it('sets contextLabel to student name when student is selected', async () => {
+        vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: FIRST_RESPONSE })
 
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
@@ -136,8 +197,10 @@ describe('useFacultyChat', () => {
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
         await act(async () => {
-            await result.current.submitPayload({ query: 'Test' })
+            await result.current.submitPayload({ query: 'Test', studentId: 'S001' })
         })
 
         const assistantMsg = result.current.messages.find((m) => m.role === 'assistant')
@@ -154,8 +217,10 @@ describe('useFacultyChat', () => {
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
         await act(async () => {
-            await result.current.submitPayload({ query: 'Test' })
+            await result.current.submitPayload({ query: 'Test', studentId: 'S001' })
         })
 
         const assistantMsg = result.current.messages.find((m) => m.role === 'assistant')
@@ -163,15 +228,17 @@ describe('useFacultyChat', () => {
     })
 
     it('marks lastPayloadExists after first submit', async () => {
-        vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: 'OK' })
+        vi.mocked(facultyClient.askChatbot).mockResolvedValue({ response: FIRST_RESPONSE })
 
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
         expect(result.current.lastPayloadExists).toBe(false)
 
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
         await act(async () => {
-            await result.current.submitPayload({ query: 'Test' })
+            await result.current.submitPayload({ query: 'Test', studentId: 'S001' })
         })
 
         expect(result.current.lastPayloadExists).toBe(true)
@@ -187,13 +254,13 @@ describe('useFacultyChat', () => {
         expect(result.current.mentees).toHaveLength(0)
     })
 
-    it('analysisText reflects scope mode', async () => {
+    it('analysisText is set when student is selected', async () => {
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
         await waitFor(() => expect(result.current.menteeLoading).toBe(false))
 
-        expect(result.current.analysisText).toMatch(/Analyzing 2 student/)
+        expect(result.current.analysisText).toBe('')
 
         act(() => { result.current.setSelectedStudentUid('S001') })
-        expect(result.current.analysisText).toBe('Analyzing 1 student...')
+        expect(result.current.analysisText).toBe('Analyzing student profile...')
     })
 })

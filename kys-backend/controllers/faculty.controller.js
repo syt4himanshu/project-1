@@ -68,7 +68,7 @@ const getMyMentees = async (req, res, next) => {
     const limit = parseInt(req.query.limit, 10) || 20;
     const offset = parseInt(req.query.offset, 10) || 0;
     const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
-    
+
     if (!faculty) return sendResponse(res, { success: false, status: 404, error: 'Faculty profile not found' });
 
     const cachedData = getMenteesCache(faculty.id, limit, offset);
@@ -77,14 +77,14 @@ const getMyMentees = async (req, res, next) => {
       return sendResponse(res, { success: true, data: cachedData });
     }
 
-    const mentees = await Student.findAll({ 
-      where: { mentor_id: faculty.id }, 
-      include: includeAll, 
+    const mentees = await Student.findAll({
+      where: { mentor_id: faculty.id },
+      include: includeAll,
       order: [['id', 'ASC']],
       limit,
       offset
     });
-    
+
     const data = mentees.map((s) => ({ id: s.id, first_name: s.first_name, middle_name: s.middle_name, last_name: s.last_name, ...serializeStudent(s) }));
     setMenteesCache(faculty.id, limit, offset, data);
 
@@ -153,13 +153,13 @@ const getMenteeMentoringMinutes = async (req, res, next) => {
     if (!student) return sendResponse(res, { success: false, status: 404, error: 'Mentee not found or not assigned to this faculty' });
 
     const minutes = await MentoringMinute.findAll({
-      where: { student_id: student.id }, 
+      where: { student_id: student.id },
       attributes: ['id', 'student_id', 'faculty_id', 'semester', 'date', 'remarks', 'suggestion', 'action'],
       order: [['date', 'DESC']],
       limit,
       offset
     });
-    
+
     const result = minutes.map((m) => ({
       id: m.id,
       semester: m.semester,
@@ -229,6 +229,14 @@ const facultyChatbot = async (req, res) => {
     logger.info({ reqId: req.id, message: "Chatbot Request Initiated", queryLength: req.body?.query?.length, studentId: req.body?.studentId });
     const query = sanitizeFacultyQuery(req.body?.query);
     const studentId = typeof req.body?.studentId === 'string' ? req.body.studentId.trim().slice(0, 32) : '';
+
+    // Sanitize conversation history — accept an array of {role, content} turns
+    const rawHistory = Array.isArray(req.body?.conversationHistory) ? req.body.conversationHistory : [];
+    const conversationHistory = rawHistory
+      .filter(turn => (turn.role === 'user' || turn.role === 'assistant') && typeof turn.content === 'string' && turn.content.trim())
+      .map(turn => ({ role: turn.role, content: String(turn.content).slice(0, 4000) }))
+      .slice(-12); // max 6 exchanges
+
     if (!query) {
       return sendResponse(res, { success: false, status: 400, error: 'Query must contain visible text' });
     }
@@ -260,6 +268,7 @@ const facultyChatbot = async (req, res) => {
         students: sanitizedStudentData,
       },
       mode: 'insights',
+      conversationHistory,
     }, req.id);
 
     return sendResponse(res, { success: true, data: { response } });
