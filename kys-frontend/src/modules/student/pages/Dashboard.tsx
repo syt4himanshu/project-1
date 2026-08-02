@@ -62,7 +62,8 @@ export default function Dashboard() {
 
     const [showPwModal, setShowPwModal] = useState(false)
     const [showLogoutModal, setShowLogoutModal] = useState(false)
-    const resetMarked = useMemo(() => isDraftResetMarked(), [])
+    const draftKey = `kys_student_profile_draft_${user?.id || user?.username || 'guest'}`
+    const resetMarked = useMemo(() => isDraftResetMarked(draftKey), [draftKey])
 
     useEffect(() => {
         getProfile()
