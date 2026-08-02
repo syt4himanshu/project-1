@@ -56,14 +56,14 @@ const studentProfileSchema = Joi.object({
     aadhar_number: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^(?:\d{12}|--|n\/a|na)?$/i)
+      .pattern(/^(\d{12}|--|n\/a|na)$/i)
       .messages({
         'string.pattern.base': '{#label} must be a valid 12 digit Aadhaar number',
       }),
     mis_uid: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^(?:\d{8}|--|n\/a|na)?$/i)
+      .pattern(/^(\d{8}|--|n\/a|na)$/i)
       .messages({
         'string.pattern.base': '{#label} must be an 8 digit MIS UID',
       }),
@@ -267,12 +267,12 @@ const step0Schema = Joi.object({
     aadhar_number: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^(?:\d{12}|--|n\/a|na)?$/i)
+      .pattern(/^(\d{12}|--|n\/a|na)$/i)
       .messages({ 'string.pattern.base': 'must be a valid 12 digit Aadhaar number' }),
     mis_uid: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^(?:\d{8}|--|n\/a|na)?$/i)
+      .pattern(/^(\d{8}|--|n\/a|na)$/i)
       .messages({ 'string.pattern.base': 'must be an 8 digit MIS UID' }),
   }).unknown(true),
 }).unknown(true)

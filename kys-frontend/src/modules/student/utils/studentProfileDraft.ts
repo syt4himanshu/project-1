@@ -1,5 +1,3 @@
-const STORAGE_KEY = 'student-profile-draft-v1'
-const RESET_KEY = 'student-profile-draft-reset-v1'
 const DRAFT_VERSION = 1
 const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -23,11 +21,15 @@ function canUseLocalStorage() {
   }
 }
 
-function readRawDraft(): StudentProfileDraftPayload | null {
+function getResetKey(storageKey: string) {
+  return `${storageKey}_reset`
+}
+
+function readRawDraft(storageKey: string): StudentProfileDraftPayload | null {
   if (!canUseLocalStorage()) return null
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(storageKey)
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as Partial<StudentProfileDraftPayload>
@@ -49,8 +51,8 @@ function readRawDraft(): StudentProfileDraftPayload | null {
   }
 }
 
-export function saveDraft(data: Record<string, unknown>) {
-  if (!canUseLocalStorage()) return false
+export function saveDraft(storageKey: string, data: Record<string, unknown>) {
+  if (!canUseLocalStorage() || !storageKey) return false
 
   try {
     const payload: StudentProfileDraftPayload = {
@@ -59,62 +61,64 @@ export function saveDraft(data: Record<string, unknown>) {
       data,
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    window.localStorage.setItem(storageKey, JSON.stringify(payload))
     return true
   } catch {
     return false
   }
 }
 
-export function loadDraft() {
-  return readRawDraft()
+export function loadDraft(storageKey: string) {
+  if (!storageKey) return null
+  return readRawDraft(storageKey)
 }
 
-export function clearDraft() {
-  if (!canUseLocalStorage()) return false
+export function clearDraft(storageKey: string) {
+  if (!canUseLocalStorage() || !storageKey) return false
 
   try {
-    window.localStorage.removeItem(STORAGE_KEY)
+    window.localStorage.removeItem(storageKey)
     return true
   } catch {
     return false
   }
 }
 
-export function markDraftReset() {
-  if (!canUseLocalStorage()) return false
+export function markDraftReset(storageKey: string) {
+  if (!canUseLocalStorage() || !storageKey) return false
 
   try {
-    window.localStorage.setItem(RESET_KEY, JSON.stringify({ clearedAt: new Date().toISOString() }))
+    window.localStorage.setItem(getResetKey(storageKey), JSON.stringify({ clearedAt: new Date().toISOString() }))
     return true
   } catch {
     return false
   }
 }
 
-export function clearDraftResetMark() {
-  if (!canUseLocalStorage()) return false
+export function clearDraftResetMark(storageKey: string) {
+  if (!canUseLocalStorage() || !storageKey) return false
 
   try {
-    window.localStorage.removeItem(RESET_KEY)
+    window.localStorage.removeItem(getResetKey(storageKey))
     return true
   } catch {
     return false
   }
 }
 
-export function isDraftResetMarked() {
-  if (!canUseLocalStorage()) return false
+export function isDraftResetMarked(storageKey: string) {
+  if (!canUseLocalStorage() || !storageKey) return false
 
   try {
-    return Boolean(window.localStorage.getItem(RESET_KEY))
+    return Boolean(window.localStorage.getItem(getResetKey(storageKey)))
   } catch {
     return false
   }
 }
 
-export function getDraftMetadata(): StudentProfileDraftMetadata | null {
-  const draft = readRawDraft()
+export function getDraftMetadata(storageKey: string): StudentProfileDraftMetadata | null {
+  if (!storageKey) return null
+  const draft = readRawDraft(storageKey)
   if (!draft) return null
 
   return {
@@ -130,6 +134,6 @@ export function isDraftNewerThan(updatedAt: string | null | undefined, otherUpda
   return Number.isFinite(left) && left > right
 }
 
-export function getDraftStorageKey() {
-  return STORAGE_KEY
+export function getDraftStorageKey(identity: string) {
+  return `student-profile-draft-v1-${identity}`
 }

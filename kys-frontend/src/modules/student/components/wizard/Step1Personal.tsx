@@ -38,7 +38,8 @@ export default function Step1Personal() {
         if (missingFields.includes(fieldName)) {
             return {
                 error: `${fieldName} is required`,
-                touched: true
+                touched: true,
+                markTouched: joiVal.markTouched
             }
         }
         return joiVal
@@ -142,7 +143,11 @@ export default function Step1Personal() {
                     <div className="space-y-1">
                         <textarea
                             value={(pi.permanent_address as string) || ''}
-                            onChange={e => upd('permanent_address', e.target.value)}
+                            onChange={e => {
+                                upd('permanent_address', e.target.value)
+                                getValidation('Permanent Address', 'personal_info.permanent_address').markTouched?.()
+                            }}
+                            onBlur={() => getValidation('Permanent Address', 'personal_info.permanent_address').markTouched?.()}
                             rows={4}
                             placeholder="Street, City, State, PIN"
                             className={`${textareaCls} ${getValidation('Permanent Address', 'personal_info.permanent_address').error && getValidation('Permanent Address', 'personal_info.permanent_address').touched ? 'border-[#ef4444] focus:border-[#dc2626] focus:ring-[#ef4444]/20' : ''}`}

@@ -9,6 +9,7 @@ export interface WizardStepProps {
 export interface FieldValidationState {
     error?: string
     touched?: boolean
+    markTouched?: () => void
 }
 
 // Runtime placeholder so non-type imports of `WizardStepProps` do not crash in the browser.
@@ -61,13 +62,16 @@ export function input(
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value
         // For date inputs, reject any value where the year part exceeds 4 digits.
-        // Native date inputs return YYYY-MM-DD; we guard against browsers allowing
-        // the user to type e.g. "202565" in the year segment.
         if (isDate && val) {
             const year = val.split('-')[0]
             if (year && year.length > 4) return
         }
         onChange(val)
+        validation?.markTouched?.()
+    }
+
+    const handleBlur = () => {
+        validation?.markTouched?.()
     }
 
     return (
@@ -76,6 +80,7 @@ export function input(
                 type={type}
                 value={value}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder={placeholder}
                 className={combinedClassName}
                 aria-invalid={Boolean(validation?.error)}
@@ -101,7 +106,11 @@ export function select(
         <div className="space-y-1">
             <select
                 value={value}
-                onChange={e => onChange(e.target.value)}
+                onChange={e => {
+                    onChange(e.target.value)
+                    validation?.markTouched?.()
+                }}
+                onBlur={() => validation?.markTouched?.()}
                 className={withValidationClass(inputCls, validation)}
                 aria-invalid={Boolean(validation?.error)}
             >

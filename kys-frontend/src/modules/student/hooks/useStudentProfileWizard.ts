@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../../app/store/hooks'
 import { updateProfile } from '../api/student'
 import {
+  deriveDraftKey,
   loadStudentProfileWizard,
   saveStudentProfileStep,
   selectStudentProfileCanSubmit,
@@ -26,7 +27,7 @@ export function useStudentProfileDraft() {
 
   const [validationIssues, setValidationIssues] = useState<Record<string, string>>({})
   const [validationReady, setValidationReady] = useState(false)
-  const baselineSignatureRef = useRef('')
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
   const validationTimerRef = useRef<number | null>(null)
 
   const update = useCallback((patch: Record<string, unknown>) => {
@@ -35,22 +36,23 @@ export function useStudentProfileDraft() {
 
   const dataSignature = useMemo(() => serializeProfileData(data), [data])
 
+  const markFieldTouched = useCallback((path: string) => {
+    setTouchedFields(prev => {
+      if (prev.has(path)) return prev
+      const next = new Set(prev)
+      next.add(path)
+      return next
+    })
+  }, [])
+
   useEffect(() => {
     if (loading) {
-      // Validation should pause while the wizard data is still loading.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValidationReady(false)
       return
     }
 
     if (!validationReady) {
-      baselineSignatureRef.current = dataSignature
       setValidationReady(true)
-      setValidationIssues({})
-      return
-    }
-
-    if (dataSignature === baselineSignatureRef.current) {
       setValidationIssues({})
       return
     }
@@ -79,14 +81,17 @@ export function useStudentProfileDraft() {
   }, [data, dataSignature, loading, validationReady])
 
   const getFieldValidation = useCallback((path: string) => {
-    const error = validationIssues[path]
+    const err = validationIssues[path]
+    const forceShowAll = error === 'Please fix highlighted validation issues before proceeding.' || 
+                         (error && error.startsWith('Please fill required fields:'))
     return {
-      error,
-      touched: validationReady && Boolean(error),
+      error: err,
+      touched: Boolean(forceShowAll || touchedFields.has(path)),
+      markTouched: () => markFieldTouched(path)
     }
-  }, [validationIssues, validationReady])
+  }, [validationIssues, touchedFields, error, markFieldTouched])
 
-  return { data, update, getFieldValidation, error }
+  return { data, update, getFieldValidation, error, markFieldTouched }
 }
 
 function serializeProfileData(data: Record<string, unknown>) {
@@ -129,12 +134,12 @@ function isOffline() {
   return typeof navigator !== 'undefined' && navigator.onLine === false
 }
 
-function useStudentProfileDraftPersistence(data: Record<string, unknown>, loading: boolean) {
+function useStudentProfileDraftPersistence(draftKey: string, data: Record<string, unknown>, loading: boolean) {
   const lastSavedSignatureRef = useRef('')
   const pendingTimerRef = useRef<number | null>(null)
   const latestDataRef = useRef<Record<string, unknown>>(data)
   const hasHydratedRef = useRef(false)
-  const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(() => getDraftMetadata()?.updatedAt ?? null)
+  const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(() => getDraftMetadata(draftKey)?.updatedAt ?? null)
 
   const signature = useMemo(() => serializeProfileData(data), [data])
 
@@ -158,8 +163,8 @@ function useStudentProfileDraftPersistence(data: Record<string, unknown>, loadin
     }
 
     pendingTimerRef.current = window.setTimeout(() => {
-      if (saveDraft(latestDataRef.current)) {
-        const metadata = getDraftMetadata()
+      if (saveDraft(draftKey, latestDataRef.current)) {
+        const metadata = getDraftMetadata(draftKey)
         if (metadata) {
           lastSavedSignatureRef.current = signature
           setLastDraftSavedAt(metadata.updatedAt)
@@ -179,8 +184,8 @@ function useStudentProfileDraftPersistence(data: Record<string, unknown>, loadin
     const handleBeforeUnload = () => {
       if (loading) return
       if (signature === lastSavedSignatureRef.current) return
-      if (saveDraft(latestDataRef.current)) {
-        const metadata = getDraftMetadata()
+      if (saveDraft(draftKey, latestDataRef.current)) {
+        const metadata = getDraftMetadata(draftKey)
         if (metadata) {
           lastSavedSignatureRef.current = signature
           setLastDraftSavedAt(metadata.updatedAt)
@@ -200,10 +205,10 @@ function useStudentProfileDraftPersistence(data: Record<string, unknown>, loadin
   }, [])
 
   const clearSavedDraft = useCallback(() => {
-    clearDraft()
+    clearDraft(draftKey)
     lastSavedSignatureRef.current = ''
     setLastDraftSavedAt(null)
-  }, [])
+  }, [draftKey])
 
   return {
     lastDraftSavedAt,
@@ -213,7 +218,7 @@ function useStudentProfileDraftPersistence(data: Record<string, unknown>, loadin
   }
 }
 
-function useStudentProfileAutoSync(data: Record<string, unknown>, loading: boolean) {
+function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknown>, loading: boolean) {
   const [state, setState] = useState<AutoSyncState>({ status: 'idle', message: '', pending: false })
   const currentSignatureRef = useRef('')
   const lastSyncedSignatureRef = useRef('')
@@ -328,7 +333,7 @@ function useStudentProfileAutoSync(data: Record<string, unknown>, loading: boole
         idleTimerRef.current = null
       }
 
-      void saveDraft(latestDataRef.current)
+      void saveDraft(draftKey, latestDataRef.current)
 
       if (typeof navigator !== 'undefined' && navigator.onLine && typeof navigator.sendBeacon === 'function') {
         try {
@@ -394,8 +399,9 @@ export function useStudentProfileWizard() {
   const canSubmit = useAppSelector(selectStudentProfileCanSubmit)
   const draftUpdatedAt = useAppSelector((state) => state.studentProfile.draftUpdatedAt)
   const draftRestored = useAppSelector((state) => state.studentProfile.draftRestored)
-  const draftPersistence = useStudentProfileDraftPersistence(data, loading)
-  const autoSync = useStudentProfileAutoSync(data, loading)
+  const draftKey = useAppSelector((state) => state.studentProfile.draftKey || deriveDraftKey(state))
+  const draftPersistence = useStudentProfileDraftPersistence(draftKey, data, loading)
+  const autoSync = useStudentProfileAutoSync(draftKey, data, loading)
 
   useEffect(() => {
     if (status !== 'idle') return
@@ -432,22 +438,22 @@ export function useStudentProfileWizard() {
       await autoSync.waitForSync()
       await dispatch(submitStudentProfile()).unwrap()
       draftPersistence.clearSavedDraft()
-      clearDraftResetMark()
+      clearDraftResetMark(draftKey)
       autoSync.markSyncedAfterSubmit()
       return true
     } catch {
       return false
     }
-  }, [autoSync, dispatch, draftPersistence])
+  }, [autoSync, dispatch, draftPersistence, draftKey])
 
   const clearForm = useCallback(async () => {
     dispatch(studentProfileActions.clearStudentProfileDraft())
     draftPersistence.clearSavedDraft()
-    markDraftReset()
+    markDraftReset(draftKey)
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }, [dispatch, draftPersistence])
+  }, [dispatch, draftPersistence, draftKey])
 
   return {
     step,

@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { useDispatch } from 'react-redux'
+import { studentProfileActions } from '../store/studentProfileSlice'
 import Step1Personal from '../components/wizard/Step1Personal'
 import Step3AcademicBefore from '../components/wizard/Step3AcademicBefore'
 import Step5ProjectsInternships from '../components/wizard/Step5ProjectsInternships'
@@ -30,6 +32,7 @@ const STEP_SUBTEXT = [
 export default function ProfileWizard() {
     const navigate = useNavigate()
     const toast = useToast()
+    const dispatch = useDispatch()
     const {
         step,
         loading,
@@ -56,6 +59,46 @@ export default function ProfileWizard() {
             setShowDraftBanner(true)
         }
     }, [draftRestoredAt, draftWasRestored])
+
+    // Initialize history state on mount
+    useEffect(() => {
+        if (!window.history.state || window.history.state.wizardStep === undefined) {
+            window.history.replaceState({ wizardStep: step }, '')
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    // Handle popstate (browser back/forward)
+    useEffect(() => {
+        const handlePopState = (e: PopStateEvent) => {
+            const stateStep = e.state?.wizardStep
+            if (typeof stateStep === 'number') {
+                dispatch(studentProfileActions.setStudentProfileStep(stateStep))
+                if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                }
+            }
+        }
+        window.addEventListener('popstate', handlePopState)
+        return () => window.removeEventListener('popstate', handlePopState)
+    }, [dispatch])
+
+    // Sync history when step increases (e.g., Next button)
+    const lastStepRef = useRef(step)
+    useEffect(() => {
+        if (step > lastStepRef.current) {
+            window.history.pushState({ wizardStep: step }, '')
+        }
+        lastStepRef.current = step
+    }, [step])
+
+    const handlePrevious = () => {
+        if (window.history.state?.wizardStep > 0) {
+            window.history.back()
+        } else {
+            prev()
+        }
+    }
 
     if (loading) {
         return (
@@ -183,7 +226,7 @@ export default function ProfileWizard() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center justify-between gap-3 sm:order-2 sm:ml-auto sm:justify-end">
                             <button
-                                onClick={prev}
+                                onClick={handlePrevious}
                                 disabled={step === 0}
                                 className="min-w-0 flex-0 rounded-xl border border-[#d0d8e6] bg-[var(--panel)] px-4 py-2.5 text-sm font-semibold text-[#5f6f86] transition hover:bg-[var(--bg-soft)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-5"
                             >

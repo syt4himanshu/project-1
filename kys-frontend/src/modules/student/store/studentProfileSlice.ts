@@ -88,7 +88,7 @@ function isBlank(value: unknown) {
   return value === null || value === undefined || String(value).trim() === ''
 }
 
-function deriveDraftKey(state: RootState): string {
+export function deriveDraftKey(state: RootState): string {
   const user = selectAuthUser(state)
   const identity = String(user?.id || user?.username || 'guest')
   return `kys_student_profile_draft_${identity}`
@@ -256,9 +256,9 @@ export const loadStudentProfileWizard = createAsyncThunk(
   }> => {
     const state = getState() as RootState
     const draftKey = deriveDraftKey(state)
-    const draft = loadDraft()
-    const draftMetadata = getDraftMetadata()
-    const resetMarked = isDraftResetMarked()
+    const draft = loadDraft(draftKey)
+    const draftMetadata = getDraftMetadata(draftKey)
+    const resetMarked = isDraftResetMarked(draftKey)
 
     if (resetMarked) {
       return {
@@ -397,7 +397,7 @@ export const submitStudentProfile = createAsyncThunk<
 
     try {
       await updateProfile(state.data)
-      clearDraft()
+      clearDraft(state.draftKey)
     } catch (error) {
       const message = error instanceof Error ? error.message || 'Failed to save profile' : 'Failed to save profile'
       dispatch(enqueueToast({
@@ -441,6 +441,10 @@ const studentProfileSlice = createSlice({
       state.error = ''
       state.step = Math.max(state.step - 1, 0)
     },
+    setStudentProfileStep(state, action: PayloadAction<number>) {
+      state.error = ''
+      state.step = Math.max(0, Math.min(action.payload, STUDENT_PROFILE_STEP_COUNT - 1))
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -478,7 +482,7 @@ const studentProfileSlice = createSlice({
         state.error = ''
         state.draftUpdatedAt = null
         state.draftRestored = false
-        clearDraftResetMark()
+        clearDraftResetMark(state.draftKey)
       })
       .addCase(submitStudentProfile.rejected, (state, action) => {
         state.submitStatus = 'idle'
