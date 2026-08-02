@@ -27,7 +27,6 @@ export function DeveloperPage() {
       role: 'Backend & API Specialist',
       summaryLineOne: 'Led end-to-end platform development, architecting backend systems, AI workflows, and performance optimizations to deliver scalable, secure, and reliable production systems.',
       image: '/hm2.jpeg',
-      github: 'https://github.com/syt4himanshu',
       linkedin: 'https://www.linkedin.com/in/himanshu-mire-816308288/',
     },
     {
@@ -91,7 +90,7 @@ export function DeveloperPage() {
                     <p className="kys-developer__summary">{dev.summaryLineOne}</p>
                     <p className="kys-developer__summary">{dev.summaryLineTwo}</p>
                     <div className="kys-developer__links">
-                      <a href={dev.github} target="_blank" rel="noreferrer">GitHub</a>
+                      {dev.github && <a href={dev.github} target="_blank" rel="noreferrer">GitHub</a>}
                       <a href={dev.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
                     </div>
                   </div>
