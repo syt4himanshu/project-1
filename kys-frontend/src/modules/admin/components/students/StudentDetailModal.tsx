@@ -6,6 +6,7 @@ import { PhotoAvatar } from '../../../../shared/components/PhotoAvatar'
 import { extractStudentPhotoUrl } from '../../../../shared/utils/studentPhoto'
 import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import { useAdminStudentDetailQuery, useAdminStudentMentoringMinutesQuery } from '../../hooks'
+import { FacultyRemarksTimeline } from './FacultyRemarksTimeline'
 
 interface StudentDetailModalProps {
   studentId: number | null

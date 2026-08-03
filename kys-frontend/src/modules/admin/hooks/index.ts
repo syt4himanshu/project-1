@@ -11,6 +11,7 @@ export {
   useAdminReportToppersQuery,
   useAdminStudentDetailQuery,
   useAdminStudentMentoringMinutesQuery,
+  useAdminStudentRemarksQuery,
   useAdminUploadStudentPhotoMutation,
   useAdminStatisticsQuery,
   useAdminStudentSummaryQuery,
