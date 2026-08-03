@@ -20,6 +20,8 @@ export const adminQueryKeys = {
     filters,
   ] as const,
   studentDetail: (studentId: number) => [...ADMIN_STUDENTS_ROOT, 'detail', studentId] as const,
+  studentRemarks: (uid: string, limit: number, offset: number) =>
+    [...ADMIN_STUDENTS_ROOT, 'remarks', uid, limit, offset] as const,
   allocation: () => ADMIN_ALLOCATION_ROOT,
   allocationAssigned: (facultyId: number) => [...ADMIN_ALLOCATION_ROOT, 'assigned', facultyId] as const,
   reports: () => ADMIN_REPORTS_ROOT,

@@ -585,6 +585,8 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
           <DetailSection title="Assigned Mentor">
             <InfoTable rows={[{ label: 'Mentor Name', value: normalizeForDisplay(student.mentorName) }]} />
           </DetailSection>
+
+          <FacultyRemarksTimeline uid={student.uid} />
         </div>
       ) : null}
 

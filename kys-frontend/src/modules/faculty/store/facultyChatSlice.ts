@@ -10,25 +10,30 @@ import { facultyClient } from '../api/client'
 import { normalizeMentees } from '../api/normalizers'
 import {
   formatContextLabel,
-  parseStructuredResponse,
+  isSnapshotRefreshQuery,
+  parseFirstResponse,
+  parseFollowUpResponse,
   toErrorMessage,
 } from '../chatbot/utils/chatFormatters'
 import type {
   ChatMessageModel,
   ChatbotRequest,
+  ConversationTurn,
   MenteeRow,
-  ScopeMode,
 } from '../api/types'
 
 interface FacultyChatState {
   mentees: MenteeRow[]
   menteeStatus: 'idle' | 'loading' | 'ready' | 'failed'
   menteeError: string
-  scopeMode: ScopeMode
   selectedStudentUid: string
   studentSearch: string
   composerQuery: string
   messages: ChatMessageModel[]
+  /** Flat history sent to the backend for multi-turn context */
+  conversationHistory: ConversationTurn[]
+  /** ID of the assistant message that holds the pinned student snapshot */
+  snapshotMessageId: string
   requestError: string
   loadingMessageId: string
   lastPayload: ChatbotRequest | null
@@ -38,11 +43,12 @@ const initialState: FacultyChatState = {
   mentees: [],
   menteeStatus: 'idle',
   menteeError: '',
-  scopeMode: 'all',
   selectedStudentUid: '',
   studentSearch: '',
   composerQuery: '',
   messages: [],
+  conversationHistory: [],
+  snapshotMessageId: '',
   requestError: '',
   loadingMessageId: '',
   lastPayload: null,
@@ -64,11 +70,14 @@ export const loadFacultyChatMentees = createAsyncThunk(
 
 export const submitFacultyChatPayload = createAsyncThunk(
   'facultyChat/submitPayload',
-  async (payload: ChatbotRequest, { dispatch, getState }): Promise<void> => {
+  async (payload: ChatbotRequest & { conversationHistory?: ConversationTurn[] }, { dispatch, getState }): Promise<void> => {
     const state = (getState() as RootState).facultyChat
     const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const assistantId = `assistant-${uid}`
-    const contextLabel = formatContextLabel(state.scopeMode, state.selectedStudentUid, state.mentees)
+    const contextLabel = formatContextLabel(state.selectedStudentUid, state.mentees)
+
+    // Determine if this is a first response or a follow-up
+    const isFirst = state.snapshotMessageId === '' || isSnapshotRefreshQuery(payload.query)
 
     const userMsg: ChatMessageModel = {
       id: `user-${uid}`,
@@ -91,20 +100,37 @@ export const submitFacultyChatPayload = createAsyncThunk(
       payload,
       userMessage: userMsg,
       loadingMessage: loadingMsg,
+      isFirst,
     }))
 
     const controller = new AbortController()
     activeRequestController = controller
 
+    // Use explicit history override (regenerate) or current state history
+    const historyToSend = payload.conversationHistory ?? state.conversationHistory
+
     try {
-      const result = await facultyClient.askChatbot(payload, controller.signal)
+      const result = await facultyClient.askChatbot(
+        { query: payload.query, studentId: payload.studentId, conversationHistory: historyToSend },
+        controller.signal,
+      )
       const responseText = String(result?.response ?? '').trim()
 
-      dispatch(facultyChatActions.requestSucceeded({
-        assistantId,
-        responseText,
-        sections: parseStructuredResponse(responseText),
-      }))
+      if (isFirst) {
+        const { directAnswer, sections } = parseFirstResponse(responseText)
+        dispatch(facultyChatActions.firstResponseSucceeded({
+          assistantId,
+          responseText,
+          directAnswer,
+          sections: sections ?? undefined,
+        }))
+      } else {
+        const conversationalText = parseFollowUpResponse(responseText)
+        dispatch(facultyChatActions.followUpSucceeded({
+          assistantId,
+          responseText: conversationalText,
+        }))
+      }
     } catch (error) {
       if (isAbortError(error)) {
         dispatch(facultyChatActions.requestAborted({ assistantId }))
@@ -135,7 +161,14 @@ export const regenerateFacultyChatResponse = createAsyncThunk(
     const state = (getState() as RootState).facultyChat
     if (!state.lastPayload || state.loadingMessageId) return
 
-    await dispatch(submitFacultyChatPayload(state.lastPayload))
+    // Roll back history by 2 turns (remove the last user+assistant exchange)
+    // so the regenerated response doesn't see itself as prior context
+    const historyWithoutLastExchange = state.conversationHistory.slice(0, -2)
+
+    await dispatch(submitFacultyChatPayload({
+      ...state.lastPayload,
+      conversationHistory: historyWithoutLastExchange,
+    }))
   },
 )
 
@@ -143,15 +176,16 @@ const facultyChatSlice = createSlice({
   name: 'facultyChat',
   initialState,
   reducers: {
-    setScopeMode(state, action: PayloadAction<ScopeMode>) {
-      state.scopeMode = action.payload
-      if (action.payload === 'all') {
-        state.selectedStudentUid = ''
-      }
-    },
     setSelectedStudentUid(state, action: PayloadAction<string>) {
+      // Changing student resets the entire conversation
+      if (action.payload !== state.selectedStudentUid) {
+        state.messages = []
+        state.conversationHistory = []
+        state.snapshotMessageId = ''
+        state.requestError = ''
+        state.lastPayload = null
+      }
       state.selectedStudentUid = action.payload
-      state.scopeMode = action.payload ? 'student' : 'all'
     },
     setStudentSearch(state, action: PayloadAction<string>) {
       state.studentSearch = action.payload
@@ -166,6 +200,7 @@ const facultyChatSlice = createSlice({
         payload: ChatbotRequest
         userMessage: ChatMessageModel
         loadingMessage: ChatMessageModel
+        isFirst: boolean
       }>,
     ) {
       state.requestError = ''
@@ -173,24 +208,78 @@ const facultyChatSlice = createSlice({
       state.lastPayload = action.payload.payload
       state.messages.push(action.payload.userMessage, action.payload.loadingMessage)
     },
-    requestSucceeded(
+    firstResponseSucceeded(
       state,
       action: PayloadAction<{
         assistantId: string
         responseText: string
-        sections: ChatMessageModel['sections']
+        directAnswer: string
+        sections?: ChatMessageModel['sections']
       }>,
     ) {
+      const { assistantId, responseText, directAnswer, sections } = action.payload
+
+      // Find the user message that immediately precedes this assistant message
+      const assistantIndex = state.messages.findIndex((m) => m.id === assistantId)
+      const precedingUserMsg = assistantIndex > 0 ? state.messages[assistantIndex - 1] : null
+
       state.messages = state.messages.map((message) =>
-        message.id === action.payload.assistantId
+        message.id === assistantId
           ? {
             ...message,
             loading: false,
-            content: action.payload.responseText,
-            sections: action.payload.sections,
+            content: directAnswer || responseText,
+            directAnswer,
+            sections,
+            isSnapshot: Boolean(sections),
           }
           : message,
       )
+
+      // Track which message holds the snapshot
+      if (sections) {
+        state.snapshotMessageId = assistantId
+      }
+
+      // Append to conversation history (cap at 12 turns = 6 exchanges)
+      if (precedingUserMsg?.role === 'user') {
+        state.conversationHistory.push({ role: 'user', content: precedingUserMsg.content })
+      }
+      state.conversationHistory.push({ role: 'assistant', content: responseText })
+      if (state.conversationHistory.length > 12) {
+        state.conversationHistory = state.conversationHistory.slice(-12)
+      }
+    },
+    followUpSucceeded(
+      state,
+      action: PayloadAction<{
+        assistantId: string
+        responseText: string
+      }>,
+    ) {
+      const { assistantId, responseText } = action.payload
+
+      const msgIndex = state.messages.findIndex((m) => m.id === assistantId)
+      const precedingUserMsg = msgIndex > 0 ? state.messages[msgIndex - 1] : null
+
+      state.messages = state.messages.map((message) =>
+        message.id === assistantId
+          ? {
+            ...message,
+            loading: false,
+            content: responseText,
+          }
+          : message,
+      )
+
+      // Append to conversation history (cap at 12 turns = 6 exchanges)
+      if (precedingUserMsg?.role === 'user') {
+        state.conversationHistory.push({ role: 'user', content: precedingUserMsg.content })
+      }
+      state.conversationHistory.push({ role: 'assistant', content: responseText })
+      if (state.conversationHistory.length > 12) {
+        state.conversationHistory = state.conversationHistory.slice(-12)
+      }
     },
     requestFailed(state, action: PayloadAction<{ assistantId: string; message: string }>) {
       state.messages = state.messages.map((message) =>
@@ -235,8 +324,10 @@ const facultyChatSlice = createSlice({
           state.selectedStudentUid &&
           !action.payload.some((row) => row.uid === state.selectedStudentUid)
         ) {
-          state.scopeMode = 'all'
           state.selectedStudentUid = ''
+          state.messages = []
+          state.conversationHistory = []
+          state.snapshotMessageId = ''
         }
       })
       .addCase(loadFacultyChatMentees.rejected, (state) => {
@@ -254,7 +345,6 @@ const selectFacultyChatState = (state: RootState) => state.facultyChat
 
 export const selectFacultyChatMentees = (state: RootState) => state.facultyChat.mentees
 export const selectFacultyChatMenteeStatus = (state: RootState) => state.facultyChat.menteeStatus
-export const selectFacultyChatScopeMode = (state: RootState) => state.facultyChat.scopeMode
 export const selectFacultyChatSelectedStudentUid = (state: RootState) => state.facultyChat.selectedStudentUid
 export const selectFacultyChatStudentSearch = (state: RootState) => state.facultyChat.studentSearch
 export const selectFacultyChatComposerQuery = (state: RootState) => state.facultyChat.composerQuery
@@ -266,6 +356,7 @@ export const selectFacultyChatMenteeLoading = (state: RootState) =>
   state.facultyChat.menteeStatus === 'idle' || state.facultyChat.menteeStatus === 'loading'
 export const selectFacultyChatMenteeError = (state: RootState) => state.facultyChat.menteeError
 export const selectFacultyChatIsLoading = (state: RootState) => Boolean(state.facultyChat.loadingMessageId)
+export const selectFacultyChatSnapshotMessageId = (state: RootState) => state.facultyChat.snapshotMessageId
 
 export const selectFacultyChatFilteredMentees = createSelector(
   [selectFacultyChatMentees, selectFacultyChatStudentSearch],
@@ -280,27 +371,19 @@ export const selectFacultyChatFilteredMentees = createSelector(
 )
 
 export const selectFacultyChatContextLabel = createSelector(
-  [
-    selectFacultyChatScopeMode,
-    selectFacultyChatSelectedStudentUid,
-    selectFacultyChatMentees,
-  ],
-  (scopeMode, selectedStudentUid, mentees) =>
-    formatContextLabel(scopeMode, selectedStudentUid, mentees),
+  [selectFacultyChatSelectedStudentUid, selectFacultyChatMentees],
+  (selectedStudentUid, mentees) =>
+    formatContextLabel(selectedStudentUid, mentees),
 )
 
 export const selectFacultyChatAnalysisText = createSelector(
-  [selectFacultyChatScopeMode, selectFacultyChatMentees],
-  (scopeMode, mentees) =>
-    scopeMode === 'all'
-      ? `Analyzing ${mentees.length} student(s)...`
-      : 'Analyzing 1 student...',
+  [selectFacultyChatSelectedStudentUid],
+  (selectedStudentUid) =>
+    selectedStudentUid ? 'Analyzing student profile...' : '',
 )
 
-export const selectFacultyChatIsStudentSelectionInvalid = createSelector(
-  [selectFacultyChatScopeMode, selectFacultyChatSelectedStudentUid],
-  (scopeMode, selectedStudentUid) => scopeMode === 'student' && !selectedStudentUid,
-)
+export const selectFacultyChatIsStudentSelectionInvalid = (state: RootState) =>
+  !state.facultyChat.selectedStudentUid
 
 export const selectFacultyChatCanSend = createSelector(
   [

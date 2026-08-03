@@ -5,7 +5,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  Briefcase,
+  FileText,
   TrendingUp,
   MessageSquareText,
   X,
@@ -41,7 +41,7 @@ interface Message {
 }
 
 const SUGGESTION_CHIPS = [
-  { id: 'placement', label: 'Placement-focused advice', Icon: Briefcase },
+  { id: 'give_remarks', label: 'Give Remarks', Icon: FileText },
   { id: 'skills', label: 'Skill improvement plan', Icon: TrendingUp },
   { id: 'behavior', label: 'Behavior & communication', Icon: MessageSquareText },
 ]
@@ -67,18 +67,22 @@ export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: 
   useEffect(() => {
     if (open) {
       inputRef.current?.focus()
-      if (messages.length === 0) {
-        setMessages([
-          {
-            id: '1',
-            role: 'assistant',
-            content: `I can help you draft clear, professional remarks for ${studentContext.name}. Use a prompt below or ask directly.`,
-            timestamp: new Date(),
-          },
-        ])
-      }
     }
-  }, [open, studentContext.name, messages.length])
+  }, [open])
+
+  useEffect(() => {
+    if (open && messages.length === 0) {
+      setMessages([
+        {
+          id: '1',
+          role: 'assistant',
+          content: `I can help you draft clear, professional remarks for ${studentContext.name}. Use a prompt below or ask directly.`,
+          timestamp: new Date(),
+        },
+      ])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -95,7 +99,7 @@ export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: 
 
   const handleSuggestionClick = async (chipId: string) => {
     const prompts: Record<string, string> = {
-      placement: `Provide placement-focused advice for ${studentContext.name}`,
+      give_remarks: `Generate comprehensive mentoring remarks for ${studentContext.name} following the full sequence: recognize strengths, identify improvement areas, explain why improvement matters, suggest practical next steps, and end with personalized encouragement.`,
       skills: `Suggest a skill improvement plan for ${studentContext.name}`,
       behavior: `Write behavior and communication remarks for ${studentContext.name}`,
     }

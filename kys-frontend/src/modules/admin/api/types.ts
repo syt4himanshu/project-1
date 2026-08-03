@@ -491,3 +491,58 @@ export interface AdminAutoAllocationResult {
   allocations: AdminAutoAllocationSummaryItem[]
   allFaculty?: AdminAutoAllocationSummaryItem[]
 }
+
+// ─── Student Remarks Timeline ─────────────────────────────────────────────────
+
+export interface AdminStudentRemark {
+  id: number
+  studentId: number
+  facultyId: number | null
+  facultyName: string
+  facultyEmail: string
+  semester: number
+  date: string | null
+  remarks: string | null
+  suggestion: string | null
+  action: string | null
+  createdByFaculty: boolean
+}
+
+export interface AdminStudentRemarksPaging {
+  total: number
+  limit: number
+  offset: number
+  hasMore: boolean
+}
+
+export interface AdminStudentRemarksResult {
+  remarks: AdminStudentRemark[]
+  paging: AdminStudentRemarksPaging
+}
+
+/** Raw API response shapes for remarks (snake_case from backend) */
+export interface AdminStudentRemarkApiResponse {
+  id?: unknown
+  student_id?: unknown
+  faculty_id?: unknown
+  faculty_name?: unknown
+  faculty_email?: unknown
+  semester?: unknown
+  date?: unknown
+  remarks?: unknown
+  suggestion?: unknown
+  action?: unknown
+  created_by_faculty?: unknown
+}
+
+export interface AdminStudentRemarksPagingApiResponse {
+  total?: unknown
+  limit?: unknown
+  offset?: unknown
+  hasMore?: unknown
+}
+
+export interface AdminStudentRemarksApiResponse {
+  remarks?: unknown
+  paging?: unknown
+}

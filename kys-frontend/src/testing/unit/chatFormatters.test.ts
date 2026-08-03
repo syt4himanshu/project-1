@@ -1,94 +1,120 @@
 import { describe, expect, it } from 'vitest'
 import {
     formatContextLabel,
+    isSnapshotRefreshQuery,
+    parseFirstResponse,
+    parseFollowUpResponse,
     parseStructuredResponse,
     toErrorMessage,
 } from '../../modules/faculty/chatbot/utils/chatFormatters'
 import type { MenteeRow } from '../../modules/faculty/api/types'
 
-// ─── parseStructuredResponse ─────────────────────────────────────────────────
+// ─── parseFirstResponse ───────────────────────────────────────────────────────
+
+describe('parseFirstResponse', () => {
+    it('extracts directAnswer and all four renamed sections', () => {
+        const text = [
+            'Direct Answer:',
+            'This student is performing well overall.',
+            '',
+            'Student Overview:',
+            'Semester 5, CGPA 7.8.',
+            '',
+            'Strengths & Potential:',
+            'Strong in Python and ML.',
+            '',
+            'Areas for Improvement:',
+            'Communication skills need work.',
+            '',
+            'Faculty Recommendations:',
+            'Enroll in a communication workshop.',
+        ].join('\n')
+
+        const result = parseFirstResponse(text)
+
+        expect(result.directAnswer).toBe('This student is performing well overall.')
+        expect(result.sections?.['Student Overview']).toContain('Semester 5')
+        expect(result.sections?.['Strengths & Potential']).toContain('Python')
+        expect(result.sections?.['Areas for Improvement']).toContain('Communication')
+        expect(result.sections?.['Faculty Recommendations']).toContain('workshop')
+    })
+
+    it('returns plain text as directAnswer when no sections present', () => {
+        const text = 'Here is a simple follow-up answer.'
+        const result = parseFirstResponse(text)
+
+        expect(result.directAnswer).toBe(text)
+        expect(result.sections).toBeNull()
+    })
+
+    it('accepts legacy section aliases (Summary, Key Observations, Concerns, Suggestions)', () => {
+        const text = [
+            'Direct Answer:',
+            'Legacy format answer.',
+            '',
+            'Summary:',
+            'Student summary.',
+            '',
+            'Key Observations:',
+            'Key obs.',
+            '',
+            'Concerns:',
+            'Some concerns.',
+            '',
+            'Suggestions:',
+            'Some suggestions.',
+        ].join('\n')
+
+        const result = parseFirstResponse(text)
+
+        expect(result.sections?.['Student Overview']).toContain('summary')
+        expect(result.sections?.['Strengths & Potential']).toContain('Key obs')
+        expect(result.sections?.['Areas for Improvement']).toContain('concerns')
+        expect(result.sections?.['Faculty Recommendations']).toContain('suggestions')
+    })
+})
+
+// ─── parseFollowUpResponse ────────────────────────────────────────────────────
+
+describe('parseFollowUpResponse', () => {
+    it('returns trimmed plain text', () => {
+        expect(parseFollowUpResponse('  Hello world.  ')).toBe('Hello world.')
+    })
+
+    it('returns empty string for empty input', () => {
+        expect(parseFollowUpResponse('')).toBe('')
+    })
+})
+
+// ─── parseStructuredResponse (legacy shim) ────────────────────────────────────
 
 describe('parseStructuredResponse', () => {
-    it('parses all four sections from a well-formed response', () => {
+    it('parses new section headings correctly', () => {
         const text = [
-            'Summary',
-            'Overall performance is good.',
-            'Key Observations',
-            'Student A has improved.',
-            'Concerns',
-            'Student B has backlogs.',
-            'Suggestions',
-            'Schedule a session with Student B.',
+            'Student Overview',
+            'Good academic standing.',
+            'Strengths & Potential',
+            'Strong coder.',
+            'Areas for Improvement',
+            'Needs internships.',
+            'Faculty Recommendations',
+            'Apply to internships.',
         ].join('\n')
 
         const result = parseStructuredResponse(text)
 
-        expect(result.Summary).toBe('Overall performance is good.')
-        expect(result['Key Observations']).toBe('Student A has improved.')
-        expect(result.Concerns).toBe('Student B has backlogs.')
-        expect(result.Suggestions).toBe('Schedule a session with Student B.')
+        expect(result['Student Overview']).toBe('Good academic standing.')
+        expect(result['Strengths & Potential']).toBe('Strong coder.')
+        expect(result['Areas for Improvement']).toBe('Needs internships.')
+        expect(result['Faculty Recommendations']).toBe('Apply to internships.')
     })
 
-    it('falls back to Summary-only when no section headings found', () => {
-        const text = 'This is a plain response with no headings.'
+    it('falls back to Student Overview when no headings found', () => {
+        const text = 'Plain text response.'
         const result = parseStructuredResponse(text)
 
-        expect(result.Summary).toBe(text)
-        expect(result['Key Observations']).toBe('')
-        expect(result.Concerns).toBe('')
-        expect(result.Suggestions).toBe('')
-    })
-
-    it('handles section headings with trailing colons', () => {
-        const text = 'Summary:\nGood progress.\nConcerns:\nNone.'
-        const result = parseStructuredResponse(text)
-
-        expect(result.Summary).toBe('Good progress.')
-        expect(result.Concerns).toBe('None.')
-    })
-
-    it('handles "Observations" as alias for "Key Observations"', () => {
-        const text = 'Observations\nAttendance is low.'
-        const result = parseStructuredResponse(text)
-
-        expect(result['Key Observations']).toBe('Attendance is low.')
-    })
-
-    it('maps backend heading aliases into expected UI sections', () => {
-        const text = [
-            'Summary:',
-            'Overall class momentum is positive.',
-            'Performance Overview:',
-            'Semester 5 students improved attendance.',
-            'Risk Areas:',
-            'Two students show repeated backlog risk.',
-            'Actionable Advice:',
-            'Schedule focused remediation for those two students.',
-        ].join('\n')
-        const result = parseStructuredResponse(text)
-
-        expect(result.Summary).toBe('Overall class momentum is positive.')
-        expect(result['Key Observations']).toBe('Semester 5 students improved attendance.')
-        expect(result.Concerns).toBe('Two students show repeated backlog risk.')
-        expect(result.Suggestions).toBe('Schedule focused remediation for those two students.')
-    })
-
-    it('returns empty sections for empty input', () => {
-        const result = parseStructuredResponse('')
-
-        expect(result.Summary).toBe('')
-        expect(result['Key Observations']).toBe('')
-        expect(result.Concerns).toBe('')
-        expect(result.Suggestions).toBe('')
-    })
-
-    it('accumulates multi-line content within a section', () => {
-        const text = 'Summary\nLine one.\nLine two.\nLine three.'
-        const result = parseStructuredResponse(text)
-
-        expect(result.Summary).toContain('Line one.')
-        expect(result.Summary).toContain('Line two.')
-        expect(result.Summary).toContain('Line three.')
+        expect(result['Student Overview']).toBe(text)
+        expect(result['Strengths & Potential']).toBe('')
     })
 })
 
@@ -130,19 +156,39 @@ describe('formatContextLabel', () => {
         { id: 2, uid: 'S002', full_name: 'Bob Jones', semester: 5 },
     ]
 
-    it('returns "All assigned students" for all scope', () => {
-        expect(formatContextLabel('all', '', mentees)).toBe('All assigned students')
+    it('returns student name when uid matches', () => {
+        expect(formatContextLabel('S001', mentees)).toBe('Student: Alice Smith')
     })
 
-    it('returns student name for student scope with valid uid', () => {
-        expect(formatContextLabel('student', 'S001', mentees)).toBe('Student: Alice Smith')
+    it('returns "No student selected" when uid not found', () => {
+        expect(formatContextLabel('S999', mentees)).toBe('No student selected')
     })
 
-    it('falls back to "All assigned students" when uid not found', () => {
-        expect(formatContextLabel('student', 'S999', mentees)).toBe('All assigned students')
+    it('returns "No student selected" when uid is empty', () => {
+        expect(formatContextLabel('', mentees)).toBe('No student selected')
     })
 
-    it('falls back when mentees list is empty', () => {
-        expect(formatContextLabel('student', 'S001', [])).toBe('All assigned students')
+    it('returns "No student selected" when mentees list is empty', () => {
+        expect(formatContextLabel('S001', [])).toBe('No student selected')
+    })
+})
+
+// ─── isSnapshotRefreshQuery ───────────────────────────────────────────────────
+
+describe('isSnapshotRefreshQuery', () => {
+    it('detects "refresh insights"', () => {
+        expect(isSnapshotRefreshQuery('Refresh insights')).toBe(true)
+    })
+
+    it('detects "analyze student again"', () => {
+        expect(isSnapshotRefreshQuery('Please analyze student again')).toBe(true)
+    })
+
+    it('detects "regenerate student profile"', () => {
+        expect(isSnapshotRefreshQuery('Regenerate student profile now')).toBe(true)
+    })
+
+    it('does not trigger on a normal query', () => {
+        expect(isSnapshotRefreshQuery('What are the placement gaps?')).toBe(false)
     })
 })

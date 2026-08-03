@@ -18,20 +18,18 @@ import {
   selectFacultyChatMentees,
   selectFacultyChatMessages,
   selectFacultyChatRequestError,
-  selectFacultyChatScopeMode,
   selectFacultyChatSelectedStudentUid,
   selectFacultyChatStudentSearch,
   stopFacultyChatResponse,
   submitFacultyChatPayload,
 } from '../store/facultyChatSlice'
-import type { ChatMessageModel, ChatbotRequest, MenteeRow, ScopeMode } from '../api/types'
+import type { ChatMessageModel, ChatbotRequest, MenteeRow } from '../api/types'
 
 export interface UseFacultyChatResult {
   mentees: MenteeRow[]
   filteredMentees: MenteeRow[]
   menteeLoading: boolean
   menteeError: string
-  scopeMode: ScopeMode
   selectedStudentUid: string
   studentSearch: string
   messages: ChatMessageModel[]
@@ -43,7 +41,6 @@ export interface UseFacultyChatResult {
   contextLabel: string
   canSend: boolean
   isStudentSelectionInvalid: boolean
-  setScopeMode: (mode: ScopeMode) => void
   setSelectedStudentUid: (uid: string) => void
   setStudentSearch: (query: string) => void
   setQuery: (query: string) => void
@@ -60,7 +57,6 @@ export function useFacultyChat(): UseFacultyChatResult {
   const filteredMentees = useAppSelector(selectFacultyChatFilteredMentees)
   const menteeLoading = useAppSelector(selectFacultyChatMenteeLoading)
   const menteeError = useAppSelector(selectFacultyChatMenteeError)
-  const scopeMode = useAppSelector(selectFacultyChatScopeMode)
   const selectedStudentUid = useAppSelector(selectFacultyChatSelectedStudentUid)
   const studentSearch = useAppSelector(selectFacultyChatStudentSearch)
   const messages = useAppSelector(selectFacultyChatMessages)
@@ -77,10 +73,6 @@ export function useFacultyChat(): UseFacultyChatResult {
     if (menteeStatus !== 'idle') return
     void dispatch(loadFacultyChatMentees())
   }, [dispatch, menteeStatus])
-
-  const setScopeMode = useCallback((mode: ScopeMode) => {
-    dispatch(facultyChatActions.setScopeMode(mode))
-  }, [dispatch])
 
   const setSelectedStudentUid = useCallback((uid: string) => {
     dispatch(facultyChatActions.setSelectedStudentUid(uid))
@@ -115,7 +107,6 @@ export function useFacultyChat(): UseFacultyChatResult {
     filteredMentees,
     menteeLoading,
     menteeError,
-    scopeMode,
     selectedStudentUid,
     studentSearch,
     messages,
@@ -127,7 +118,6 @@ export function useFacultyChat(): UseFacultyChatResult {
     contextLabel,
     canSend,
     isStudentSelectionInvalid,
-    setScopeMode,
     setSelectedStudentUid,
     setStudentSearch,
     setQuery,

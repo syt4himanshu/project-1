@@ -2,7 +2,7 @@ const AI_CONFIG = {
   provider: "groq",
   model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
   temperature: 0.7,
-  max_tokens: 1024,
+  max_tokens: 2048,
 };
 
 const FALLBACK_MODELS = [

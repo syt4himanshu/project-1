@@ -105,9 +105,15 @@ export interface ChangePasswordInput {
 
 // ─── Chatbot ─────────────────────────────────────────────────────────────────
 
+export interface ConversationTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export interface ChatbotRequest {
   query: string
-  studentId?: string
+  studentId: string
+  conversationHistory?: ConversationTurn[]
 }
 
 export interface ChatbotResponse {
@@ -138,14 +144,13 @@ export interface AIRemarksResponse {
   timestamp: string
 }
 
-export type ScopeMode = 'all' | 'student'
-export type SectionKey = 'Summary' | 'Key Observations' | 'Concerns' | 'Suggestions'
+export type SectionKey = 'Student Overview' | 'Strengths & Potential' | 'Areas for Improvement' | 'Faculty Recommendations'
 
 export interface ParsedSections {
-  Summary: string
-  'Key Observations': string
-  Concerns: string
-  Suggestions: string
+  'Student Overview': string
+  'Strengths & Potential': string
+  'Areas for Improvement': string
+  'Faculty Recommendations': string
 }
 
 export interface ChatMessageModel {
@@ -154,7 +159,12 @@ export interface ChatMessageModel {
   content: string
   contextLabel: string
   createdAt: string
+  /** Parsed structured snapshot — only present on the first response per student */
   sections?: ParsedSections
+  /** Direct conversational answer extracted from the first response */
+  directAnswer?: string
+  /** True if this message carries the pinned student snapshot */
+  isSnapshot?: boolean
   loading?: boolean
   error?: boolean
 }

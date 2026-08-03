@@ -13,7 +13,7 @@ export function LoadingState({
         <div className="faculty-chat__loading">
             <p className="faculty-chat__loading-title">{title}</p>
             {subtitle && <p className="faculty-chat__loading-sub">{subtitle}</p>}
-            <div className="faculty-response-grid">
+            <div className="faculty-response-grid faculty-response-grid--snapshot">
                 {SECTION_ORDER.map((section) => (
                     <div key={section} className="faculty-response-card faculty-response-card--skeleton" />
                 ))}

@@ -571,3 +571,23 @@ export function useExportIncompleteReportsMutation() {
     },
   })
 }
+
+// ─── Student Remarks Timeline ─────────────────────────────────────────────────
+
+export function useAdminStudentRemarksQuery(
+  uid: string | null,
+  limit: number,
+  offset: number,
+) {
+  const { token } = useAuth()
+
+  return useQuery({
+    queryKey: adminQueryKeys.studentRemarks(uid ?? '', limit, offset),
+    queryFn: () =>
+      adminApi.getStudentRemarks({ token: ensureToken(token), uid: uid ?? '', limit, offset }),
+    enabled: Boolean(token) && Boolean(uid),
+    staleTime: 30_000,
+    // Keep previous page data visible while loading the next page
+    placeholderData: keepPreviousData,
+  })
+}
