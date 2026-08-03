@@ -19,6 +19,7 @@ import {
   normalizeSemesterDistributionRow,
   normalizeStudentSummaryFilters,
   normalizeTopperResponse,
+  normalizeAdminStudentRemarksResult,
 } from './normalizers'
 import type {
   AdminAllocationApiResponse,
@@ -63,6 +64,8 @@ import type {
   CreateAdminUserInput,
   NormalizedAdminStudentSummaryFilters,
   ResetPasswordInput,
+  AdminStudentRemarksApiResponse,
+  AdminStudentRemarksResult,
 } from './types'
 
 interface AdminApiRequestOptions {
@@ -477,6 +480,26 @@ async function exportAllReports({ token }: AdminApiRequestOptions): Promise<Admi
   })
 }
 
+// ─── Student Remarks Timeline ─────────────────────────────────────────────────
+
+async function getStudentRemarks(
+  { token, uid, limit = 20, offset = 0 }: AdminApiRequestOptions & { uid: string; limit?: number; offset?: number },
+): Promise<AdminStudentRemarksResult> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  })
+
+  const payload = await requestJson<AdminStudentRemarksApiResponse>(
+    `${ENDPOINTS.admin.studentRemarks(uid)}?${params.toString()}`,
+    { method: 'GET', token },
+  )
+
+  return normalizeAdminStudentRemarksResult(
+    (payload as AdminStudentRemarksApiResponse) ?? {},
+  )
+}
+
 async function exportBacklogReports({ token }: AdminApiRequestOptions): Promise<AdminExportedFile> {
   return exportCsv({
     token,
@@ -528,4 +551,5 @@ export const adminApi = {
   exportAllReports,
   exportBacklogReports,
   exportIncompleteReports,
+  getStudentRemarks,
 }

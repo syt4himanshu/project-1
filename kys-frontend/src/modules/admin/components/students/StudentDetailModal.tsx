@@ -6,6 +6,7 @@ import { PhotoAvatar } from '../../../../shared/components/PhotoAvatar'
 import { extractStudentPhotoUrl } from '../../../../shared/utils/studentPhoto'
 import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import { useAdminStudentDetailQuery } from '../../hooks'
+import { FacultyRemarksTimeline } from './FacultyRemarksTimeline'
 
 interface StudentDetailModalProps {
   studentId: number | null
@@ -573,6 +574,8 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
           <DetailSection title="Assigned Mentor">
             <InfoTable rows={[{ label: 'Mentor Name', value: normalizeForDisplay(student.mentorName) }]} />
           </DetailSection>
+
+          <FacultyRemarksTimeline uid={student.uid} />
         </div>
       ) : null}
     </Modal>

@@ -24,7 +24,7 @@ export function DeveloperPage() {
   const developers = [
     {
       name: 'Himanshu Mire',
-      role: 'Backend & API Specialist',
+      role: 'Full-Stack Engineer | Backend & AI Systems',
       summaryLineOne: 'Led end-to-end platform development, architecting backend systems, AI workflows, and performance optimizations to deliver scalable, secure, and reliable production systems.',
       image: '/hm2.jpeg',
       linkedin: 'https://www.linkedin.com/in/himanshu-mire-816308288/',

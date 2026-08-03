@@ -13,6 +13,7 @@ export const ENDPOINTS = {
     resetPassword: '/api/admin/reset-password',
     faculty: '/api/admin/faculty',
     allocation: '/api/admin/allocation',
+    studentRemarks: (uid: string) => `/api/admin/students/${encodeURIComponent(uid)}/remarks`,
     reports: {
       stats: '/api/admin/reports/stats',
       toppers: '/api/admin/reports/toppers',

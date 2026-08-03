@@ -1596,6 +1596,37 @@ const deleteFacultyById = async (req, res, next) => {
   }
 };
 
+// ─── Admin: Student Remarks Timeline ─────────────────────────────────────────
+const { getStudentRemarks } = require('../services/adminStudentRemarks.service');
+const logger = require('../utils/logger');
+const { sendResponse } = require('../utils/responseWrapper');
+
+/**
+ * GET /api/admin/students/:uid/remarks
+ *
+ * Returns all mentoring-minute records for a student, newest first, with
+ * pagination.  Faculty metadata falls back to snapshot fields when the
+ * faculty account has been deleted.
+ */
+const getAdminStudentRemarks = async (req, res, next) => {
+  try {
+    const result = await getStudentRemarks({
+      uid: req.params.uid,
+      rawLimit: req.query.limit,
+      rawOffset: req.query.offset,
+    });
+
+    if (!result.ok) {
+      return sendResponse(res, { success: false, status: result.status, error: result.error });
+    }
+
+    return sendResponse(res, { success: true, data: result.data });
+  } catch (error) {
+    logger.error({ reqId: req.id, message: 'GET /admin/students/:uid/remarks failed', details: error.message });
+    return next(error);
+  }
+};
+
 module.exports = {
   statistics,
   listUsers,
@@ -1626,6 +1657,7 @@ module.exports = {
   exportIncomplete,
   deleteStudentByUid,
   deleteFacultyById,
+  getAdminStudentRemarks,
   fullStudentIncludes,
   serializeStudent,
 };

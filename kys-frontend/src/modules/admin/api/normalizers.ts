@@ -26,6 +26,12 @@ import type {
   AdminStatisticsApiResponse,
   AdminStudentDetail,
   AdminStudentDetailApiResponse,
+  AdminStudentRemark,
+  AdminStudentRemarkApiResponse,
+  AdminStudentRemarksPaging,
+  AdminStudentRemarksPagingApiResponse,
+  AdminStudentRemarksApiResponse,
+  AdminStudentRemarksResult,
   AdminStudentSummary,
   AdminStudentSummaryApiResponse,
   AdminStudentSummaryFilters,
@@ -45,6 +51,8 @@ import type {
   NormalizedAdminStudentSummaryFilters,
 } from './types'
 import { sanitizeDisplayValue } from '../../../shared/utils/render'
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
 
 const EMPTY_TEXT_VALUES = new Set(['', 'n/a', 'na', 'none', '-', '--', 'null', 'undefined'])
 
@@ -88,12 +96,10 @@ function asStringArray(value: unknown): string[] {
 
 function parseBacklogCountFromSubjects(subjects: string[]): number {
   if (subjects.length === 0) return 0
-
   const numericCandidate = subjects[0]?.match(/^(\d+)\s*(?:subjects?|backlogs?)$/i)
   if (subjects.length === 1 && numericCandidate) {
     return Number(numericCandidate[1])
   }
-
   return subjects.length
 }
 
@@ -103,25 +109,10 @@ function toRole(value: unknown): AdminUserRole {
 
 function splitFullName(name: string): { firstName: string; lastName: string } {
   const clean = normalizeDisplayText(name)
-  if (!clean) {
-    return {
-      firstName: '',
-      lastName: '',
-    }
-  }
-
+  if (!clean) return { firstName: '', lastName: '' }
   const parts = clean.split(/\s+/)
-  if (parts.length === 1) {
-    return {
-      firstName: parts[0],
-      lastName: '',
-    }
-  }
-
-  return {
-    firstName: parts[0],
-    lastName: parts.slice(1).join(' '),
-  }
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' }
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
 }
 
 function toFacultyUid(id: number): string {
@@ -137,6 +128,12 @@ function asJsonRecordArray(value: unknown): JsonRecord[] {
   if (!Array.isArray(value)) return []
   return value.map((entry) => asJsonRecord(entry))
 }
+
+function normalizeFilterValue(value: string | undefined): string {
+  return (value ?? '').trim()
+}
+
+// ─── Exported normalizers ─────────────────────────────────────────────────────
 
 export function normalizeAdminStatistics(raw: AdminStatisticsApiResponse): AdminStatistics {
   return {
@@ -178,7 +175,10 @@ export function normalizeAdminFaculty(raw: AdminFacultyApiResponse): AdminFacult
   return {
     id,
     uid: normalizeDisplayText(raw.uid, toFacultyUid(id)),
-    name: displayName || [firstName, lastName].filter(Boolean).join(' ') || normalizeDisplayText(raw.email, 'Unknown Faculty'),
+    name:
+      displayName ||
+      [firstName, lastName].filter(Boolean).join(' ') ||
+      normalizeDisplayText(raw.email, 'Unknown Faculty'),
     firstName,
     lastName,
     email: normalizeDisplayText(raw.email, 'unknown@stvincentngp.edu.in'),
@@ -220,8 +220,12 @@ export function normalizeAdminStudentDetail(raw: AdminStudentDetailApiResponse):
     academicRecords: asJsonRecordArray(raw.academic_records ?? raw.post_admission_records),
     projects: asJsonRecordArray(raw.projects),
     internships: asJsonRecordArray(raw.internships),
-    coCurricularParticipations: asJsonRecordArray(raw.co_curricular_participations ?? raw.cocurricular_participations),
-    coCurricularOrganizations: asJsonRecordArray(raw.co_curricular_organizations ?? raw.cocurricular_organizations),
+    coCurricularParticipations: asJsonRecordArray(
+      raw.co_curricular_participations ?? raw.cocurricular_participations,
+    ),
+    coCurricularOrganizations: asJsonRecordArray(
+      raw.co_curricular_organizations ?? raw.cocurricular_organizations,
+    ),
     skillPrograms: asJsonRecordArray(raw.skill_programs ?? raw.skillPrograms),
     skills: asJsonRecord(raw.skills),
     swoc: asJsonRecord(raw.swoc),
@@ -262,7 +266,6 @@ export function normalizeMutationResult(payload: unknown): AdminMutationResult {
   if (isRecord(payload) && typeof payload.message === 'string' && payload.message.trim()) {
     return { message: payload.message }
   }
-
   return { message: 'Operation completed successfully.' }
 }
 
@@ -283,7 +286,6 @@ export function normalizeBulkStudentResult(raw: BulkStudentApiResponse): BulkOpe
   const rows = rowsRaw
     .filter((entry): entry is BulkStudentApiItem => isRecord(entry))
     .map((entry) => normalizeBulkItem(entry, 'uid'))
-
   return { rows }
 }
 
@@ -292,7 +294,6 @@ export function normalizeBulkFacultyResult(raw: BulkFacultyApiResponse): BulkOpe
   const rows = rowsRaw
     .filter((entry): entry is BulkFacultyApiItem => isRecord(entry))
     .map((entry) => normalizeBulkItem(entry, 'email'))
-
   return { rows }
 }
 
@@ -369,7 +370,6 @@ export function normalizeGeneralReportRow(raw: AdminGeneralReportApiResponse): A
   }
 }
 
-
 export function normalizeBacklogEntry(raw: AdminBacklogEntryApiResponse): AdminBacklogEntry {
   const subjects = Array.isArray(raw.subjects)
     ? raw.subjects.map((value) => normalizeSanitizedText(value)).filter(Boolean)
@@ -390,6 +390,7 @@ export function normalizeBacklogEntry(raw: AdminBacklogEntryApiResponse): AdminB
     backlogCount,
   }
 }
+
 export function normalizeIncompleteProfile(raw: AdminIncompleteProfileApiResponse): AdminIncompleteProfile {
   const missingFields = Array.isArray(raw.missing_fields)
     ? raw.missing_fields.map((value) => normalizeSanitizedText(value)).filter(Boolean)
@@ -407,10 +408,6 @@ export function normalizeIncompleteProfile(raw: AdminIncompleteProfileApiRespons
   }
 }
 
-function normalizeFilterValue(value: string | undefined): string {
-  return (value ?? '').trim()
-}
-
 export function normalizeStudentSummaryFilters(
   filters: AdminStudentSummaryFilters = {},
 ): NormalizedAdminStudentSummaryFilters {
@@ -424,7 +421,9 @@ export function normalizeStudentSummaryFilters(
   }
 }
 
-export function normalizeGeneralReportFilters(filters: Partial<AdminGeneralReportFilters>): AdminGeneralReportFilters {
+export function normalizeGeneralReportFilters(
+  filters: Partial<AdminGeneralReportFilters>,
+): AdminGeneralReportFilters {
   return {
     search: normalizeFilterValue(filters.search),
     semester: normalizeFilterValue(filters.semester),
@@ -438,17 +437,58 @@ export function normalizeForDisplay(value: unknown, fallback = 'N/A'): string {
   if (value === null || value === undefined) return fallback
   if (typeof value === 'number') return Number.isFinite(value) ? String(value) : fallback
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-
   const text = normalizeDisplayText(value)
   return text || fallback
 }
 
 export function normalizeArrayForDisplay(values: unknown, fallback = 'N/A'): string {
   if (!Array.isArray(values) || values.length === 0) return fallback
-  const tokens = values
-    .map((value) => normalizeDisplayText(value))
-    .filter((value) => value)
-
+  const tokens = values.map((value) => normalizeDisplayText(value)).filter((value) => value)
   return tokens.length > 0 ? tokens.join(', ') : fallback
 }
 
+// ─── Student Remarks Timeline ─────────────────────────────────────────────────
+
+export function normalizeAdminStudentRemark(
+  raw: AdminStudentRemarkApiResponse,
+  index: number,
+): AdminStudentRemark {
+  return {
+    id: toNumber(raw.id, index),
+    studentId: toNumber(raw.student_id, 0),
+    facultyId: toNullableNumber(raw.faculty_id),
+    facultyName: normalizeDisplayText(raw.faculty_name, 'Unknown'),
+    facultyEmail: normalizeDisplayText(raw.faculty_email, 'Unknown'),
+    semester: toNumber(raw.semester, 0),
+    date: toText(raw.date) || null,
+    remarks: toText(raw.remarks) || null,
+    suggestion: toText(raw.suggestion) || null,
+    action: toText(raw.action) || null,
+    createdByFaculty: Boolean(raw.created_by_faculty),
+  }
+}
+
+export function normalizeAdminStudentRemarksPaging(
+  raw: AdminStudentRemarksPagingApiResponse,
+): AdminStudentRemarksPaging {
+  return {
+    total: toNumber(raw.total, 0),
+    limit: toNumber(raw.limit, 20),
+    offset: toNumber(raw.offset, 0),
+    hasMore: Boolean(raw.hasMore),
+  }
+}
+
+export function normalizeAdminStudentRemarksResult(
+  raw: AdminStudentRemarksApiResponse,
+): AdminStudentRemarksResult {
+  const remarksRaw = Array.isArray(raw.remarks) ? raw.remarks : []
+  const remarks = remarksRaw
+    .filter((entry): entry is AdminStudentRemarkApiResponse => isRecord(entry))
+    .map((entry, i) => normalizeAdminStudentRemark(entry, i + 1))
+
+  const pagingRaw = isRecord(raw.paging) ? raw.paging : {}
+  const paging = normalizeAdminStudentRemarksPaging(pagingRaw)
+
+  return { remarks, paging }
+}

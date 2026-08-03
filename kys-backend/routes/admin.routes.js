@@ -29,6 +29,7 @@ const {
   exportIncomplete,
   deleteStudentByUid,
   deleteFacultyById,
+  getAdminStudentRemarks,
 } = require('../controllers/admin.controller');
 const { verifyToken, roleRequired } = require('../middleware/auth');
 
@@ -64,5 +65,8 @@ router.get('/reports/export/backlogs', exportBacklogs);
 router.get('/reports/export/incomplete', exportIncomplete);
 router.delete('/student/:uid', deleteStudentByUid);
 router.delete('/faculty/:id', deleteFacultyById);
+
+// Student remarks timeline
+router.get('/students/:uid/remarks', getAdminStudentRemarks);
 
 module.exports = router;
