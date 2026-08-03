@@ -10,6 +10,7 @@ export {
   useAdminReportStatsQuery,
   useAdminReportToppersQuery,
   useAdminStudentDetailQuery,
+  useAdminStudentMentoringMinutesQuery,
   useAdminUploadStudentPhotoMutation,
   useAdminStatisticsQuery,
   useAdminStudentSummaryQuery,

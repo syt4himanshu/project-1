@@ -292,6 +292,17 @@ export function useAdminStudentDetailQuery(studentId: number | null) {
   })
 }
 
+export function useAdminStudentMentoringMinutesQuery(studentId: number | null) {
+  const { token } = useAuth()
+
+  return useQuery({
+    queryKey: ['admin', 'student', studentId, 'mentoring-minutes'],
+    queryFn: () => adminApi.getStudentMentoringMinutes({ token: ensureToken(token), studentId: studentId ?? 0 }),
+    enabled: Boolean(token) && Boolean(studentId),
+    staleTime: 20_000,
+  })
+}
+
 export function useAdminUploadStudentPhotoMutation(studentId: number | null) {
   const { token } = useAuth()
   const queryClient = useQueryClient()

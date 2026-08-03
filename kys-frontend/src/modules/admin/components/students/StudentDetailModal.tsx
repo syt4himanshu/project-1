@@ -5,7 +5,7 @@ import { normalizeForDisplay } from '../../api'
 import { PhotoAvatar } from '../../../../shared/components/PhotoAvatar'
 import { extractStudentPhotoUrl } from '../../../../shared/utils/studentPhoto'
 import { sanitizeDisplayValue } from '../../../../shared/utils/render'
-import { useAdminStudentDetailQuery } from '../../hooks'
+import { useAdminStudentDetailQuery, useAdminStudentMentoringMinutesQuery } from '../../hooks'
 
 interface StudentDetailModalProps {
   studentId: number | null
@@ -120,9 +120,12 @@ function DetailSection({ title, children }: { title: string; children: React.Rea
 export function StudentDetailModal({ studentId, onClose }: StudentDetailModalProps) {
   const contentRef = useRef<HTMLDivElement | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [remarksOpen, setRemarksOpen] = useState(false)
 
   const detailQuery = useAdminStudentDetailQuery(studentId)
   const student = detailQuery.data
+  const minutesQuery = useAdminStudentMentoringMinutesQuery(remarksOpen ? studentId : null)
+  const minutes = useMemo(() => minutesQuery.data ?? [], [minutesQuery.data])
 
   const personalInfo = useMemo(() => student?.personalInfo ?? {}, [student?.personalInfo])
   const studentPhotoUrl = useMemo(() => extractStudentPhotoUrl({ personal_info: personalInfo }), [personalInfo])
@@ -289,6 +292,15 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
       size="xl"
       footer={(
         <>
+          {student && (
+            <button
+              type="button"
+              className="button button--soft mr-auto"
+              onClick={() => setRemarksOpen(true)}
+            >
+              View Previous Mentoring Remarks
+            </button>
+          )}
           <button type="button" className="button button--ghost" onClick={onClose}>
             Close
           </button>
@@ -575,6 +587,57 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
           </DetailSection>
         </div>
       ) : null}
+
+      <Modal
+        open={remarksOpen}
+        onClose={() => setRemarksOpen(false)}
+        title="Previous Mentoring Remarks"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {minutesQuery.isPending ? (
+            <p className="text-sm text-gray-500">Loading remarks...</p>
+          ) : minutesQuery.isError ? (
+            <p className="text-sm text-red-500">Failed to load remarks.</p>
+          ) : minutes.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">No mentoring remarks recorded yet.</p>
+          ) : (
+            <div className="max-h-[60vh] overflow-y-auto pr-2" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {minutes.map((m: any, index: number) => (
+                <div key={m.id} style={{ paddingBottom: index < minutes.length - 1 ? '24px' : '0', borderBottom: index < minutes.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 500, color: '#64748b' }}>
+                    <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', color: '#475569' }}>
+                      {formatDate(m.date)}
+                    </span>
+                    <span>&bull;</span>
+                    <span>Sem {m.semester}</span>
+                    <span>&bull;</span>
+                    <span style={{ color: '#334155', flex: 1 }}>{m.faculty_name}</span>
+                  </div>
+                  <div style={{ marginTop: '16px', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ background: '#f8fafc', color: '#334155', padding: '12px 14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px', color: '#0f172a' }}>Remarks</span>
+                      <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.remarks}</span>
+                    </div>
+                    {m.suggestion && (
+                      <div style={{ background: '#eff6ff', color: '#1e40af', padding: '12px 14px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                        <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Suggestion</span>
+                        <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.suggestion}</span>
+                      </div>
+                    )}
+                    {m.action && (
+                      <div style={{ background: '#f0fdf4', color: '#166534', padding: '12px 14px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                        <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Action</span>
+                        <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.action}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
     </Modal>
   )
 }

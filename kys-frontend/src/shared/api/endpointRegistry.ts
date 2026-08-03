@@ -30,6 +30,7 @@ export const ENDPOINTS = {
     uploadPhoto: (studentId: number) => `/api/students/${studentId}/upload-photo`,
     mentor: '/api/students/me/mentor',
     mentoringMinutes: '/api/students/me/mentoring-minutes',
+    studentMentoringMinutes: (id: number | string) => `/api/students/${id}/mentoring-minutes`,
   },
   student: {
     me: '/api/student/me',

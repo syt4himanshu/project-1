@@ -285,6 +285,26 @@ async function uploadStudentPhoto(
   return normalizeMutationResult(result)
 }
 
+export interface AdminMentoringMinute {
+  id: number
+  faculty_email: string | null
+  faculty_name: string
+  semester: number
+  date: string
+  remarks: string
+  suggestion?: string | null
+  action?: string | null
+}
+
+async function getStudentMentoringMinutes({ token, studentId }: AdminApiRequestOptions & { studentId: number }): Promise<AdminMentoringMinute[]> {
+  const payload = await requestJson<AdminMentoringMinute[]>(ENDPOINTS.students.studentMentoringMinutes(studentId), {
+    method: 'GET',
+    token,
+  })
+
+  return Array.isArray(payload) ? payload : []
+}
+
 async function listAllocation({ token }: AdminApiRequestOptions): Promise<AdminAllocationEntry[]> {
   const payload = await requestJson<AdminAllocationApiResponse[]>(ENDPOINTS.admin.allocation, {
     method: 'GET',
@@ -513,6 +533,7 @@ export const adminApi = {
   listStudentSummaries,
   getStudentDetail,
   uploadStudentPhoto,
+  getStudentMentoringMinutes,
   listAllocation,
   generateAllocation,
   autoAllocateUnassigned,

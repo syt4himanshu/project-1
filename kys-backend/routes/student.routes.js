@@ -15,6 +15,7 @@ const {
   getStudentById,
   updateStudentMentorByAdmin,
   uploadStudentPhotoByPortal,
+  getStudentMentoringMinutesById,
 } = require('../controllers/student.controller');
 const { verifyToken, roleRequired } = require('../middleware/auth');
 
@@ -53,6 +54,7 @@ studentRouter.post('/me/upload-photo', verifyToken, roleRequired(['student']), h
 const apiStudentsRouter = express.Router();
 apiStudentsRouter.get('/', verifyToken, roleRequired(['admin', 'faculty']), searchStudents);
 apiStudentsRouter.get('/:id', verifyToken, roleRequired(['admin', 'faculty']), getStudentById);
+apiStudentsRouter.get('/:id/mentoring-minutes', verifyToken, roleRequired(['admin', 'faculty']), getStudentMentoringMinutesById);
 apiStudentsRouter.post(
   '/:id/upload-photo',
   verifyToken,

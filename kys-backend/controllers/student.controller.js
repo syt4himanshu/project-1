@@ -650,6 +650,89 @@ const getStudentMentoringMinutes = async (req, res, next) => {
   }
 };
 
+const getStudentMentoringMinutesById = async (req, res, next) => {
+  try {
+    const studentId = Number(req.params.id);
+    if (!studentId) return res.status(400).json({ error: 'Invalid student id' });
+
+    const student = await Student.findByPk(studentId);
+    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+
+    // Optional: if faculty is requesting, ensure the student belongs to them
+    if (req.currentUser.role === 'faculty') {
+      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+      if (!faculty || student.mentor_id !== faculty.id) {
+        return res.status(403).json({ error: 'Not authorized to view this student' });
+      }
+    }
+
+    let minutes;
+    try {
+      minutes = await MentoringMinute.findAll({
+        where: { student_id: student.id },
+        attributes: [
+          'id',
+          'faculty_id',
+          'faculty_name_snapshot',
+          'faculty_email_snapshot',
+          'semester',
+          'date',
+          'remarks',
+          'suggestion',
+          'action',
+        ],
+        include: [
+          {
+            model: Faculty,
+            as: 'faculty',
+            attributes: ['id', 'email', 'first_name', 'last_name'],
+          },
+        ],
+        order: [['date', 'DESC']],
+      });
+    } catch (queryError) {
+      const message = String(queryError?.message || '');
+      if (/faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(message)) {
+        minutes = await MentoringMinute.findAll({
+          where: { student_id: student.id },
+          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'suggestion', 'action'],
+          include: [
+            {
+              model: Faculty,
+              as: 'faculty',
+              attributes: ['id', 'email', 'first_name', 'last_name'],
+            },
+          ],
+          order: [['date', 'DESC']],
+        });
+      } else {
+        throw queryError;
+      }
+    }
+
+    const result = minutes.map((m) => ({
+      id: m.id,
+      faculty_email: m.faculty?.email || m.faculty_email_snapshot || null,
+      faculty_name:
+        (m.faculty
+          ? `${m.faculty.first_name || ''} ${m.faculty.last_name || ''}`.trim()
+          : '') ||
+        m.faculty_name_snapshot ||
+        'Former Faculty',
+      semester: m.semester,
+      date: m.date,
+      remarks: m.remarks,
+      suggestion: m.suggestion,
+      action: m.action,
+    }));
+
+    return res.status(200).json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+
 const searchStudents = async (req, res, next) => {
   try {
     const where = buildStudentSearchWhere(req.query);
@@ -744,6 +827,7 @@ module.exports = {
   uploadStudentPhoto,
   getStudentMentor,
   getStudentMentoringMinutes,
+  getStudentMentoringMinutesById,
   searchStudents,
   getStudentById,
   updateStudentMentorByAdmin,
