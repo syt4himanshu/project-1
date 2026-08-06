@@ -19,6 +19,16 @@ interface InfoRow {
 
 type AnyRecord = Record<string, unknown>
 
+interface MentoringMinute {
+  id: number | string
+  date?: string | null
+  semester?: number | string
+  faculty_name?: string
+  remarks?: string
+  suggestion?: string
+  action?: string
+}
+
 function formatDate(value: unknown): string {
   const text = String(value ?? '').trim()
   if (!text) return 'N/A'
@@ -125,7 +135,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
   const detailQuery = useAdminStudentDetailQuery(studentId)
   const student = detailQuery.data
   const minutesQuery = useAdminStudentMentoringMinutesQuery(remarksOpen ? studentId : null)
-  const minutes = useMemo(() => minutesQuery.data ?? [], [minutesQuery.data])
+  const minutes = useMemo<MentoringMinute[]>(() => (minutesQuery.data as MentoringMinute[] | undefined) ?? [], [minutesQuery.data])
 
   const personalInfo = useMemo(() => student?.personalInfo ?? {}, [student?.personalInfo])
   const studentPhotoUrl = useMemo(() => extractStudentPhotoUrl({ personal_info: personalInfo }), [personalInfo])
@@ -603,7 +613,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
             <p className="text-sm text-gray-500 dark:text-gray-400">No mentoring remarks recorded yet.</p>
           ) : (
             <div className="max-h-[60vh] overflow-y-auto pr-2" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {minutes.map((m: any, index: number) => (
+              {minutes.map((m, index) => (
                 <div key={m.id} style={{ paddingBottom: index < minutes.length - 1 ? '24px' : '0', borderBottom: index < minutes.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 500, color: '#64748b' }}>
                     <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', color: '#475569' }}>

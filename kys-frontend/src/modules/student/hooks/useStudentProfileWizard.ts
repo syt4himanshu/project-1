@@ -416,14 +416,16 @@ export function useStudentProfileWizard() {
 
   const next = useCallback(async () => {
     try {
-      await dispatch(saveStudentProfileStep()).unwrap()
+      await autoSync.flushPendingSync()
+      await autoSync.waitForSync()
+      await dispatch(saveStudentProfileStep(undefined)).unwrap()
       if (typeof window !== 'undefined' && window.innerWidth < 640) {
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     } catch {
       // State already captures the validation or save error.
     }
-  }, [dispatch])
+  }, [dispatch, autoSync])
 
   const prev = useCallback(() => {
     dispatch(studentProfileActions.goToPreviousStudentProfileStep())
@@ -436,7 +438,7 @@ export function useStudentProfileWizard() {
     try {
       await autoSync.flushPendingSync()
       await autoSync.waitForSync()
-      await dispatch(submitStudentProfile()).unwrap()
+      await dispatch(submitStudentProfile(undefined)).unwrap()
       draftPersistence.clearSavedDraft()
       clearDraftResetMark(draftKey)
       autoSync.markSyncedAfterSubmit()

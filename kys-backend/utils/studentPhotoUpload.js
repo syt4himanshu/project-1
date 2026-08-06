@@ -14,8 +14,8 @@ const ensureCloudinaryConfigured = () =>
 
 const validateStudentPhotoFile = (file) => {
   if (!file) return 'No file provided';
-  if (!file.mimetype || !file.mimetype.startsWith('image/')) return 'Invalid file type';
-  if (file.size > 2 * 1024 * 1024) return 'File too large. Max size is 2MB';
+  if (file.mimetype !== 'application/pdf') return 'Only PDF files are allowed';
+  if (file.size > 1 * 1024 * 1024) return 'File too large. Max size is 1MB';
   return null;
 };
 
@@ -96,7 +96,7 @@ const uploadStudentPhotoForRecord = async (student, file) => {
   try {
     uploadResult = await cloudinary.uploader.upload(
       `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
-      { folder: 'students', resource_type: 'image' },
+      { folder: 'students', resource_type: 'raw', format: 'pdf' },
     );
 
     personalInfo.photo_url = uploadResult.secure_url;

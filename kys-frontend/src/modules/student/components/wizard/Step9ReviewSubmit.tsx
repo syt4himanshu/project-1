@@ -62,6 +62,10 @@ export default function Step9ReviewSubmit() {
                     <Row label='College Email' value={pi.college_email} />
                     <Row label='LinkedIn ID' value={pi.linked_in_id} />
                     <Row label='GitHub ID' value={pi.github_id} />
+                    <Row label='State' value={pi.state} />
+                    <Row label='City' value={pi.city} />
+                    <Row label='Pincode' value={pi.pincode} />
+                    <Row label='DIGIPIN' value={pi.digipin} />
                     <Row label='Permanent Address' value={pi.permanent_address} />
                     <Row label='Present Address' value={pi.present_address} />
                 </TwoColGrid>
@@ -86,14 +90,24 @@ export default function Step9ReviewSubmit() {
                 <div className="mt-5">
                     <SectionHeading title='Academic Information (Before Admission)' />
                     <TwoColGrid>
+                        <Row label='SSC Board' value={findExam('SSC').board} />
                         <Row label='SSC Percentage' value={findExam('SSC').percentage} />
                         <Row label='SSC Year' value={findExam('SSC').year_of_passing} />
+                        <Row label='HSC Board' value={findExam('HSSC').board} />
                         <Row label='HSC Percentage' value={findExam('HSSC').percentage} />
                         <Row label='HSC Year' value={findExam('HSSC').year_of_passing} />
+                        <Row label='Diploma Board' value={findExam('DIPLOMA').board} />
                         <Row label='Diploma Percentage' value={findExam('DIPLOMA').percentage} />
                         <Row label='Diploma Year' value={findExam('DIPLOMA').year_of_passing} />
                         <Row label='Entrance Exam' value={findExam('ENTRANCE_EXAM').exam_type} />
                         <Row label='Entrance Percentile' value={findExam('ENTRANCE_EXAM').percentage} />
+                        {Boolean(findExam('EXTRA_PROGRAM').exam_type) && (
+                            <>
+                                <Row label='Extra Program Title' value={findExam('EXTRA_PROGRAM').exam_type} />
+                                <Row label='Extra Program Score' value={findExam('EXTRA_PROGRAM').percentage} />
+                                <Row label='Extra Program Year' value={findExam('EXTRA_PROGRAM').year_of_passing} />
+                            </>
+                        )}
                     </TwoColGrid>
                 </div>
 

@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
+import { State, City } from 'country-state-city'
 import { uploadProfilePhoto } from '../../api/student'
 import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
+import { FileText } from 'lucide-react'
 import { field, input, inputCls, select, sectionCardCls, textareaCls } from './shared'
 
 export default function Step1Personal() {
     const { data, update, getFieldValidation, error } = useStudentProfileDraft()
     const pi = (data.personal_info as Record<string, unknown>) || {}
     const postAdmissionRecords = (data.post_admission_records as Record<string, unknown>[]) || []
-    const upd = (k: string, v: unknown) => update({ personal_info: { ...pi, [k]: v } })
+    const upd = (k: string, v: unknown) => update({ personal_info: { [k]: v } })
 
     const handleSemesterChange = (value: string) => {
         const semester = value ? Number(value.replace('Semester ', '')) : null
@@ -49,8 +51,8 @@ export default function Step1Personal() {
         const file = e.target.files?.[0]
         if (!file) return
 
-        if (file.size > 2 * 1024 * 1024) {
-            setUploadMsg('Image size must be less than 2MB.')
+        if (file.size > 1 * 1024 * 1024) {
+            setUploadMsg('File size must be less than 1MB.')
             e.target.value = ''
             return
         }
@@ -61,7 +63,6 @@ export default function Step1Personal() {
             const response = await uploadProfilePhoto(file)
             update({
                 personal_info: {
-                    ...pi,
                     photoUrl: response.data?.photoUrl || '',
                     photo_public_id: response.data?.photo_public_id || ''
                 }
@@ -93,13 +94,37 @@ export default function Step1Personal() {
                         'Select Semester',
                         getValidation('Semester', 'semester')
                     ))}
-                    {field('Year of Admission', input('number', String(data.year_of_admission || ''), v => update({ year_of_admission: v ? Number(v) : null }), 'e.g. 2023'))}
+                    {field('Year of Admission', select(
+                        Array.from({ length: 20 }, (_, i) => String(2021 + i)),
+                        data.year_of_admission ? String(data.year_of_admission) : '',
+                        v => update({ year_of_admission: v ? Number(v) : null }),
+                        'Select Year'
+                    ))}
 
                     {field('Date of Birth *', input('date', (pi.dob as string) || '', v => upd('dob', v), 'dd-mm-yyyy', getValidation('Date of Birth', 'personal_info.dob')))}
                     {field('Gender *', select(['Male', 'Female', 'Other'], (pi.gender as string) || '', v => upd('gender', v), 'Select Gender', getValidation('Gender', 'personal_info.gender')))}
 
                     {field('Blood Group', select(['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'], (pi.blood_group as string) || '', v => upd('blood_group', v), 'Select Blood Group'))}
-                    {field('Category *', select(['General', 'OBC', 'SC', 'ST', 'NT', 'EWS'], (pi.category as string) || '', v => upd('category', v), 'Select Category', getValidation('Category', 'personal_info.category')))}
+                    {field('Category *', (
+                        <div className="space-y-2">
+                            {select(
+                                ['General', 'OBC', 'SC', 'ST', 'NT', 'EWS', 'Other'],
+                                (pi.category as string) && !['General', 'OBC', 'SC', 'ST', 'NT', 'EWS'].includes(pi.category as string) ? 'Other' : ((pi.category as string) || ''),
+                                v => {
+                                    if (v === 'Other') {
+                                        upd('category', 'Other');
+                                    } else {
+                                        upd('category', v);
+                                    }
+                                },
+                                'Select Category',
+                                getValidation('Category', 'personal_info.category')
+                            )}
+                            {((pi.category as string) === 'Other' || ((pi.category as string) && !['General', 'OBC', 'SC', 'ST', 'NT', 'EWS', 'Other'].includes(pi.category as string))) && (
+                                input('text', (pi.category as string) === 'Other' ? '' : (pi.category as string) || '', v => upd('category', v), 'Enter category', getValidation('Custom Category', 'personal_info.category'))
+                            )}
+                        </div>
+                    ))}
 
                     {field('Aadhar Card Number', input('text', (pi.aadhar_number as string) || '', v => upd('aadhar_number', v), 'e.g. 123412341234', getFieldValidation('personal_info.aadhar_number')))}
                     {field('MIS UID *', input('text', (pi.mis_uid as string) || '', v => upd('mis_uid', v), 'e.g. 240030**', getValidation('MIS UID', 'personal_info.mis_uid')))}
@@ -139,6 +164,82 @@ export default function Step1Personal() {
             </section>
 
             <div className="space-y-4">
+                <h3 className="mb-4 border-b border-[#c9d6ea] pb-2 text-2xl font-semibold text-[#223b60]">Location Details</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 mb-5">
+                    {field('State *', select(
+                        State.getStatesOfCountry('IN').map(s => s.name),
+                        (pi.state as string) || '',
+                        v => {
+                            update({
+                                personal_info: {
+                                    state: v,
+                                    city: '',
+                                    pincode: ''
+                                }
+                            });
+                        },
+                        'Select State',
+                        getValidation('State', 'personal_info.state')
+                    ))}
+                    
+                    {field('City *', (() => {
+                        const stateObj = State.getStatesOfCountry('IN').find(s => s.name === pi.state);
+                        const cityList = stateObj ? City.getCitiesOfState('IN', stateObj.isoCode).map(c => c.name) : [];
+                        const isCustom = (pi.city as string) && !cityList.includes(pi.city as string);
+                        const selectedVal = isCustom || (pi.city === 'Other') ? 'Other' : ((pi.city as string) || '');
+                        
+                        return (
+                            <div className="space-y-2">
+                                {select(
+                                    [...cityList, 'Other'],
+                                    selectedVal,
+                                    async v => {
+                                        if (v === 'Other') {
+                                            upd('city', 'Other');
+                                        } else {
+                                            upd('city', v);
+                                            // auto fetch pincode
+                                            try {
+                                                const res = await fetch(`https://api.postalpincode.in/postoffice/${v}`);
+                                                const data = await res.json();
+                                                if (data && data[0] && data[0].Status === 'Success') {
+                                                    const postOffices = data[0].PostOffice;
+                                                    if (postOffices && postOffices.length > 0) {
+                                                        upd('pincode', postOffices[0].Pincode);
+                                                    }
+                                                }
+                                            } catch (e) {
+                                                console.error('Failed to fetch pincode', e);
+                                            }
+                                        }
+                                    },
+                                    'Select City',
+                                    getValidation('City', 'personal_info.city')
+                                )}
+                                {(selectedVal === 'Other') && (
+                                    input('text', (pi.city as string) === 'Other' ? '' : (pi.city as string) || '', v => upd('city', v), 'Enter city name', getValidation('Custom City', 'personal_info.city'))
+                                )}
+                            </div>
+                        );
+                    })())}
+
+                    {field('Pincode *', input(
+                        'text', 
+                        (pi.pincode as string) || '', 
+                        v => upd('pincode', v), 
+                        'e.g. 110001', 
+                        getValidation('Pincode', 'personal_info.pincode')
+                    ))}
+
+                    {field('DIGIPIN', input(
+                        'text', 
+                        (pi.digipin as string) || '', 
+                        v => upd('digipin', v.toUpperCase()), 
+                        '10-character alphanumeric', 
+                        getValidation('DIGIPIN', 'personal_info.digipin')
+                    ))}
+                </div>
+
                 {field('Permanent Address *', (
                     <div className="space-y-1">
                         <textarea
@@ -170,17 +271,14 @@ export default function Step1Personal() {
             </div>
 
             <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Passport Size Photo</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Passport Size Photo *</label>
                 
                 {(pi.photoUrl as string) ? (
                     <>
                         <div className="mb-3 flex flex-col items-start gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3 sm:flex-row sm:items-center">
-                            <img
-                                src={String(pi.photoUrl)}
-                                alt="Uploaded student profile"
-                                className="rounded-xl border border-[#d9e1ec] object-cover"
-                                style={{ width: '96px', height: '96px', flexShrink: 0 }}
-                            />
+                            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-[#d9e1ec] bg-slate-50 dark:border-[#334155] dark:bg-slate-800">
+                                <FileText className="h-10 w-10 text-slate-400" />
+                            </div>
                             <div className="w-full min-w-0">
                                 <p className="text-sm font-medium text-[#32435f]">Current uploaded photo</p>
                                 <a className="break-words text-sm text-[#2b5fa6] underline" href={String(pi.photoUrl)} target="_blank" rel="noreferrer">
@@ -197,7 +295,7 @@ export default function Step1Personal() {
                     <input
                         type="file"
                         id="passport-photo-upload"
-                        accept="image/*"
+                        accept="application/pdf"
                         onChange={handlePhotoUpload}
                         disabled={uploading}
                         style={{ display: 'none' }}
@@ -232,8 +330,8 @@ export default function Step1Personal() {
                 )}
                 
                 <div className="mt-2 flex flex-col gap-0.5 text-xs text-[#8796ac]">
-                    <p>Supported formats: PNG, JPG, JPEG</p>
-                    <p>Maximum file size: 2 MB</p>
+                    <p>Supported formats: PDF</p>
+                    <p>Maximum file size: 1 MB</p>
                 </div>
             </div>
         </div>

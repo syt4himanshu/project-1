@@ -4,7 +4,7 @@ import { field, input, sectionCardCls } from './shared'
 export default function Step2Parents() {
     const { data, update, getFieldValidation } = useStudentProfileDraft()
     const pi = (data.personal_info as Record<string, unknown>) || {}
-    const upd = (k: string, v: unknown) => update({ personal_info: { ...pi, [k]: v } })
+    const upd = (k: string, v: unknown) => update({ personal_info: { [k]: v } })
 
     return (
         <div className="space-y-5">

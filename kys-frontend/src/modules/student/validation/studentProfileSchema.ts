@@ -52,7 +52,23 @@ const studentProfileSchema = Joi.object({
     mother_email: optionalEmail,
     mother_occupation: Joi.string().trim().max(255).allow('', null),
     blood_group: Joi.string().trim().max(5).allow('', null),
-    category: Joi.string().trim().max(20).allow('', null),
+    category: Joi.string().trim().max(100).allow('', null),
+    city: Joi.string().trim().max(120).allow('', null),
+    state: Joi.string().trim().max(120).allow('', null),
+    pincode: Joi.string()
+      .trim()
+      .allow('', null)
+      .pattern(/^\d{6}$/)
+      .messages({
+        'string.pattern.base': '{#label} must be a 6 digit PIN code',
+      }),
+    digipin: Joi.string()
+      .trim()
+      .allow('', null)
+      .pattern(/^[a-zA-Z0-9]{10}$/)
+      .messages({
+        'string.pattern.base': '{#label} must be a 10-character alphanumeric DIGIPIN',
+      }),
     aadhar_number: Joi.string()
       .trim()
       .allow('', null)
@@ -274,6 +290,16 @@ const step0Schema = Joi.object({
       .allow('', null)
       .pattern(/^(\d{8}|--|n\/a|na)$/i)
       .messages({ 'string.pattern.base': 'must be an 8 digit MIS UID' }),
+    pincode: Joi.string()
+      .trim()
+      .allow('', null)
+      .pattern(/^\d{6}$/)
+      .messages({ 'string.pattern.base': 'must be a 6 digit PIN code' }),
+    digipin: Joi.string()
+      .trim()
+      .allow('', null)
+      .pattern(/^[a-zA-Z0-9]{10}$/)
+      .messages({ 'string.pattern.base': 'must be a 10-character alphanumeric DIGIPIN' }),
   }).unknown(true),
 }).unknown(true)
 

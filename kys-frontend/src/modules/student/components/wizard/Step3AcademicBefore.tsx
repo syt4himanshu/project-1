@@ -2,7 +2,7 @@ import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
 import { field, input, inputCls, sectionCardCls, select } from './shared'
 
 const BOARDS = ['CBSE', 'State Board', 'ICSE', 'Other']
-const ENTRANCE_EXAMS = ['MHT-CET', 'JEE']
+const ENTRANCE_EXAMS = ['MHT-CET', 'JEE', 'Other']
 
 export default function Step3AcademicBefore() {
     const { data, update, error } = useStudentProfileDraft()
@@ -92,6 +92,10 @@ export default function Step3AcademicBefore() {
         useBoardInput = false,
     ) => {
         const rec = getRecord(examKey) as Record<string, unknown>
+        const isCustomBoard = rec.board && !BOARDS.includes(rec.board as string) && rec.board !== 'Other'
+        const displayBoard = isCustomBoard ? 'Other' : (rec.board as string || '')
+        const showBoardInput = displayBoard === 'Other'
+
         return (
             <section key={examKey} className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">{title}</h3>
@@ -100,7 +104,14 @@ export default function Step3AcademicBefore() {
                         `${boardLabel} *`,
                         useBoardInput
                             ? input('text', (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder, getValidation(`${examKey} Board`))
-                            : select(BOARDS, (rec.board as string) || '', v => upd(examKey, 'board', v), boardPlaceholder, getValidation(`${examKey} Board`)),
+                            : (
+                                <div className="flex flex-col gap-4">
+                                    {select(BOARDS, displayBoard, v => upd(examKey, 'board', v), boardPlaceholder, !showBoardInput ? getValidation(`${examKey} Board`) : undefined)}
+                                    {showBoardInput && (
+                                        input('text', isCustomBoard ? (rec.board as string) : '', v => upd(examKey, 'board', v), `Enter ${boardLabel}`, getValidation(`${examKey} Board`))
+                                    )}
+                                </div>
+                            )
                     )}
                     {field('Percentage / Grade *', input('text', rec.percentage != null ? String(rec.percentage) : '', v => handlePercentageChange(examKey, v), 'e.g. 85.50', getValidation(`${examKey} Percentage / Grade`)))}
                     {field('Year of Passing *', input('number', String(rec.year_of_passing || ''), v => upd(examKey, 'year_of_passing', v === '' ? null : Number(v)), 'e.g. 2024', getValidation(`${examKey} Year of Passing`)))}
@@ -156,9 +167,30 @@ export default function Step3AcademicBefore() {
                     <section className={sectionCardCls}>
                         <h3 className="mb-4 border-b-2 border-[#df981e] pb-2 text-3xl font-semibold text-[#223b60]">Entrance Exam & Admission Details</h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
-                            {field('Entrance Exam Type *', select(ENTRANCE_EXAMS, (entrance.exam_type as string) || '', v => upd('ENTRANCE_EXAM', 'exam_type', v), 'Select Exam', getValidation('Entrance Exam Type')))}
+                            {field('Entrance Exam Type *', (() => {
+                                const isCustomExam = entrance.exam_type && !ENTRANCE_EXAMS.includes(entrance.exam_type as string) && entrance.exam_type !== 'Other'
+                                const displayExam = isCustomExam ? 'Other' : (entrance.exam_type as string || '')
+                                const showExamInput = displayExam === 'Other'
+                                return (
+                                    <div className="flex flex-col gap-4">
+                                        {select(ENTRANCE_EXAMS, displayExam, v => upd('ENTRANCE_EXAM', 'exam_type', v), 'Select Exam', !showExamInput ? getValidation('Entrance Exam Type') : undefined)}
+                                        {showExamInput && (
+                                            input('text', isCustomExam ? (entrance.exam_type as string) : '', v => upd('ENTRANCE_EXAM', 'exam_type', v), 'Enter Exam Type', getValidation('Entrance Exam Type'))
+                                        )}
+                                    </div>
+                                )
+                            })())}
                             {field('Percentile *', input('text', entrance.percentage != null ? String(entrance.percentage) : '', v => handlePercentageChange('ENTRANCE_EXAM', v), 'Score / Percentile', getValidation('Entrance Percentile')))}
                             {field('Year of Passing *', input('number', String(entrance.year_of_passing || ''), v => upd('ENTRANCE_EXAM', 'year_of_passing', v === '' ? null : Number(v)), 'Year of Passing', getValidation('Entrance Exam Year of Passing')))}
+                        </div>
+                    </section>
+                    
+                    <section className={sectionCardCls}>
+                        <h3 className="mb-4 border-b-2 border-[#10b981] pb-2 text-3xl font-semibold text-[#223b60]">Other Programs</h3>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+                            {field('Program Title', input('text', (getRecord('EXTRA_PROGRAM').exam_type as string) || '', v => upd('EXTRA_PROGRAM', 'exam_type', v), 'Title of the Program'))}
+                            {field('Score/Percentage (Numeric)', input('number', getRecord('EXTRA_PROGRAM').percentage != null ? String(getRecord('EXTRA_PROGRAM').percentage) : '', v => handlePercentageChange('EXTRA_PROGRAM', v), 'e.g. 85.5'))}
+                            {field('Year of Passing', input('number', String(getRecord('EXTRA_PROGRAM').year_of_passing || ''), v => upd('EXTRA_PROGRAM', 'year_of_passing', v === '' ? null : Number(v)), 'Year of Passing'))}
                         </div>
                     </section>
                 </>

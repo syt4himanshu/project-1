@@ -160,6 +160,16 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
       if (isBlank(diploma.year_of_passing)) missing.push('Diploma Year of Passing')
     }
 
+    const extraProgram = getPast('EXTRA_PROGRAM')
+    if (
+      !isBlank(extraProgram.exam_name) &&
+      (!isBlank(extraProgram.exam_type) || !isBlank(extraProgram.percentage) || !isBlank(extraProgram.year_of_passing))
+    ) {
+      if (isBlank(extraProgram.exam_type)) missing.push('Extra Program Title')
+      if (isBlank(extraProgram.percentage)) missing.push('Extra Program Score')
+      if (isBlank(extraProgram.year_of_passing)) missing.push('Extra Program Year')
+    }
+
     const currentSem = Number(data.semester || 8)
     const postAdmissionRecords = (data.post_admission_records as Record<string, unknown>[]) || []
     const semesters = Array.from({ length: Math.max(currentSem - 1, 0) }, (_, i) => i + 1)
@@ -218,7 +228,15 @@ function getPayloadForStep(step: number, data: Record<string, unknown>) {
 
   if (step === 1) {
     if ('admission_type' in data) payload.admission_type = data.admission_type
-    if ('past_education_records' in data) payload.past_education_records = data.past_education_records
+    if ('past_education_records' in data) {
+      const records = (data.past_education_records as Record<string, unknown>[]) || []
+      payload.past_education_records = records.filter(r => {
+        if (r.exam_name === 'EXTRA_PROGRAM') {
+          return !isBlank(r.exam_type) || !isBlank(r.percentage) || !isBlank(r.year_of_passing)
+        }
+        return true
+      })
+    }
     return payload
   }
 
@@ -396,7 +414,17 @@ export const submitStudentProfile = createAsyncThunk<
     }
 
     try {
-      await updateProfile(state.data)
+      const finalData = { ...state.data }
+      if (finalData.past_education_records) {
+        const records = (finalData.past_education_records as Record<string, unknown>[]) || []
+        finalData.past_education_records = records.filter(r => {
+          if (r.exam_name === 'EXTRA_PROGRAM') {
+            return !isBlank(r.exam_type) || !isBlank(r.percentage) || !isBlank(r.year_of_passing)
+          }
+          return true
+        })
+      }
+      await updateProfile(finalData)
       clearDraft(state.draftKey)
     } catch (error) {
       const message = error instanceof Error ? error.message || 'Failed to save profile' : 'Failed to save profile'
@@ -415,9 +443,15 @@ const studentProfileSlice = createSlice({
   initialState,
   reducers: {
     patchStudentProfileData(state, action: PayloadAction<Record<string, unknown>>) {
-      state.data = {
-        ...state.data,
-        ...action.payload,
+      for (const [key, value] of Object.entries(action.payload)) {
+        if (isRecord(value)) {
+          state.data[key] = {
+            ...(state.data[key] as Record<string, unknown> || {}),
+            ...value,
+          }
+        } else {
+          state.data[key] = value
+        }
       }
       
       if (state.error && state.error.startsWith('Please fill required fields:')) {
