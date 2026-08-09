@@ -60,8 +60,18 @@ export function MentoringHistoryPanel({
                             <span>Sem {m.semester}{m.created_by_faculty ? ' · You' : ''}</span>
                         </div>
                         <p className="mt-2 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                            {m.remarks}
+                            <span className="font-medium text-gray-600 dark:text-gray-300">AI Remarks:</span> {m.remarks}
                         </p>
+                        {m.mentor_remarks && (
+                            <p className="mt-2 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                                <span className="font-medium text-gray-600 dark:text-gray-300">Mentor Remarks:</span> {m.mentor_remarks}
+                            </p>
+                        )}
+                        {m.issues && (
+                            <p className="mt-2 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                                <span className="font-medium text-gray-600 dark:text-gray-300">Issues:</span> {m.issues}
+                            </p>
+                        )}
                         {m.suggestion && (
                             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                                 <span className="font-medium">Suggestion:</span> {m.suggestion}

@@ -152,7 +152,7 @@ export function formatContextLabel(
     students: MenteeRow[],
 ): string {
     const student = students.find((s) => s.uid === selectedStudentUid)
-    return student ? `Student: ${student.full_name}` : 'No student selected'
+    return student ? `Mentee: ${student.full_name}` : 'No mentee selected'
 }
 
 /** Returns true if the query should trigger a full snapshot refresh */

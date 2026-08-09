@@ -213,7 +213,7 @@ describe('Faculty route smoke and auth parity', () => {
   test.each([
     ['/faculty/dashboard', /dashboard/i],
     ['/faculty/mentees', /dashboard/i],
-    ['/faculty/mentees/STU001', /faculty mentoring portal/i],
+    ['/faculty/mentees/STU001', /mentoring portal/i],
     ['/faculty/chatbot', /teacher insights chatbot/i],
     ['/faculty/profile', /my profile/i],
   ])('renders faculty route %s', async (path, heading) => {

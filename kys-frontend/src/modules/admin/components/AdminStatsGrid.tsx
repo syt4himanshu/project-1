@@ -26,7 +26,7 @@ const STAT_CARDS: Array<{
   },
   {
     key: 'totalFaculty',
-    label: 'Teachers',
+    label: 'Mentors',
     helper: 'Faculty records in mentoring pool',
     icon: 'person_book',
     tone: 'emerald',

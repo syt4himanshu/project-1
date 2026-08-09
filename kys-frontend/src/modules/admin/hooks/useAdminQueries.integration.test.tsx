@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+﻿import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest'
@@ -68,6 +68,7 @@ describe('Admin query mutations integration', () => {
         role: 'admin',
         name: 'Admin User',
         photoUrl: null,
+      photoPreviewUrl: null,
         status: 'Active',
         createdAt: '2026-01-01',
       },
@@ -77,6 +78,7 @@ describe('Admin query mutations integration', () => {
         role: 'student',
         name: 'Student One',
         photoUrl: null,
+      photoPreviewUrl: null,
         status: 'Active',
         createdAt: '2026-01-02',
       },
@@ -163,3 +165,4 @@ describe('Admin query mutations integration', () => {
     }))
   })
 })
+

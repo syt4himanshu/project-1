@@ -25,15 +25,15 @@ const ROLE_CARDS: RoleCard[] = [
     role: 'student',
     icon: GraduationCap,
     accentClass: 'role-select-kys__badge--student',
-    title: 'Student',
+    title: 'Mentee',
     description: 'Streamline your acadamic journey with our comprehensive system. Form Submission, Mentoring, and more.',
   },
   {
     role: 'faculty',
     icon: Users,
     accentClass: 'role-select-kys__badge--teacher',
-    title: 'Teacher',
-    description: 'Manage your classes, track student performance, create assessments, and communicate with students and parents.',
+    title: 'Mentor',
+    description: 'Manage your classes, track mentee performance, create assessments, and communicate with mentees and parents.',
   },
 ]
 

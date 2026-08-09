@@ -152,9 +152,9 @@ export function AdminUsersPage() {
         header: 'User',
         cell: (row) => (
           <div className="admin-identity">
-            {row.photoUrl ? (
+            {row.photoUrl || row.photoPreviewUrl ? (
               <PhotoAvatar
-                url={resolveImageUrl(row.photoUrl)}
+                url={resolveImageUrl(row.photoPreviewUrl || row.photoUrl)}
                 alt={`${sanitizeDisplayValue(row.name)} profile`}
                 className="admin-avatar"
                 fallback={<span className="admin-avatar admin-avatar--placeholder">{avatarInitials(row)}</span>}
@@ -263,9 +263,9 @@ export function AdminUsersPage() {
     return (
       <div className="mobile-card">
         <div className="mobile-card__header">
-          {row.photoUrl ? (
+          {row.photoUrl || row.photoPreviewUrl ? (
             <PhotoAvatar
-              url={resolveImageUrl(row.photoUrl)}
+              url={resolveImageUrl(row.photoPreviewUrl || row.photoUrl)}
               alt={`${sanitizeDisplayValue(row.name)} profile`}
               className="mobile-card__avatar"
               fallback={(

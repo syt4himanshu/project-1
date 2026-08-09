@@ -103,7 +103,7 @@ const getSanitizedStudentDataset = async (studentIds) => {
 
   const skills = await sequelize.query(
     `
-    SELECT sk.student_id, sk.programming_languages, sk.technologies_frameworks, sk.domains_of_interest, sk.familiar_tools_platforms
+    SELECT sk.student_id, sk.programming_languages, sk.technologies_frameworks, sk.frontend_technologies_frameworks, sk.backend_technologies_databases, sk.domains_of_interest, sk.familiar_tools_platforms
     FROM skills sk
     WHERE sk.student_id IN (:studentIds)
     `,
@@ -232,6 +232,8 @@ const getSanitizedStudentDataset = async (studentIds) => {
         ? {
             programming_languages: sanitizeText(studentSkills.programming_languages),
             technologies_frameworks: sanitizeText(studentSkills.technologies_frameworks),
+            frontend_technologies_frameworks: sanitizeText(studentSkills.frontend_technologies_frameworks),
+            backend_technologies_databases: sanitizeText(studentSkills.backend_technologies_databases),
             domains_of_interest: sanitizeText(studentSkills.domains_of_interest),
             familiar_tools_platforms: sanitizeText(studentSkills.familiar_tools_platforms),
           }

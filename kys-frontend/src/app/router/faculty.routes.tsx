@@ -56,7 +56,7 @@ export const facultyRoutes: RouteObject = {
             {
               path: 'mentees/:uid',
               element: (
-                <Suspense fallback={<PageLoader message="Loading student details..." />}>
+                <Suspense fallback={<PageLoader message="Loading mentee details..." />}>
                   <FacultyMenteeDetailPage />
                 </Suspense>
               ),

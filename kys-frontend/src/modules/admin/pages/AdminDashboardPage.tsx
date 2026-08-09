@@ -5,7 +5,7 @@ export function AdminDashboardPage() {
   return (
     <SectionShell
       title="Admin Overview"
-      subtitle="Read-only health snapshot for users, teachers, and students."
+      subtitle="Read-only health snapshot for users, mentors, and students."
     >
       <AdminStatsGrid />
     </SectionShell>

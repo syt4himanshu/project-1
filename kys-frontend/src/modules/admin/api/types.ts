@@ -15,6 +15,7 @@ export interface AdminUserSummary {
   role: AdminUserRole
   name: string
   photoUrl: string | null
+  photoPreviewUrl: string | null
   status: string
   createdAt: string
 }
@@ -503,6 +504,8 @@ export interface AdminStudentRemark {
   semester: number
   date: string | null
   remarks: string | null
+  mentorRemarks: string | null
+  issues: string | null
   suggestion: string | null
   action: string | null
   createdByFaculty: boolean
@@ -530,6 +533,8 @@ export interface AdminStudentRemarkApiResponse {
   semester?: unknown
   date?: unknown
   remarks?: unknown
+  mentor_remarks?: unknown
+  issues?: unknown
   suggestion?: unknown
   action?: unknown
   created_by_faculty?: unknown

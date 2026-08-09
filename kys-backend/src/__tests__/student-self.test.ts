@@ -143,7 +143,7 @@ describe('student self APIs', () => {
     expect([200, 400]).toContain(res.status);
   });
 
-  it('PUT /api/student/me incomplete entrance exam returns 400 instead of 500', async () => {
+  it('PUT /api/student/me incomplete entrance exam is allowed for drafts (returns 200)', async () => {
     const res = await request(
       'PUT',
       '/api/student/me',
@@ -158,7 +158,7 @@ describe('student self APIs', () => {
       studentToken,
     );
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
   });
 
   it('PUT /api/student/me keeps upload-managed photo fields intact', async () => {

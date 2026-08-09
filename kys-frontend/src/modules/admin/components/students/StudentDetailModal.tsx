@@ -626,21 +626,25 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                   </div>
                   <div style={{ marginTop: '16px', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ background: '#f8fafc', color: '#334155', padding: '12px 14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px', color: '#0f172a' }}>Remarks</span>
-                      <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.remarks}</span>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px', color: '#0f172a' }}>AI Remarks</span>
+                      <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.remarks || 'None'}</span>
                     </div>
-                    {m.suggestion && (
-                      <div style={{ background: '#eff6ff', color: '#1e40af', padding: '12px 14px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
-                        <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Suggestion</span>
-                        <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.suggestion}</span>
-                      </div>
-                    )}
-                    {m.action && (
-                      <div style={{ background: '#f0fdf4', color: '#166534', padding: '12px 14px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                        <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Action</span>
-                        <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.action}</span>
-                      </div>
-                    )}
+                    <div style={{ background: '#f5f3ff', color: '#4c1d95', padding: '12px 14px', borderRadius: '6px', border: '1px solid #ddd6fe' }}>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Mentor Remarks</span>
+                      <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{(m as any).mentor_remarks || 'None'}</span>
+                    </div>
+                    <div style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 14px', borderRadius: '6px', border: '1px solid #fecaca' }}>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Issues</span>
+                      <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{(m as any).issues || 'None'}</span>
+                    </div>
+                    <div style={{ background: '#eff6ff', color: '#1e40af', padding: '12px 14px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Suggestion</span>
+                      <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.suggestion || 'None'}</span>
+                    </div>
+                    <div style={{ background: '#f0fdf4', color: '#166534', padding: '12px 14px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Action</span>
+                      <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.action || 'None'}</span>
+                    </div>
                   </div>
                 </div>
               ))}

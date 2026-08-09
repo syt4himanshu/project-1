@@ -9,6 +9,7 @@ class Project extends Model {
         title: { type: DataTypes.TEXT, allowNull: true },
         description: { type: DataTypes.TEXT, allowNull: true },
         project_guide: { type: DataTypes.STRING(255), allowNull: true },
+        domain: { type: DataTypes.STRING(255), allowNull: true },
       },
       { sequelize, modelName: 'Project', tableName: 'project', timestamps: false },
     );

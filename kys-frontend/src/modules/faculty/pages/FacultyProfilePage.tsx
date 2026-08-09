@@ -113,7 +113,7 @@ export function FacultyProfilePage() {
   return (
     <SectionShell
       title="My Profile"
-      subtitle="Manage faculty profile fields and account password."
+      subtitle="Manage mentor profile fields and account password."
     >
       <div className="faculty-profile-grid">
         <section className="faculty-profile-card">

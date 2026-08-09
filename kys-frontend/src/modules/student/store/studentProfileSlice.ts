@@ -79,6 +79,8 @@ function mergeStudentProfileData(
     ...draftPersonalInfo,
     photoUrl: preferNonEmptyString(draftPersonalInfo.photoUrl, serverPersonalInfo.photoUrl),
     photo_public_id: preferNonEmptyString(draftPersonalInfo.photo_public_id, serverPersonalInfo.photo_public_id),
+    photoPreviewUrl: preferNonEmptyString(draftPersonalInfo.photoPreviewUrl, serverPersonalInfo.photoPreviewUrl),
+    photo_preview_url: preferNonEmptyString(draftPersonalInfo.photo_preview_url, serverPersonalInfo.photo_preview_url),
   }
 
   return merged
@@ -115,13 +117,16 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     if (isBlank(data.full_name)) missing.push('Full Name')
     if (isBlank(data.semester)) missing.push('Semester')
     if (isBlank(data.section)) missing.push('Section')
-    if (isBlank(pi.category)) missing.push('Category')
+    if (isBlank(pi.category) || pi.category === 'Other') missing.push('Category')
     if (isBlank(pi.mis_uid)) missing.push('MIS UID')
     if (isBlank(pi.dob)) missing.push('Date of Birth')
     if (isBlank(pi.gender)) missing.push('Gender')
     if (isBlank(pi.mobile_no)) missing.push('WhatsApp Mobile No.')
     if (isBlank(pi.personal_email)) missing.push('Personal Email')
     if (isBlank(pi.college_email)) missing.push('College Email (Professional)')
+    if (isBlank(pi.state)) missing.push('State')
+    if (isBlank(pi.city) || pi.city === 'Other') missing.push('City')
+    if (isBlank(pi.pincode)) missing.push('Pincode')
     if (isBlank(pi.permanent_address)) missing.push('Permanent Address')
     
     // Parents Info (formerly step 1)
@@ -190,8 +195,10 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     const majorProject = projects[1] || {}
 
     if (isBlank(miniProject.title)) missing.push('Mini Project Title')
+    if (isBlank(miniProject.domain) || miniProject.domain === 'Other') missing.push('Mini Project Domain')
     if (isBlank(majorProject.title)) missing.push('Major Project Title')
-
+    if (isBlank(majorProject.domain) || majorProject.domain === 'Other') missing.push('Major Project Domain')
+    
     return missing
   }
 
@@ -201,7 +208,7 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     if (isBlank(swoc.weaknesses)) missing.push('Weaknesses / Areas of Improvement')
     if (isBlank(swoc.opportunities)) missing.push('Opportunities')
     if (isBlank(swoc.challenges)) missing.push('Challenges')
-    if (isBlank(co.career_goal)) missing.push('Career Goal')
+    if (isBlank(co.career_goal) || co.career_goal === 'Other') missing.push('Career Goal')
     if (isBlank(co.clarity_preparedness)) missing.push('Clarity and Preparedness Level')
     if (co.interested_in_campus_placement !== true && co.interested_in_campus_placement !== false) {
       missing.push('Interested in Campus Placement?')

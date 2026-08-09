@@ -94,13 +94,79 @@ const uploadStudentPhotoForRecord = async (student, file) => {
   let uploadResult = null;
 
   try {
-    uploadResult = await cloudinary.uploader.upload(
-      `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
-      { folder: 'students', resource_type: 'raw', format: 'pdf' },
-    );
+    console.log("=== UPLOADING TO CLOUDINARY ===");
+    console.log({
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      bufferLength: file.buffer?.length,
+      firstBytes: file.buffer?.subarray(0, 20).toString('hex')
+    });
+
+    // Step 1: Verify actual PDF magic bytes
+    const hex = file.buffer?.subarray(0, 5).toString('hex');
+    if (hex !== '255044462d') { // %PDF-
+      throw new Error(`File is not a valid PDF document (missing PDF signature, got ${hex}).`);
+    }
+
+    // Use default image resource type for PDF rendering
+    const uploadOptions = { folder: 'students', upload_preset: 'student_images_kys' };
+    console.log("Upload Options:", uploadOptions);
+
+    uploadResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary Error:", error);
+            return reject(error);
+          }
+          resolve(result);
+        }
+      );
+      const { Readable } = require('stream');
+      Readable.from(file.buffer).pipe(stream);
+    });
+
+    console.log("=== CLOUDINARY RESPONSE ===");
+    console.log({
+      public_id: uploadResult.public_id,
+      secure_url: uploadResult.secure_url,
+      url: uploadResult.url,
+      resource_type: uploadResult.resource_type,
+      type: uploadResult.type,
+      format: uploadResult.format,
+      bytes: uploadResult.bytes,
+      original_filename: uploadResult.original_filename,
+      version: uploadResult.version
+    });
+
+    if (!uploadResult || !uploadResult.public_id || !uploadResult.secure_url || uploadResult.resource_type !== 'image' || !(uploadResult.bytes > 0)) {
+      throw new Error('Cloudinary returned an invalid or incomplete response for an image asset.');
+    }
+
+    // Generate preview URL (page 1 as JPG)
+    const previewUrl = cloudinary.url(uploadResult.public_id, {
+      secure: true,
+      format: 'jpg',
+      type: uploadResult.type,
+      resource_type: 'image'
+    });
+    console.log("Generated preview URL:", previewUrl);
+
+    // Step 3: Verify the Cloudinary Asset
+    try {
+      const assetDetails = await cloudinary.api.resource(uploadResult.public_id, { resource_type: 'image' });
+      if (!assetDetails || assetDetails.resource_type !== 'image' || !(assetDetails.bytes > 0)) {
+        throw new Error('Asset verification failed in Cloudinary.');
+      }
+    } catch (verifyError) {
+      throw new Error(`Asset verification error: ${verifyError.message || verifyError}`);
+    }
 
     personalInfo.photo_url = uploadResult.secure_url;
     personalInfo.photo_public_id = uploadResult.public_id;
+    personalInfo.photo_preview_url = previewUrl;
     await personalInfo.save();
 
     invalidateMenteesCache(student.mentor_id);
@@ -114,10 +180,15 @@ const uploadStudentPhotoForRecord = async (student, file) => {
         message: 'Upload successful',
         photoUrl: uploadResult.secure_url,
         photo_public_id: personalInfo.photo_public_id,
+        photo_preview_url: personalInfo.photo_preview_url,
         secure_url: uploadResult.secure_url,
       },
     };
   } catch (uploadError) {
+    console.error("=== UPLOAD CATCH ERROR ===");
+    console.error(uploadError);
+    if (uploadError.stack) console.error(uploadError.stack);
+
     // Rollback: Clean up newly uploaded photo if DB save fails
     if (uploadResult?.public_id) {
       try {
@@ -138,7 +209,7 @@ const uploadStudentPhotoForRecord = async (student, file) => {
     return {
       ok: false,
       status: 500,
-      error: 'Upload failed',
+      error: uploadError.message || JSON.stringify(uploadError) || 'Upload failed',
     };
   }
 };

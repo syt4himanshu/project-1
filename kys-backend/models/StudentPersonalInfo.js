@@ -34,6 +34,7 @@ class StudentPersonalInfo extends Model {
         guardian_email: { type: DataTypes.STRING(255), allowNull: true },
         photo_url: { type: DataTypes.TEXT, allowNull: true },
         photo_public_id: { type: DataTypes.STRING(255), allowNull: true },
+        photo_preview_url: { type: DataTypes.TEXT, allowNull: true },
         city: { type: DataTypes.STRING(120), allowNull: true },
         state: { type: DataTypes.STRING(120), allowNull: true },
         pincode: { type: DataTypes.STRING(6), allowNull: true },

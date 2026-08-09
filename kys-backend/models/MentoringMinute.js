@@ -12,6 +12,8 @@ class MentoringMinute extends Model {
         semester: { type: DataTypes.INTEGER, allowNull: false },
         date: { type: DataTypes.DATEONLY, allowNull: true },
         remarks: { type: DataTypes.TEXT, allowNull: true },
+        mentor_remarks: { type: DataTypes.TEXT, allowNull: true },
+        issues: { type: DataTypes.TEXT, allowNull: true },
         suggestion: { type: DataTypes.TEXT, allowNull: true },
         action: { type: DataTypes.TEXT, allowNull: true },
       },

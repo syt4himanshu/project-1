@@ -218,7 +218,46 @@ function useStudentProfileDraftPersistence(draftKey: string, data: Record<string
   }
 }
 
-function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknown>, loading: boolean) {
+function getPayloadForStep(data: Record<string, unknown>, step: number) {
+  switch (step) {
+    case 0:
+      return {
+        first_name: data.first_name,
+        middle_name: data.middle_name,
+        last_name: data.last_name,
+        full_name: data.full_name,
+        uid: data.uid,
+        semester: data.semester,
+        section: data.section,
+        year_of_admission: data.year_of_admission,
+        personal_info: data.personal_info,
+      }
+    case 1:
+      return {
+        admission_type: data.admission_type,
+        past_education_records: data.past_education_records,
+      }
+    case 2:
+      return {
+        post_admission_records: data.post_admission_records,
+        projects: data.projects,
+        internships: data.internships,
+        cocurricular_participations: data.cocurricular_participations,
+        cocurricular_organizations: data.cocurricular_organizations,
+      }
+    case 3:
+      return {
+        swoc: data.swoc,
+        career_objective: data.career_objective,
+        skills: data.skills,
+        skill_programs: data.skill_programs,
+      }
+    default:
+      return data
+  }
+}
+
+function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknown>, loading: boolean, step: number) {
   const [state, setState] = useState<AutoSyncState>({ status: 'idle', message: '', pending: false })
   const currentSignatureRef = useRef('')
   const lastSyncedSignatureRef = useRef('')
@@ -228,7 +267,12 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
   const retryTimerRef = useRef<number | null>(null)
   const retryCountRef = useRef(0)
   const latestDataRef = useRef(data)
+  const stepRef = useRef(step)
   const submitWaitersRef = useRef<Array<() => void>>([])
+
+  useEffect(() => {
+    stepRef.current = step
+  }, [step])
 
   const setStatus = useCallback((status: AutoSyncStatus, message: string, pending = false) => {
     setState({ status, message, pending })
@@ -256,7 +300,8 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
     setStatus(reason === 'retry' ? 'syncing' : 'saving', reason === 'retry' ? 'Syncing...' : 'Saving...', true)
 
     try {
-      await updateProfile(payload)
+      const stepPayload = reason === 'submit' ? payload : getPayloadForStep(payload, stepRef.current)
+      await updateProfile(stepPayload)
       const signature = serializeProfileData(payload)
       lastSyncedSignatureRef.current = signature
       currentSignatureRef.current = signature
@@ -355,14 +400,14 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
     }
   }, [setStatus, syncNow])
 
-  const flushPendingSync = useCallback(async () => {
+  const flushPendingSync = useCallback(async (fullPayload = false) => {
     if (idleTimerRef.current !== null) {
       window.clearTimeout(idleTimerRef.current)
       idleTimerRef.current = null
     }
 
     if (currentSignatureRef.current !== lastSyncedSignatureRef.current) {
-      await syncNow(latestDataRef.current, 'submit')
+      await syncNow(latestDataRef.current, fullPayload ? 'submit' : 'idle')
     }
   }, [syncNow])
 
@@ -401,7 +446,7 @@ export function useStudentProfileWizard() {
   const draftRestored = useAppSelector((state) => state.studentProfile.draftRestored)
   const draftKey = useAppSelector((state) => state.studentProfile.draftKey || deriveDraftKey(state))
   const draftPersistence = useStudentProfileDraftPersistence(draftKey, data, loading)
-  const autoSync = useStudentProfileAutoSync(draftKey, data, loading)
+  const autoSync = useStudentProfileAutoSync(draftKey, data, loading, step)
 
   useEffect(() => {
     if (status !== 'idle') return
@@ -436,7 +481,7 @@ export function useStudentProfileWizard() {
 
   const submit = useCallback(async () => {
     try {
-      await autoSync.flushPendingSync()
+      await autoSync.flushPendingSync(true)
       await autoSync.waitForSync()
       await dispatch(submitStudentProfile(undefined)).unwrap()
       draftPersistence.clearSavedDraft()

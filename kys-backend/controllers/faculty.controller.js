@@ -103,7 +103,7 @@ const addMentoringMinute = async (req, res, next) => {
     const student = await Student.findOne({ where: { uid: req.params.uid, mentor_id: faculty.id } });
     if (!student) return sendResponse(res, { success: false, status: 404, error: 'Mentee not found or not assigned to this faculty' });
 
-    const { remarks, suggestion, action } = req.body || {};
+    const { remarks, mentor_remarks, issues, suggestion, action } = req.body || {};
 
     try {
       const payload = {
@@ -114,6 +114,8 @@ const addMentoringMinute = async (req, res, next) => {
         semester: student.semester,
         date: new Date(),
         remarks,
+        mentor_remarks,
+        issues,
         suggestion,
         action,
       };
@@ -154,7 +156,7 @@ const getMenteeMentoringMinutes = async (req, res, next) => {
 
     const minutes = await MentoringMinute.findAll({
       where: { student_id: student.id },
-      attributes: ['id', 'student_id', 'faculty_id', 'semester', 'date', 'remarks', 'suggestion', 'action'],
+      attributes: ['id', 'student_id', 'faculty_id', 'semester', 'date', 'remarks', 'mentor_remarks', 'issues', 'suggestion', 'action'],
       order: [['date', 'DESC']],
       limit,
       offset
@@ -165,6 +167,8 @@ const getMenteeMentoringMinutes = async (req, res, next) => {
       semester: m.semester,
       date: m.date,
       remarks: m.remarks,
+      mentor_remarks: m.mentor_remarks,
+      issues: m.issues,
       suggestion: m.suggestion,
       action: m.action,
       created_by_faculty: Number(m.faculty_id) === Number(faculty.id),

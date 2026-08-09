@@ -60,7 +60,7 @@ export function ChatInput() {
 
             {isStudentSelectionInvalid && (
                 <p className="faculty-chat__warn">
-                    Select a student to begin generating mentoring insights.
+                    Select a mentee to begin generating mentoring insights.
                 </p>
             )}
 
@@ -75,7 +75,7 @@ export function ChatInput() {
                         maxLength={2000}
                         placeholder={
                             isStudentSelectionInvalid
-                                ? 'Select a student to begin...'
+                                ? 'Select a mentee to begin...'
                                 : 'Ask for mentoring insights, trends, concerns, or actionable suggestions...'
                         }
                         disabled={isStudentSelectionInvalid}

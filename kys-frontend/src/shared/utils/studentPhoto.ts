@@ -31,3 +31,16 @@ export function extractStudentPhotoUrl(value: unknown): string | null {
     record.photoUrl,
   )
 }
+
+export function extractStudentPhotoPreviewUrl(value: unknown): string | null {
+  const record = asRecord(value)
+  const personalInfo = asRecord(record.personal_info)
+
+  // Returns photo_preview_url if available, else falls back to photo_url (for backward compatibility)
+  return firstNonEmptyString(
+    personalInfo.photo_preview_url,
+    record.photo_preview_url,
+    personalInfo.photoUrl,
+    record.photoUrl,
+  )
+}

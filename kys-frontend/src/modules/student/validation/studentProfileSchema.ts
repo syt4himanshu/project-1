@@ -109,19 +109,26 @@ const studentProfileSchema = Joi.object({
 
   projects: Joi.array().items(Joi.object({
     title: text255,
+    domain: text255,
     description: text200.messages({
       'string.max': 'Project description must not exceed 200 characters',
     }),
   }).unknown(true)),
 
   internships: Joi.array().items(Joi.object({
+    title: text255,
     company_name: text255,
     domain: text255,
     internship_type: Joi.string().trim().max(20).allow('', null),
     paid_unpaid: Joi.string().trim().max(10).allow('', null),
+    paid_type: Joi.string().trim().max(50).allow('', null),
+    stipend_amount: Joi.string().trim().max(50).allow('', null),
+    paid_amount: Joi.string().trim().max(50).allow('', null),
     start_date: Joi.string().trim().max(20).allow('', null),
     end_date: Joi.string().trim().max(20).allow('', null),
     designation: Joi.string().trim().max(120).allow('', null),
+    city: Joi.string().trim().max(120).allow('', null),
+    state: Joi.string().trim().max(120).allow('', null),
     description: text200.messages({
       'string.max': 'Internship description must not exceed 200 characters',
     }),
@@ -144,25 +151,29 @@ const studentProfileSchema = Joi.object({
   skill_programs: Joi.array().items(Joi.object({
     course_title: text255,
     platform: text255,
+    domain: text255,
     duration_hours: Joi.number().min(0).max(10000).allow(null),
     date_from: Joi.string().trim().max(20).allow('', null),
     date_to: Joi.string().trim().max(20).allow('', null),
   }).unknown(true)),
 
   career_objective: Joi.object({
-    career_goal: Joi.string().trim().max(50).allow('', null),
+    career_goal: Joi.string().trim().max(120).allow('', null),
     specific_details: text200,
     clarity_preparedness: Joi.string().trim().max(20).allow('', null),
     interested_in_campus_placement: Joi.boolean().allow(null),
     campus_placement_reasons: text200,
     non_technical_areas: text255,
     student_mentor_interest: Joi.string().trim().max(20).allow('', null),
+    mentorship_domain: Joi.string().trim().max(100).allow('', null),
     expectations_from_institute: text200,
   }).unknown(true),
 
   skills: Joi.object({
     programming_languages: text500,
     technologies_frameworks: text500,
+    frontend_technologies_frameworks: text500,
+    backend_technologies_databases: text500,
     domains_of_interest: text255,
     familiar_tools_platforms: text500,
     technical_soft_skills_overall: text500,
@@ -353,13 +364,21 @@ export function validateStep1FormatErrors(data: Record<string, unknown>): { isVa
 const step2Schema = Joi.object({
   projects: Joi.array().items(Joi.object({
     title: text255,
+    domain: text255,
     description: text200,
   }).unknown(true)),
   internships: Joi.array().items(Joi.object({
+    title: text255,
     company_name: text255,
     domain: text255,
     start_date: Joi.string().trim().max(20).allow('', null),
     end_date: Joi.string().trim().max(20).allow('', null),
+    paid_unpaid: Joi.string().trim().max(10).allow('', null),
+    paid_type: Joi.string().trim().max(50).allow('', null),
+    stipend_amount: Joi.string().trim().max(50).allow('', null),
+    paid_amount: Joi.string().trim().max(50).allow('', null),
+    city: Joi.string().trim().max(120).allow('', null),
+    state: Joi.string().trim().max(120).allow('', null),
     description: text200,
   }).unknown(true)),
   cocurricular_participations: Joi.array().items(Joi.object({
@@ -375,6 +394,7 @@ const step2Schema = Joi.object({
   skill_programs: Joi.array().items(Joi.object({
     course_title: text255,
     platform: text255,
+    domain: text255,
     duration_hours: Joi.number().min(0).max(10000).allow(null),
     date_from: Joi.string().trim().max(20).allow('', null),
     date_to: Joi.string().trim().max(20).allow('', null),
@@ -399,18 +419,21 @@ const step3Schema = Joi.object({
     challenges: text500,
   }).unknown(true),
   career_objective: Joi.object({
-    career_goal: Joi.string().trim().max(50).allow('', null),
+    career_goal: Joi.string().trim().max(120).allow('', null),
     specific_details: text200,
     clarity_preparedness: Joi.string().trim().max(20).allow('', null),
     interested_in_campus_placement: Joi.boolean().allow(null),
     campus_placement_reasons: text200,
     non_technical_areas: text255,
     student_mentor_interest: Joi.string().trim().max(20).allow('', null),
+    mentorship_domain: Joi.string().trim().max(100).allow('', null),
     expectations_from_institute: text200,
   }).unknown(true),
   skills: Joi.object({
     programming_languages: text500,
     technologies_frameworks: text500,
+    frontend_technologies_frameworks: text500,
+    backend_technologies_databases: text500,
     domains_of_interest: text255,
     familiar_tools_platforms: text500,
     technical_soft_skills_overall: text500,
@@ -425,3 +448,4 @@ export function validateStep3FormatErrors(data: Record<string, unknown>): { isVa
   const errors = error.details.map((d) => d.message.replace(/"/g, ''))
   return { isValid: false, errors }
 }
+

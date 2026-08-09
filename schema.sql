@@ -513,6 +513,8 @@ CREATE TABLE public.skills (
     student_id integer NOT NULL,
     programming_languages text,
     technologies_frameworks text,
+    frontend_technologies_frameworks text,
+    backend_technologies_databases text,
     domains_of_interest text,
     familiar_tools_platforms text,
     technical_soft_skills_overall text,

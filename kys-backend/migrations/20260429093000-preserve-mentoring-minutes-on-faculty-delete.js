@@ -29,15 +29,27 @@ module.exports = {
       onUpdate: 'CASCADE',
     });
 
-    await queryInterface.addColumn(tableName, 'faculty_name_snapshot', {
-      type: Sequelize.STRING(255),
-      allowNull: true,
-    });
+    const tableDesc = await queryInterface.describeTable(tableName);
 
-    await queryInterface.addColumn(tableName, 'faculty_email_snapshot', {
-      type: Sequelize.STRING(255),
-      allowNull: true,
-    });
+    if (!tableDesc.faculty_name_snapshot) {
+      await queryInterface.addColumn(tableName, 'faculty_name_snapshot', {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+      });
+      console.log(`Added faculty_name_snapshot to ${tableName}`);
+    } else {
+      console.log(`faculty_name_snapshot already exists on ${tableName}, skipping.`);
+    }
+
+    if (!tableDesc.faculty_email_snapshot) {
+      await queryInterface.addColumn(tableName, 'faculty_email_snapshot', {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+      });
+      console.log(`Added faculty_email_snapshot to ${tableName}`);
+    } else {
+      console.log(`faculty_email_snapshot already exists on ${tableName}, skipping.`);
+    }
 
     await queryInterface.sequelize.query(
       `UPDATE "${tableName}" m
@@ -52,8 +64,17 @@ module.exports = {
   async down(queryInterface, Sequelize) {
     const tableName = await resolveMentoringTable(queryInterface);
 
-    await queryInterface.removeColumn(tableName, 'faculty_email_snapshot');
-    await queryInterface.removeColumn(tableName, 'faculty_name_snapshot');
+    const tableDesc = await queryInterface.describeTable(tableName);
+    
+    if (tableDesc.faculty_email_snapshot) {
+      await queryInterface.removeColumn(tableName, 'faculty_email_snapshot');
+      console.log(`Removed faculty_email_snapshot from ${tableName}`);
+    }
+
+    if (tableDesc.faculty_name_snapshot) {
+      await queryInterface.removeColumn(tableName, 'faculty_name_snapshot');
+      console.log(`Removed faculty_name_snapshot from ${tableName}`);
+    }
 
     await queryInterface.changeColumn(tableName, 'faculty_id', {
       type: Sequelize.INTEGER,

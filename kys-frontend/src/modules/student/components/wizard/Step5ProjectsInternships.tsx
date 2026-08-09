@@ -1,6 +1,21 @@
 import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
 import { field, input, inputCls, sectionCardCls, select } from './shared'
 import Step6CoCurricular from './Step6CoCurricular'
+import { State, City } from 'country-state-city'
+
+const PROJECT_DOMAINS = [
+    'Full Stack Web Development',
+    'AI / Machine Learning',
+    'Data Science & Analytics',
+    'Cloud Computing',
+    'Cybersecurity',
+    'Mobile App Development',
+    'IoT & Embedded Systems',
+    'Blockchain',
+    'DevOps',
+    'UI / UX Design',
+    'Other'
+]
 
 export default function Step5ProjectsInternships() {
     const { data, update, error } = useStudentProfileDraft()
@@ -70,29 +85,71 @@ export default function Step5ProjectsInternships() {
 
     const setHasUbaProject = (value: string) => {
         const nextHasUbaProject = value === 'yes'
+        const updated = [...projects]
+        if (!nextHasUbaProject) {
+            updated[2] = {}
+        }
 
         update({
             hasUbaProject: nextHasUbaProject,
-            projects: nextHasUbaProject
-                ? projects
-                : [projects[0] || {}, projects[1] || {}, {}],
+            projects: updated,
         })
+    }
+
+    const addProject = () => {
+        const updated = [...projects]
+        while (updated.length < 3) {
+            updated.push({})
+        }
+        updated.push({})
+        update({ projects: updated })
+    }
+
+    const removeProject = (i: number) => {
+        const updated = projects.filter((_, idx) => idx !== i)
+        update({ projects: updated })
     }
 
     return (
         <div className="space-y-5">
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#1ea85b] pb-2 text-3xl font-semibold text-[#223b60]">Mini Project</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
                     {field('Mini Project Title *', input('text', (projects[0]?.title as string) || '', v => updProject(0, 'title', v), 'e.g. Hostel Payment System', getValidation('Mini Project Title')))}
+                    {field('Domain *', (() => {
+                        const domainValue = projects[0]?.domain as string
+                        const isCustom = domainValue && !PROJECT_DOMAINS.includes(domainValue) && domainValue !== 'Other'
+                        const displayValue = isCustom ? 'Other' : (domainValue || '')
+                        const showInput = displayValue === 'Other'
+                        const validation = getValidation('Mini Project Domain')
+                        return (
+                            <div className="flex flex-col gap-4">
+                                {select(PROJECT_DOMAINS, displayValue, v => updProject(0, 'domain', v), 'Select Domain', !showInput ? validation : undefined)}
+                                {showInput && input('text', isCustom ? domainValue : '', v => updProject(0, 'domain', v), 'Enter custom domain', validation)}
+                            </div>
+                        )
+                    })())}
                     {field('Project Guide', input('text', (projects[0]?.description as string) || '', v => updProject(0, 'description', v), 'Name of project guide / mentor'))}
                 </div>
             </section>
 
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">Major Project</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
                     {field('Major Project Title *', input('text', (projects[1]?.title as string) || '', v => updProject(1, 'title', v), 'e.g. Know Your Student System', getValidation('Major Project Title')))}
+                    {field('Domain *', (() => {
+                        const domainValue = projects[1]?.domain as string
+                        const isCustom = domainValue && !PROJECT_DOMAINS.includes(domainValue) && domainValue !== 'Other'
+                        const displayValue = isCustom ? 'Other' : (domainValue || '')
+                        const showInput = displayValue === 'Other'
+                        const validation = getValidation('Major Project Domain')
+                        return (
+                            <div className="flex flex-col gap-4">
+                                {select(PROJECT_DOMAINS, displayValue, v => updProject(1, 'domain', v), 'Select Domain', !showInput ? validation : undefined)}
+                                {showInput && input('text', isCustom ? domainValue : '', v => updProject(1, 'domain', v), 'Enter custom domain', validation)}
+                            </div>
+                        )
+                    })())}
                     {field('Project Guide', input('text', (projects[1]?.description as string) || '', v => updProject(1, 'description', v), 'Name of project guide / mentor'))}
                 </div>
             </section>
@@ -116,12 +173,68 @@ export default function Step5ProjectsInternships() {
             {hasUbaProject && (
                 <section className={sectionCardCls}>
                     <h3 className="mb-4 border-b-2 border-[#b06bd8] pb-2 text-3xl font-semibold text-[#223b60]">UBA / Collaborative Project Details</h3>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
                         {field('UBA Project Title', input('text', (projects[2]?.title as string) || '', v => updProject(2, 'title', v), 'Enter UBA / collaborative project title'))}
+                        {field('Domain', (() => {
+                            const domainValue = projects[2]?.domain as string
+                            const isCustom = domainValue && !PROJECT_DOMAINS.includes(domainValue) && domainValue !== 'Other'
+                            const displayValue = isCustom ? 'Other' : (domainValue || '')
+                            const showInput = displayValue === 'Other'
+                            return (
+                                <div className="flex flex-col gap-4">
+                                    {select(PROJECT_DOMAINS, displayValue, v => updProject(2, 'domain', v), 'Select Domain')}
+                                    {showInput && input('text', isCustom ? domainValue : '', v => updProject(2, 'domain', v), 'Enter custom domain')}
+                                </div>
+                            )
+                        })())}
                         {field('Project Guide', input('text', (projects[2]?.description as string) || '', v => updProject(2, 'description', v), 'Name of project guide / mentor'))}
                     </div>
                 </section>
             )}
+
+            {projects.slice(3).map((project, idx) => {
+                const i = idx + 3
+                return (
+                    <section key={i} className={sectionCardCls}>
+                        <div className="mb-4 flex items-center justify-between border-b-2 border-[#64748b] pb-2">
+                            <h3 className="text-3xl font-semibold text-[#223b60]">Other Project {idx + 1}</h3>
+                            <button
+                                type="button"
+                                onClick={() => removeProject(i)}
+                                className="rounded-lg border border-[#f0c8c8] bg-[#fff5f5] px-3 py-1 text-xs font-semibold text-[#b42318] transition hover:bg-[#ffeaea]"
+                            >
+                                Remove Project
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+                            {field('Project Title', input('text', (project?.title as string) || '', v => updProject(i, 'title', v), 'Enter project title'))}
+                            {field('Domain', (() => {
+                                const domainValue = project?.domain as string
+                                const isCustom = domainValue && !PROJECT_DOMAINS.includes(domainValue) && domainValue !== 'Other'
+                                const displayValue = isCustom ? 'Other' : (domainValue || '')
+                                const showInput = displayValue === 'Other'
+                                return (
+                                    <div className="flex flex-col gap-4">
+                                        {select(PROJECT_DOMAINS, displayValue, v => updProject(i, 'domain', v), 'Select Domain')}
+                                        {showInput && input('text', isCustom ? domainValue : '', v => updProject(i, 'domain', v), 'Enter custom domain')}
+                                    </div>
+                                )
+                            })())}
+                            {field('Project Guide', input('text', (project?.description as string) || '', v => updProject(i, 'description', v), 'Name of project guide / mentor'))}
+                        </div>
+                    </section>
+                )
+            })}
+
+            <div className="mb-8">
+                <button
+                    type="button"
+                    onClick={addProject}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#3e5f93] px-4 py-2.5 text-sm font-semibold text-[#3e5f93] transition hover:bg-[#eaf2fb]"
+                >
+                    + Add Another Project
+                </button>
+            </div>
 
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#df981e] pb-2 text-3xl font-semibold text-[#223b60]">Internship Details</h3>
@@ -156,13 +269,67 @@ export default function Step5ProjectsInternships() {
                                 )}
                             </div>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                                {field('Internship Title', input('text', (internship?.title as string) || '', v => updInternship(i, 'title', v), 'e.g. Summer Internship 2024'))}
                                 {field('Company / Organization Name', input('text', (internship?.company_name as string) || '', v => updInternship(i, 'company_name', v), 'e.g. Web development Frontend'))}
-                                {field('Designation / Title', input('text', (internship?.designation as string) || '', v => updInternship(i, 'designation', v), 'e.g. Data Analyst Intern'))}
+                                {field('Designation', input('text', (internship?.designation as string) || '', v => updInternship(i, 'designation', v), 'e.g. Data Analyst Intern'))}
                                 {field('Domain', input('text', (internship?.domain as string) || '', v => updInternship(i, 'domain', v), 'e.g. Web Development'))}
                                 {field('Description', input('text', (internship?.description as string) || '', v => updInternship(i, 'description', v), 'Brief description'))}
+                                
+                                {field('State', select(
+                                    State.getStatesOfCountry('IN').map(s => s.name),
+                                    (internship?.state as string) || '',
+                                    v => {
+                                        const updated = [...internships];
+                                        updated[i] = { ...updated[i], state: v, city: '' };
+                                        update({ internships: updated });
+                                    },
+                                    'Select State'
+                                ))}
+                                
+                                {field('City', (() => {
+                                    const st = internship?.state as string;
+                                    const stateObj = State.getStatesOfCountry('IN').find(s => s.name === st);
+                                    const cityList = stateObj ? City.getCitiesOfState('IN', stateObj.isoCode).map(c => c.name) : [];
+                                    const isCustom = (internship?.city as string) && !cityList.includes(internship?.city as string);
+                                    const selectedVal = isCustom || (internship?.city === 'Other') ? 'Other' : ((internship?.city as string) || '');
+                                    
+                                    return (
+                                        <div className="space-y-2">
+                                            {select(
+                                                [...cityList, 'Other'],
+                                                selectedVal,
+                                                v => {
+                                                    if (v === 'Other') {
+                                                        updInternship(i, 'city', 'Other');
+                                                    } else {
+                                                        updInternship(i, 'city', v);
+                                                    }
+                                                },
+                                                'Select City'
+                                            )}
+                                            {(selectedVal === 'Other') && (
+                                                input('text', (internship?.city as string) === 'Other' ? '' : (internship?.city as string) || '', v => updInternship(i, 'city', v), 'Enter city name')
+                                            )}
+                                        </div>
+                                    );
+                                })())}
 
                                 {field('Internship Type', select(['Online', 'Physical'], (internship?.internship_type as string) || '', v => updInternship(i, 'internship_type', v), 'Internship Type'))}
                                 {field('Paid / Unpaid', select(['Paid', 'Unpaid'], (internship?.paid_unpaid as string) || '', v => updInternship(i, 'paid_unpaid', v), 'Paid / Unpaid'))}
+                                
+                                {((internship?.paid_unpaid as string) === 'Paid') && (
+                                    <>
+                                        {field('Paid Type', select(['With stipend', 'Without stipend', 'Paid'], (internship?.paid_type as string) || '', v => updInternship(i, 'paid_type', v), 'Select Type'))}
+                                        
+                                        {((internship?.paid_type as string) === 'With stipend') && (
+                                            field('Stipend Amount', input('text', (internship?.stipend_amount as string) || '', v => updInternship(i, 'stipend_amount', v), 'Enter stipend amount received'))
+                                        )}
+                                        
+                                        {((internship?.paid_type as string) === 'Paid') && (
+                                            field('Amount Paid', input('text', (internship?.paid_amount as string) || '', v => updInternship(i, 'paid_amount', v), 'Enter amount paid to company'))
+                                        )}
+                                    </>
+                                )}
 
                                 {field('Start Date', input('date', (internship?.start_date as string) || '', v => updInternship(i, 'start_date', v), 'dd-mm-yyyy'))}
                                 {field('End Date', input('date', (internship?.end_date as string) || '', v => updInternship(i, 'end_date', v), 'dd-mm-yyyy'))}

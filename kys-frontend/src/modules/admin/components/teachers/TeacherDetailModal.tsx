@@ -50,7 +50,7 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
       }
 
       const facultyUid = sanitizeDisplayValue(detail.faculty.uid)
-      pdf.save(`${facultyUid}-teacher-detail.pdf`)
+      pdf.save(`${facultyUid}-mentor-detail.pdf`)
     } finally {
       setIsExporting(false)
     }
@@ -60,8 +60,8 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
     <Modal
       open={Boolean(facultyId)}
       onClose={onClose}
-      title="Teacher Detail"
-      subtitle={detail ? `${sanitizeDisplayValue(detail.faculty.name)} (${sanitizeDisplayValue(detail.faculty.uid)})` : 'Loading teacher details...'}
+      title="Mentor Detail"
+      subtitle={detail ? `${sanitizeDisplayValue(detail.faculty.name)} (${sanitizeDisplayValue(detail.faculty.uid)})` : 'Loading mentor details...'}
       size="lg"
       footer={(
         <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end', width: '100%' }}>
@@ -79,12 +79,12 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
         </div>
       )}
     >
-      {detailQuery.isPending ? <QueryState title="Loading teacher profile" description="Fetching mentee list..." /> : null}
+      {detailQuery.isPending ? <QueryState title="Loading mentor profile" description="Fetching mentee list..." /> : null}
 
       {detailQuery.isError ? (
         <QueryState
           tone="error"
-          title="Unable to load teacher detail"
+          title="Unable to load mentor detail"
           description={toApiErrorMessage(detailQuery.error)}
           actionLabel="Retry"
           onAction={() => void detailQuery.refetch()}
@@ -121,7 +121,7 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
             <h4>Assigned Students</h4>
 
             {detail.mentees.length === 0 ? (
-              <p className="detail-empty">No students assigned to this teacher.</p>
+              <p className="detail-empty">No students assigned to this mentor.</p>
             ) : (
               <div className="teacher-detail__table-wrap">
                 <table className="table detail-list-table detail-list-table--teachers">

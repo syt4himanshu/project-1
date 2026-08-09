@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../shared/ui'
-import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
+import { extractStudentPhotoPreviewUrl } from '../../../shared/utils/studentPhoto'
 import { sanitizeDisplayValue } from '../../../shared/utils/render'
 import { useMentee } from '../hooks'
 
@@ -82,12 +82,14 @@ function getProjectLabel(index: number): string {
   if (index === 0) return 'Mini Project'
   if (index === 1) return 'Major Project'
   if (index === 2) return 'UBA / Collaborative Project'
-  return 'Project'
+  return 'Other Project'
 }
 
 function getProjectSubtitle(project: AnyRecord): string {
   const description = showValue(project.description)
-  return description !== 'N/A' ? `Project Guide: ${description}` : 'Project Guide: N/A'
+  const domain = project.domain ? String(project.domain) : null
+  const guideText = description !== 'N/A' ? `Project Guide: ${description}` : 'Project Guide: N/A'
+  return domain ? `Domain: ${domain} | ${guideText}` : guideText
 }
 
 function getProjectBadgeClass(label: string) {
@@ -188,12 +190,13 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
     { label: 'Career Goal', value: showValue(careerObjective.career_goal) },
     { label: 'Domain of Interest', value: showValue(careerObjective.domain_of_interest) },
     { label: 'Programming Languages', value: showValue(skills.programming_languages) },
-    { label: 'Technologies & Frameworks', value: showValue(skills.technologies ?? skills.technologies_frameworks) },
+    { label: 'Frontend technologies & frameworks', value: showValue(skills.frontend_technologies_frameworks) },
+    { label: 'Backend technologies & Databases', value: showValue(skills.backend_technologies_databases) },
     { label: 'Domains of Interest', value: showValue(skills.domains ?? skills.domains_of_interest) },
     { label: 'Familiar Tools & Platforms', value: showValue(skills.tools ?? skills.familiar_tools_platforms) },
-    { label: 'Technical & Soft Skills (Overall)', value: showValue(skills.technical_soft_skills_overall) },
-    { label: 'Additional Technical Skills', value: showValue(skills.additional_technical_skills) },
-    { label: 'Additional Soft Skills', value: showValue(skills.additional_soft_skills) },
+    { label: 'List Your Technical & Soft Skills', value: showValue(skills.technical_soft_skills_overall) },
+    { label: 'Additional Technical Skills You Want To Acquire', value: showValue(skills.additional_technical_skills) },
+    { label: 'Additional Soft Skills You Want To Acquire', value: showValue(skills.additional_soft_skills) },
     { label: 'SWOC - Strengths', value: showValue(swoc.strengths) },
     { label: 'SWOC - Weaknesses', value: showValue(swoc.weaknesses) },
     { label: 'SWOC - Opportunities', value: showValue(swoc.opportunities) },
@@ -215,7 +218,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
       printWindow.document.write(`
         <html>
           <head>
-            <title>${student.full_name} - Student Detail</title>
+            <title>${student.full_name} - Mentee Detail</title>
             ${styleTags}
             <style>body { margin: 0; padding: 16px; background: #fff; }</style>
           </head>
@@ -290,8 +293,8 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
     <Modal
       open={open}
       onClose={onClose}
-      title="Student Detail"
-      subtitle={student ? `${student.full_name} (${student.uid})` : 'Loading student details...'}
+      title="Mentee Detail"
+      subtitle={student ? `${student.full_name} (${student.uid})` : 'Loading mentee details...'}
       size="xl"
       footer={(
         <div className="faculty-preview__footer-actions">
@@ -310,11 +313,11 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
         </div>
       )}
     >
-      {menteeQuery.isPending ? <QueryState title="Loading student profile" description="Fetching latest student record..." /> : null}
+      {menteeQuery.isPending ? <QueryState title="Loading mentee profile" description="Fetching latest mentee record..." /> : null}
       {menteeQuery.isError ? (
         <QueryState
           tone="error"
-          title="Unable to load student details"
+          title="Unable to load mentee details"
           description={toApiErrorMessage(menteeQuery.error, 'Please try again.')}
           actionLabel="Retry"
           onAction={() => void menteeQuery.refetch()}
@@ -326,7 +329,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
           <DetailSection title="Photo">
             <div className="admin-student-photo-wrap">
               <img
-                src={extractStudentPhotoUrl({ personal_info: personalInfo }) || ''}
+                src={extractStudentPhotoPreviewUrl({ personal_info: personalInfo }) || ''}
                 alt={`${student.full_name} profile`}
                 className="admin-student-photo-preview__image"
                 loading="eager"
@@ -442,11 +445,21 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                 {internships.map((internship, index) => (
                   <article key={`internship-${index}`} className="detail-card">
                     <h5>Internship {index + 1}</h5>
-                    <p>{showValue(pick(internship, 'company_name', 'company'))}</p>
-                    <p>{showValue(internship.designation)}</p>
-                    <p>{showValue(internship.domain)}</p>
-                    <p>{showValue(internship.description)}</p>
-                    <p>{formatDate(internship.start_date)} to {formatDate(internship.end_date)}</p>
+                    <p>Title: {showValue(internship.title)}</p>
+                    <p>Company: {showValue(pick(internship, 'company_name', 'company'))}</p>
+                    <p>Designation: {showValue(internship.designation)}</p>
+                    <p>Domain: {showValue(internship.domain)}</p>
+                    <p>Location: {showValue(internship.city)}, {showValue(internship.state)}</p>
+                    <p>Description: {showValue(internship.description)}</p>
+                    <p>Status: {showValue(internship.paid_unpaid)}</p>
+                    {internship.paid_unpaid === 'Paid' && (
+                      <>
+                        <p>Paid Type: {showValue(internship.paid_type)}</p>
+                        {internship.paid_type === 'With stipend' && <p>Stipend: {showValue(internship.stipend_amount)}</p>}
+                        {internship.paid_type === 'Paid' && <p>Amount Paid: {showValue(internship.paid_amount)}</p>}
+                      </>
+                    )}
+                    <p>Duration: {formatDate(internship.start_date)} to {formatDate(internship.end_date)}</p>
                   </article>
                 ))}
               </div>

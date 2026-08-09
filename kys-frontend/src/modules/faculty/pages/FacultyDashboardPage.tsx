@@ -87,7 +87,7 @@ export function FacultyDashboardPage() {
 
       <div className="faculty-overview">
         <div className="faculty-overview__head">
-          <h2 className="faculty-overview__title">Teacher Dashboard</h2>
+          <h2 className="faculty-overview__title">Mentor Dashboard</h2>
           <div className="faculty-overview__quick-links">
             <Link to="/faculty/chatbot" className="button button--soft">Chatbot</Link>
             <Link to="/faculty/profile#change-password" className="button button--soft">Change Password</Link>
@@ -96,7 +96,7 @@ export function FacultyDashboardPage() {
 
         <div className="faculty-overview__metrics">
           <article className="faculty-metric-card">
-            <p className="faculty-metric-card__label">Total Students</p>
+            <p className="faculty-metric-card__label">Total Mentees</p>
             <p className="faculty-metric-card__value">{menteesQuery.isPending ? '...' : totalStudents}</p>
           </article>
           <article className="faculty-metric-card">
@@ -114,15 +114,15 @@ export function FacultyDashboardPage() {
         </div>
 
         <section className="faculty-overview__filters">
-          <h3>Search & Filter Students</h3>
+          <h3>Search & Filter Mentees</h3>
           <div className="faculty-overview__filter-grid">
             <label className="admin-field" htmlFor="faculty-dashboard-search">
-              <span className="sr-only">Search students</span>
+              <span className="sr-only">Search mentees</span>
               <input
                 id="faculty-dashboard-search"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Search students by name, UID, section"
+                placeholder="Search mentees by name, UID, section"
                 autoComplete="off"
               />
             </label>
@@ -170,21 +170,21 @@ export function FacultyDashboardPage() {
 
         <section className="faculty-overview__students">
           <div className="faculty-overview__students-head">
-            <h3>Students ({filteredMentees.length})</h3>
-            <span className="faculty-overview__students-badge">Student Details</span>
+            <h3>Mentees ({filteredMentees.length})</h3>
+            <span className="faculty-overview__students-badge">Mentee Details</span>
           </div>
 
           <div className="faculty-overview__students-list">
             {filteredMentees.length === 0 ? (
               <p className="faculty-overview__empty">
-                No students match the selected filters.
+                No mentees match the selected filters.
               </p>
             ) : (
               filteredMentees.map((row) => (
                 <article className="faculty-student-row" key={row.id || row.uid}>
                   <div className="faculty-student-row__left">
                     <PhotoAvatar
-                      url={row.photo_url}
+                      url={row.photo_preview_url || row.photo_url}
                       alt={`${row.full_name} profile`}
                       className="faculty-student-row__avatar faculty-student-row__avatar--image"
                       fallback={<div className="faculty-student-row__avatar">{getInitials(row.full_name)}</div>}

@@ -6,6 +6,7 @@ import ChangePasswordModal from '../components/ChangePasswordModal'
 import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
 import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
 import { isDraftResetMarked } from '../utils/studentProfileDraft'
+import { extractHighlights } from '../utils/remarkHighlights'
 import { ThemeToggleButton } from '../../../shared/ui/theme-toggle'
 
 interface MentoringMinute {
@@ -15,6 +16,8 @@ interface MentoringMinute {
     semester: number
     date: string
     remarks: string
+    mentor_remarks?: string
+    issues?: string
     suggestion: string
     action: string
 }
@@ -131,7 +134,7 @@ export default function Dashboard() {
                             </svg>
                         </div>
                         <div>
-                            <p className="font-serif text-xl font-semibold text-white">Student Portal</p>
+                            <p className="font-serif text-xl font-semibold text-white">Mentee Portal</p>
                             <p className="text-xs uppercase tracking-[0.2em] text-[#b8c8df]">Know Your Student</p>
                         </div>
                     </div>
@@ -276,25 +279,47 @@ export default function Dashboard() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {minutes.map(m => (
-                                        <article key={m.id} className="rounded-2xl border border-[#e2e8f2] bg-[#fafcff] p-4">
-                                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                                <p className="font-semibold text-[#20324e]">{m.faculty_name}</p>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="rounded-full bg-[#e9f0ff] px-2 py-1 text-xs font-semibold text-[#2c4f85]">
-                                                        Sem {m.semester}
-                                                    </span>
-                                                    <span className="text-xs text-[#6e7e95]">{formatDate(m.date)}</span>
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2 text-sm text-[#3f4d63]">
-                                                {m.remarks && <p><span className="font-semibold">Remarks:</span> {m.remarks}</p>}
-                                                {m.suggestion && <p><span className="font-semibold">Suggestion:</span> {m.suggestion}</p>}
-                                                {m.action && <p><span className="font-semibold">Action:</span> {m.action}</p>}
-                                            </div>
-                                        </article>
-                                    ))}
-                                </div>
+                                  {minutes.map(m => {
+                                      const highlights = extractHighlights([m.remarks, m.mentor_remarks].filter(Boolean).join(' '))
+                                      return (
+                                      <article key={m.id} className="rounded-2xl border border-[#e2e8f2] bg-[#fafcff] p-4">
+                                          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                              <p className="font-semibold text-[#20324e]">{m.faculty_name}</p>
+                                              <div className="flex items-center gap-2">
+                                                  <span className="rounded-full bg-[#e9f0ff] px-2 py-1 text-xs font-semibold text-[#2c4f85]">
+                                                      Sem {m.semester}
+                                                  </span>
+                                                  <span className="text-xs text-[#6e7e95]">{formatDate(m.date)}</span>
+                                              </div>
+                                          </div>
+                                          
+                                          {highlights.length > 0 && (
+                                              <div className="mb-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 p-3">
+                                                  <div className="flex items-center gap-2 mb-2">
+                                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 dark:text-green-400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                                                      <span className="text-sm font-bold text-green-800 dark:text-green-300">Highlights & Achievements</span>
+                                                  </div>
+                                                  <ul className="space-y-1.5">
+                                                      {highlights.map((hl, i) => (
+                                                          <li key={i} className="text-sm text-green-700 dark:text-green-400 flex items-start gap-2">
+                                                              <span className="text-green-500 dark:text-green-500 mt-0.5">•</span>
+                                                              <span>{hl}</span>
+                                                          </li>
+                                                      ))}
+                                                  </ul>
+                                              </div>
+                                          )}
+
+                                          <div className="space-y-2 text-sm text-[#3f4d63]">
+                                                <p><span className="font-semibold">AI Remarks:</span> {m.remarks || 'None'}</p>
+                                                <p><span className="font-semibold">Mentor Remarks:</span> {m.mentor_remarks || 'None'}</p>
+                                                <p><span className="font-semibold">Issues:</span> {m.issues || 'None'}</p>
+                                                <p><span className="font-semibold">Suggestion:</span> {m.suggestion || 'None'}</p>
+                                              <p><span className="font-semibold">Action:</span> {m.action || 'None'}</p>
+                                          </div>
+                                      </article>
+                                  )})}
+                              </div>
                             )}
                         </div>
                     </section>

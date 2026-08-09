@@ -37,7 +37,7 @@ export function FacultyChatbotPage() {
     <div className="faculty-chat" data-testid="chatbot-page">
       <aside className={`faculty-chat__sidebar${sidebarOpen ? '' : ' faculty-chat__sidebar--collapsed'}`}>
         <div className="faculty-chat__sidebar-header">
-          {sidebarOpen && <span className="faculty-chat__sidebar-title">Student Context</span>}
+          {sidebarOpen && <span className="faculty-chat__sidebar-title">Mentee Context</span>}
           <button
             type="button"
             className="button button--soft faculty-chat__sidebar-toggle"
@@ -58,9 +58,9 @@ export function FacultyChatbotPage() {
       <section className="faculty-chat__main">
         <div className="faculty-chat__header">
           <div>
-            <h1 className="faculty-chat__heading">Teacher Insights Chatbot</h1>
+            <h1 className="faculty-chat__heading">Mentor Insights Chatbot</h1>
             <p className="faculty-chat__subheading">
-              Ask mentoring questions and get clear, structured student insights.
+              Ask mentoring questions and get clear, structured mentee insights.
             </p>
           </div>
         </div>

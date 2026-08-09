@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
 import { field, input, inputCls, sectionCardCls, select } from './shared'
 
@@ -7,6 +8,9 @@ const ENTRANCE_EXAMS = ['MHT-CET', 'JEE', 'Other']
 export default function Step3AcademicBefore() {
     const { data, update, error } = useStudentProfileDraft()
     const records = (data.past_education_records as Record<string, unknown>[]) || []
+    
+    const [activeSem, setActiveSem] = useState<number>(1)
+    const semCardRefs = useRef<Record<number, HTMLElement | null>>({})
     const derivedAdmissionType = records.some(r => r.exam_name === 'DIPLOMA')
         ? 'diploma'
         : records.some(r => r.exam_name === 'HSSC' || r.exam_name === 'ENTRANCE_EXAM')
@@ -205,10 +209,10 @@ export default function Step3AcademicBefore() {
                     <p className="text-sm text-[#6e7e95]">No records needed for Semester 1 students.</p>
                 ) : (
                     <div className="space-y-5">
-                        {semesters.map(sem => {
+                        {semesters.slice(0, activeSem).map(sem => {
                             const rec = getPostAdmissionRecord(sem) as Record<string, unknown>
                             return (
-                                <section key={sem} className={sectionCardCls}>
+                                <section key={sem} ref={el => { semCardRefs.current[sem] = el }} className={sectionCardCls}>
                                     <h3 className="mb-4 text-xl font-semibold text-[#223b60]">Semester {sem}</h3>
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                                         {field('SGPA / Percentage *', input('number', String(rec.sgpa || ''), v => updPostAdmission(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86', getValidation(`Semester ${sem} SGPA / Percentage`)))}
@@ -228,6 +232,24 @@ export default function Step3AcademicBefore() {
                                             {field('Backlog Subjects', input('text', (rec.backlog_subjects as string) || '', v => updPostAdmission(sem, 'backlog_subjects', v), 'e.g. list subjects comma separated'))}
                                         </div>
                                     </div>
+                                    {sem === activeSem && (
+                                        <div className="mt-3">
+                                            {activeSem < semesters.length ? (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        setActiveSem(prev => prev + 1)
+                                                        setTimeout(() => semCardRefs.current[activeSem + 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+                                                    }} 
+                                                    className="rounded-xl border border-[#3b8ed9] bg-white dark:bg-[#1e293b] px-4 py-2 text-sm font-semibold text-[#3b8ed9] transition hover:bg-[#f0f6ff] dark:hover:bg-[#243044]"
+                                                >
+                                                    Add Semester {activeSem + 1} →
+                                                </button>
+                                            ) : (
+                                                <p className="text-sm font-medium text-[#12996c]">✓ All {semesters.length} semesters added</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </section>
                             )
                         })}

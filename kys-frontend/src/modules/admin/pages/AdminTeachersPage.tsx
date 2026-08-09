@@ -31,7 +31,7 @@ export function AdminTeachersPage() {
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'with' | 'without'>('all')
 
   useEffect(() => {
-    document.title = 'Teachers Management - KYS'
+    document.title = 'Mentors Management - KYS'
   }, [])
 
   const facultyQuery = useAdminFacultyQuery()
@@ -153,12 +153,12 @@ export function AdminTeachersPage() {
     return (
       <div className="admin-page">
         <div className="admin-page__header">
-          <h3 className="admin-page__title">Teachers Management</h3>
+          <h3 className="admin-page__title">Mentors Management</h3>
           <p className="admin-page__subtitle">Faculty list from /api/admin/faculty.</p>
         </div>
         <QueryState
           tone="error"
-          title="Unable to load teacher records"
+          title="Unable to load mentor records"
           description={toApiErrorMessage(facultyQuery.error, 'Please retry in a moment.')}
           actionLabel="Retry"
           onAction={() => void facultyQuery.refetch()}
@@ -170,7 +170,7 @@ export function AdminTeachersPage() {
   return (
     <div className="admin-page">
       <div className="admin-page__header">
-        <h3 className="admin-page__title">Teachers Management</h3>
+        <h3 className="admin-page__title">Mentors Management</h3>
         <p className="admin-page__subtitle">Read-only faculty list with mentee detail modal.</p>
       </div>
 
@@ -219,7 +219,7 @@ export function AdminTeachersPage() {
                 value={assignmentFilter}
                 onChange={(event) => setAssignmentFilter(event.target.value as 'all' | 'with' | 'without')}
               >
-                <option value="all">All teachers</option>
+                <option value="all">All mentors</option>
                 <option value="with">With assigned students</option>
                 <option value="without">Without assigned students</option>
               </select>
@@ -247,7 +247,7 @@ export function AdminTeachersPage() {
           keyExtractor={(row) => row.id}
           isLoading={facultyQuery.isPending}
           pageSize={12}
-          emptyLabel="No teachers matched the current search."
+          emptyLabel="No mentors matched the current search."
           renderMobileCard={renderTeacherCard}
         />
       </div>

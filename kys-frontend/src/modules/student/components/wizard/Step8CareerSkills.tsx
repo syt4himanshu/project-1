@@ -1,7 +1,8 @@
 import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
-import { field, sectionCardCls, select, textareaCls } from './shared'
+import { field, sectionCardCls, select, textareaCls, input } from './shared'
 
 const DOMAINS = ['Web Development', 'Machine Learning', 'Artificial Intelligence', 'Data Science', 'Cyber Security', 'Cloud Computing', 'Mobile Development', 'Other']
+const PROJECT_DOMAINS = ['Full Stack Web Development', 'AI / Machine Learning', 'Data Science & Analytics', 'Cloud Computing', 'Cybersecurity', 'Mobile App Development', 'IoT & Embedded Systems', 'Blockchain', 'DevOps', 'UI / UX Design']
 const NON_TECH_AREAS = ['Cultural Activities', 'Sports', 'Literary / Debate', 'Social Service / NSS', 'Other']
 
 function parseCsv(value: unknown) {
@@ -30,17 +31,48 @@ export default function Step8CareerSkills() {
         <div className="space-y-5">
             <section className={sectionCardCls}>
                 <div className="space-y-4">
-                    {field('Career Goal *', select(['Campus / Off-Campus Placement', 'Higher Studies', 'Entrepreneurship'], (co.career_goal as string) || '', v => updCo('career_goal', v), 'Select Career Goal', getFieldValidation('career_objective.career_goal')))}
+                    {field('Career Goal *', (() => {
+                        const goalOptions = ['Placement', 'Higher Studies', 'Entrepreneurship', 'Government Jobs and Exams']
+                        const goalValue = co.career_goal as string
+                        const isCustomGoal = goalValue && !goalOptions.includes(goalValue) && goalValue !== 'Other'
+                        const displayGoal = isCustomGoal ? 'Other' : (goalValue || '')
+                        
+                        const specificDetailsValue = (co.specific_details as string) || ''
+                        let specificOptions: string[] = []
+                        if (displayGoal === 'Placement') {
+                            specificOptions = ['Core', 'IT', 'Finance', 'Management', 'Government or Public Sector', 'Other']
+                        } else if (displayGoal === 'Higher Studies') {
+                            specificOptions = ['Technical (GATE)', 'Management (CAT)', 'Other in India', 'Abroad']
+                        } else if (displayGoal === 'Government Jobs and Exams') {
+                            specificOptions = ['Government Jobs (SSC CGL, Banking PO/RBI GRADE B, PSUs)', 'UPSC Civil Services', 'Other']
+                        }
+                        
+                        const isCustomSpecific = specificDetailsValue && !specificOptions.includes(specificDetailsValue) && specificDetailsValue !== 'Other'
+                        const displaySpecific = isCustomSpecific ? 'Other' : (specificDetailsValue || '')
+                        
+                        const showCustomGoalInput = displayGoal === 'Other'
+                        const showCustomSpecificInput = specificOptions.length > 0 && displaySpecific === 'Other'
 
-                    {field('Specific Details / Notes', (
-                        <textarea
-                            value={(co.specific_details as string) || ''}
-                            onChange={e => updCo('specific_details', e.target.value)}
-                            rows={3}
-                            placeholder='e.g. Full stack development and placement-focused preparation'
-                            className={textareaCls}
-                        />
-                    ))}
+                        return (
+                            <div className="flex flex-col gap-4">
+                                {select([...goalOptions, 'Other'], displayGoal, v => {
+                                    const updates: Record<string, unknown> = { career_goal: v }
+                                    if (v !== displayGoal) updates.specific_details = ''
+                                    update({ career_objective: { ...co, ...updates } })
+                                }, 'Select Career Goal', getFieldValidation('career_objective.career_goal'))}
+                                
+                                {showCustomGoalInput && input('text', isCustomGoal ? goalValue : '', v => updCo('career_goal', v), 'Enter desired career goal', getFieldValidation('career_objective.career_goal'))}
+
+                                {specificOptions.length > 0 && (
+                                    <>
+                                        <label className="-mb-2 block text-sm font-semibold text-[#3a4a62]">Specific Goal *</label>
+                                        {select(specificOptions, displaySpecific, v => updCo('specific_details', v), 'Select Specific Goal')}
+                                        {showCustomSpecificInput && input('text', isCustomSpecific ? specificDetailsValue : '', v => updCo('specific_details', v), 'Enter desired specific goal')}
+                                    </>
+                                )}
+                            </div>
+                        )
+                    })())}
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                         {field('Clarity and Preparedness Level *', select(['Unsatisfactory', 'Satisfactory', 'Good', 'Excellent'], (co.clarity_preparedness as string) || '', v => updCo('clarity_preparedness', v), 'Select Level', getFieldValidation('career_objective.clarity_preparedness')))}
@@ -69,7 +101,22 @@ export default function Step8CareerSkills() {
                         </div>
                     </div>
 
-                    {field('Would you be interested in being a student mentor?', select(['Yes', 'No', 'Maybe'], (co.student_mentor_interest as string) || '', v => updCo('student_mentor_interest', v), 'Select Option', getFieldValidation('career_objective.student_mentor_interest')))}
+                    {field('Would you be interested in being a student mentor?', select(['Yes', 'No'], (co.student_mentor_interest as string) || '', v => updCo('student_mentor_interest', v), 'Select Option', getFieldValidation('career_objective.student_mentor_interest')))}
+
+                    {((co.student_mentor_interest as string) === 'Yes') && (
+                        field('Mentorship Domain', (() => {
+                            const domainValue = co.mentorship_domain as string
+                            const isCustom = domainValue && !PROJECT_DOMAINS.includes(domainValue) && domainValue !== 'Other'
+                            const displayValue = isCustom ? 'Other' : (domainValue || '')
+                            const showInput = displayValue === 'Other'
+                            return (
+                                <div className="flex flex-col gap-4">
+                                    {select([...PROJECT_DOMAINS, 'Other'], displayValue, v => updCo('mentorship_domain', v), 'Select Mentorship Domain')}
+                                    {showInput && input('text', isCustom ? domainValue : '', v => updCo('mentorship_domain', v), 'Enter custom mentorship domain')}
+                                </div>
+                            )
+                        })())
+                    )}
 
                     {field('Expectations from the Institute', (
                         <textarea
@@ -86,7 +133,7 @@ export default function Step8CareerSkills() {
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">Skills</h3>
                 <div className="space-y-4">
-                    {field('Technical & Soft Skills (Overall)', (
+                    {field('List Your Technical & Soft Skills', (
                         <textarea
                             value={(sk.technical_soft_skills_overall as string) || ''}
                             onChange={e => updSk('technical_soft_skills_overall', e.target.value)}
@@ -97,7 +144,7 @@ export default function Step8CareerSkills() {
                     ))}
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                        {field('Additional Technical Skills', (
+                        {field('Additional Technical Skills You Want To Acquire', (
                             <textarea
                                 value={(sk.additional_technical_skills as string) || ''}
                                 onChange={e => updSk('additional_technical_skills', e.target.value)}
@@ -107,7 +154,7 @@ export default function Step8CareerSkills() {
                             />
                         ))}
 
-                        {field('Additional Soft Skills', (
+                        {field('Additional Soft Skills You Want To Acquire', (
                             <textarea
                                 value={(sk.additional_soft_skills as string) || ''}
                                 onChange={e => updSk('additional_soft_skills', e.target.value)}
@@ -128,12 +175,22 @@ export default function Step8CareerSkills() {
                         />
                     ))}
 
-                    {field('Technologies & Frameworks', (
+                    {field('Frontend technologies & frameworks', (
                         <textarea
-                            value={(sk.technologies_frameworks as string) || ''}
-                            onChange={e => updSk('technologies_frameworks', e.target.value)}
+                            value={(sk.frontend_technologies_frameworks as string) || ''}
+                            onChange={e => updSk('frontend_technologies_frameworks', e.target.value)}
                             rows={3}
-                            placeholder='e.g. HTML, CSS, ReactJS, Node.js, Firebase'
+                            placeholder='e.g. HTML, CSS, ReactJS'
+                            className={textareaCls}
+                        />
+                    ))}
+
+                    {field('Backend technologies & Databases', (
+                        <textarea
+                            value={(sk.backend_technologies_databases as string) || ''}
+                            onChange={e => updSk('backend_technologies_databases', e.target.value)}
+                            rows={3}
+                            placeholder='e.g. Node.js, Express, MongoDB, MySQL'
                             className={textareaCls}
                         />
                     ))}
@@ -174,3 +231,4 @@ export default function Step8CareerSkills() {
         </div>
     )
 }
+

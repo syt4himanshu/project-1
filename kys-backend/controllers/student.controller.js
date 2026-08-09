@@ -230,11 +230,14 @@ const putStudentsMe = async (req, res, next) => {
       }
 
       if ('past_education_records' in rawData) {
+        const completePastEducation = (data.past_education_records || []).filter(
+          (r) => r.exam_name && r.percentage !== null && r.percentage !== "" && r.year_of_passing !== null
+        );
         await syncRelatedRecords(
           PastEducation,
           student.id,
           student.past_education_records,
-          data.past_education_records || [],
+          completePastEducation,
           tx,
         );
       }
@@ -437,6 +440,12 @@ const putStudentMe = async (req, res, next) => {
         let relPayload = data[dataKey];
         if (relPayload == null) continue;
 
+        if (dataKey === 'past_education_records' && Array.isArray(relPayload)) {
+          relPayload = relPayload.filter(
+            (r) => r.exam_name && r.percentage !== null && r.percentage !== "" && r.year_of_passing !== null
+          );
+        }
+
         if (dataKey === 'personal_info') {
           relPayload = stripManagedPhotoFields(relPayload);
           if (!Object.keys(relPayload || {}).length) continue;
@@ -596,6 +605,8 @@ const getStudentMentoringMinutes = async (req, res, next) => {
           'semester',
           'date',
           'remarks',
+          'mentor_remarks',
+          'issues',
           'suggestion',
           'action',
         ],
@@ -613,7 +624,7 @@ const getStudentMentoringMinutes = async (req, res, next) => {
       if (/faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(message)) {
         minutes = await MentoringMinute.findAll({
           where: { student_id: student.id },
-          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'suggestion', 'action'],
+          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'mentor_remarks', 'issues', 'suggestion', 'action'],
           include: [
             {
               model: Faculty,
@@ -640,6 +651,8 @@ const getStudentMentoringMinutes = async (req, res, next) => {
       semester: m.semester,
       date: m.date,
       remarks: m.remarks,
+      mentor_remarks: m.mentor_remarks,
+      issues: m.issues,
       suggestion: m.suggestion,
       action: m.action,
     }));
@@ -678,6 +691,8 @@ const getStudentMentoringMinutesById = async (req, res, next) => {
           'semester',
           'date',
           'remarks',
+          'mentor_remarks',
+          'issues',
           'suggestion',
           'action',
         ],
@@ -695,7 +710,7 @@ const getStudentMentoringMinutesById = async (req, res, next) => {
       if (/faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(message)) {
         minutes = await MentoringMinute.findAll({
           where: { student_id: student.id },
-          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'suggestion', 'action'],
+          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'mentor_remarks', 'issues', 'suggestion', 'action'],
           include: [
             {
               model: Faculty,
@@ -722,6 +737,8 @@ const getStudentMentoringMinutesById = async (req, res, next) => {
       semester: m.semester,
       date: m.date,
       remarks: m.remarks,
+      mentor_remarks: m.mentor_remarks,
+      issues: m.issues,
       suggestion: m.suggestion,
       action: m.action,
     }));

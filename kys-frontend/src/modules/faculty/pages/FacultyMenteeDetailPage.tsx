@@ -38,6 +38,8 @@ export function FacultyMenteeDetailPage() {
   const [remarksOpen, setRemarksOpen] = useState(false)
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false)
   const [remarks, setRemarks] = useState('')
+  const [mentorRemarks, setMentorRemarks] = useState('')
+  const [issues, setIssues] = useState('')
   const [suggestion, setSuggestion] = useState('')
   const [actionPlan, setActionPlan] = useState('')
   const [formError, setFormError] = useState('')
@@ -58,6 +60,8 @@ export function FacultyMenteeDetailPage() {
   const closeRemarksModal = () => {
     setRemarksOpen(false)
     setRemarks('')
+    setMentorRemarks('')
+    setIssues('')
     setSuggestion('')
     setActionPlan('')
     setFormError('')
@@ -82,6 +86,8 @@ export function FacultyMenteeDetailPage() {
     try {
       await addMinuteMutation.mutateAsync({
         remarks: remarks.trim(),
+        mentor_remarks: mentorRemarks.trim() || undefined,
+        issues: issues.trim() || undefined,
         suggestion: suggestion.trim() || undefined,
         action: actionPlan.trim() || undefined,
       })
@@ -167,7 +173,7 @@ export function FacultyMenteeDetailPage() {
       <section className="faculty-mentoring-page__history">
         <h3>Previous Mentoring Records</h3>
         {minutes.length === 0 ? (
-          <p className="faculty-mentoring-page__empty">No mentoring records found for this student yet.</p>
+          <p className="faculty-mentoring-page__empty">No mentoring records found for this mentee yet.</p>
         ) : (
           <div className="faculty-mentoring-page__history-list">
             {minutes.map((minute) => (
@@ -176,9 +182,11 @@ export function FacultyMenteeDetailPage() {
                   <span>{formatDate(minute.date)}</span>
                   <span>Semester {minute.semester}</span>
                 </div>
-                <p><strong>Remarks:</strong> {minute.remarks || 'N/A'}</p>
-                {minute.suggestion ? <p><strong>Suggestions:</strong> {minute.suggestion}</p> : null}
-                {minute.action ? <p><strong>Action Plan:</strong> {minute.action}</p> : null}
+                <p><strong>AI Remarks:</strong> {minute.remarks || 'N/A'}</p>
+                <p><strong>Mentor Remarks:</strong> {minute.mentor_remarks || 'None'}</p>
+                <p><strong>Issues:</strong> {minute.issues || 'None'}</p>
+                <p><strong>Suggestions:</strong> {minute.suggestion || 'None'}</p>
+                <p><strong>Action Plan:</strong> {minute.action || 'None'}</p>
               </article>
             ))}
           </div>
@@ -212,14 +220,36 @@ export function FacultyMenteeDetailPage() {
       >
         <form className="faculty-remarks-form" onSubmit={handleSubmitRemarks}>
           <label className="admin-field" htmlFor="faculty-remarks-page-input">
-            <span>Remarks *</span>
+            <span>AI Remarks *</span>
             <textarea
               id="faculty-remarks-page-input"
               rows={4}
               value={remarks}
               onChange={(event) => setRemarks(event.target.value)}
-              placeholder="Enter your observations and comments about the student"
+              placeholder="AI generated observations and comments about the mentee"
               required
+            />
+          </label>
+
+          <label className="admin-field" htmlFor="faculty-mentor-remarks-page-input">
+            <span>Mentor Remarks</span>
+            <textarea
+              id="faculty-mentor-remarks-page-input"
+              rows={4}
+              value={mentorRemarks}
+              onChange={(event) => setMentorRemarks(event.target.value)}
+              placeholder="Enter your own observations and comments about the mentee"
+            />
+          </label>
+
+          <label className="admin-field" htmlFor="faculty-issues-page-input">
+            <span>Issues</span>
+            <textarea
+              id="faculty-issues-page-input"
+              rows={3}
+              value={issues}
+              onChange={(event) => setIssues(event.target.value)}
+              placeholder="Record any specific issues or concerns"
             />
           </label>
 

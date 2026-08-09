@@ -8,6 +8,8 @@ class Skills extends Model {
         student_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
         programming_languages: { type: DataTypes.TEXT, allowNull: true },
         technologies_frameworks: { type: DataTypes.TEXT, allowNull: true },
+        frontend_technologies_frameworks: { type: DataTypes.TEXT, allowNull: true },
+        backend_technologies_databases: { type: DataTypes.TEXT, allowNull: true },
         domains_of_interest: { type: DataTypes.TEXT, allowNull: true },
         familiar_tools_platforms: { type: DataTypes.TEXT, allowNull: true },
       },

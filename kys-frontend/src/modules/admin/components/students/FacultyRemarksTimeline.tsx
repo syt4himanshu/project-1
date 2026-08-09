@@ -100,8 +100,22 @@ const RemarkCard = memo(function RemarkCard({ remark }: RemarkCardProps) {
 
             {remark.remarks ? (
                 <section className="remark-card__section">
-                    <h5 className="remark-card__section-label">Remarks</h5>
+                    <h5 className="remark-card__section-label">AI Remarks</h5>
                     <p className="remark-card__text">{remark.remarks}</p>
+                </section>
+            ) : null}
+
+            {remark.mentorRemarks ? (
+                <section className="remark-card__section">
+                    <h5 className="remark-card__section-label">Mentor Remarks</h5>
+                    <p className="remark-card__text">{remark.mentorRemarks}</p>
+                </section>
+            ) : null}
+
+            {remark.issues ? (
+                <section className="remark-card__section">
+                    <h5 className="remark-card__section-label">Issues</h5>
+                    <p className="remark-card__text">{remark.issues}</p>
                 </section>
             ) : null}
 

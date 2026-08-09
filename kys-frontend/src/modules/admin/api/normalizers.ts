@@ -1,4 +1,4 @@
-﻿import { isUserRole } from '../../../shared/auth/session'
+import { isUserRole } from '../../../shared/auth/session'
 import type {
   AdminAllocationApiResponse,
   AdminAllocationEntry,
@@ -52,7 +52,7 @@ import type {
 } from './types'
 import { sanitizeDisplayValue } from '../../../shared/utils/render'
 
-// ─── Internal helpers ─────────────────────────────────────────────────────────
+// --- Internal helpers ---------------------------------------------------------
 
 const EMPTY_TEXT_VALUES = new Set(['', 'n/a', 'na', 'none', '-', '--', 'null', 'undefined'])
 
@@ -83,7 +83,7 @@ function normalizeDisplayText(value: unknown, fallback = ''): string {
 
 function normalizeSanitizedText(value: unknown, fallback = ''): string {
   const cleaned = sanitizeDisplayValue(value)
-  if (cleaned === '—') return fallback
+  if (cleaned === '�') return fallback
   return normalizeDisplayText(cleaned, fallback)
 }
 
@@ -133,7 +133,7 @@ function normalizeFilterValue(value: string | undefined): string {
   return (value ?? '').trim()
 }
 
-// ─── Exported normalizers ─────────────────────────────────────────────────────
+// --- Exported normalizers -----------------------------------------------------
 
 export function normalizeAdminStatistics(raw: AdminStatisticsApiResponse): AdminStatistics {
   return {
@@ -156,6 +156,7 @@ export function normalizeAdminUser(raw: AdminUserApiResponse): AdminUserSummary 
     role,
     name,
     photoUrl: normalizeDisplayText(raw.photoUrl) || null,
+    photoPreviewUrl: null,
     status: normalizeDisplayText(raw.status, 'Active'),
     createdAt: normalizeDisplayText(raw.createdAt ?? raw.created_at ?? raw.created, '2024-01-01'),
   }
@@ -447,7 +448,7 @@ export function normalizeArrayForDisplay(values: unknown, fallback = 'N/A'): str
   return tokens.length > 0 ? tokens.join(', ') : fallback
 }
 
-// ─── Student Remarks Timeline ─────────────────────────────────────────────────
+// --- Student Remarks Timeline -------------------------------------------------
 
 export function normalizeAdminStudentRemark(
   raw: AdminStudentRemarkApiResponse,
@@ -462,6 +463,8 @@ export function normalizeAdminStudentRemark(
     semester: toNumber(raw.semester, 0),
     date: toText(raw.date) || null,
     remarks: toText(raw.remarks) || null,
+    mentorRemarks: toText(raw.mentor_remarks) || null,
+    issues: toText(raw.issues) || null,
     suggestion: toText(raw.suggestion) || null,
     action: toText(raw.action) || null,
     createdByFaculty: Boolean(raw.created_by_faculty),
@@ -492,3 +495,4 @@ export function normalizeAdminStudentRemarksResult(
 
   return { remarks, paging }
 }
+

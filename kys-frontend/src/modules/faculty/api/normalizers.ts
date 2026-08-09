@@ -11,7 +11,7 @@ import type {
     MenteesPage,
     MinuteRow,
 } from './types'
-import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
+import { extractStudentPhotoUrl, extractStudentPhotoPreviewUrl } from '../../../shared/utils/studentPhoto'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -161,6 +161,7 @@ export function normalizeMenteeRow(raw: unknown): MenteeRow {
         uid: str(r.uid),
         full_name: fullName,
         photo_url: extractStudentPhotoUrl(r),
+        photo_preview_url: extractStudentPhotoPreviewUrl(r),
         first_name: firstName || undefined,
         middle_name: middleName || undefined,
         last_name: lastName || undefined,
@@ -228,6 +229,8 @@ export function normalizeMinuteRow(raw: unknown): MinuteRow {
         semester: num(r.semester),
         date: str(r.date),
         remarks: str(r.remarks),
+        mentor_remarks: nullable(r.mentor_remarks as unknown) as string | null,
+        issues: nullable(r.issues as unknown) as string | null,
         suggestion: nullable(r.suggestion as unknown),
         action: nullable(r.action as unknown),
         created_by_faculty: bool(r.created_by_faculty),

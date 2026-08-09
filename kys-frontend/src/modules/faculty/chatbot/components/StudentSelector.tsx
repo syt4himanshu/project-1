@@ -26,7 +26,7 @@ export function StudentSelector() {
     return (
         <div className="faculty-selector">
             <div className="faculty-selector__group">
-                <p className="faculty-selector__label">Student selection</p>
+                <p className="faculty-selector__label">Mentee selection</p>
                 <label className="admin-field" htmlFor="faculty-student-search">
                     <span>Search</span>
                     <input
@@ -56,7 +56,7 @@ export function StudentSelector() {
                 </label>
 
                 {noMatches && (
-                    <p className="faculty-selector__hint">No student matches your search.</p>
+                    <p className="faculty-selector__hint">No mentee matches your search.</p>
                 )}
                 {menteeError && (
                     <ErrorState

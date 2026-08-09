@@ -49,7 +49,7 @@ export function FacultyMenteesPage() {
         cell: (row) => (
           <div className="flex items-center gap-3">
             <PhotoAvatar
-              url={row.photo_url}
+              url={row.photo_preview_url || row.photo_url}
               alt={`${row.full_name} profile`}
               className="h-9 w-9 rounded-full object-cover"
               fallback={(
@@ -97,7 +97,7 @@ export function FacultyMenteesPage() {
 
   if (menteesQuery.isError) {
     return (
-      <SectionShell title="My Mentees" subtitle="Students assigned to you as mentor.">
+      <SectionShell title="My Mentees" subtitle="Mentees assigned to you as mentor.">
         <QueryState
           tone="error"
           title="Unable to load mentee list"

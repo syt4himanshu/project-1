@@ -2,6 +2,19 @@ import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
 import { field, input, inputCls, sectionCardCls, select } from './shared'
 
 const LEVELS = ['Department', 'Institute', 'University', 'State', 'National', 'International']
+const SDP_PLATFORMS = ['NPTEL/SWAYAM', 'Coursera', 'CDAC', 'Udemy', 'AICTE']
+const PROJECT_DOMAINS = [
+    'Full Stack Web Development',
+    'AI / Machine Learning',
+    'Data Science & Analytics',
+    'Cloud Computing',
+    'Cybersecurity',
+    'Mobile App Development',
+    'IoT & Embedded Systems',
+    'Blockchain',
+    'DevOps',
+    'UI / UX Design'
+]
 
 export default function Step6CoCurricular() {
     const { data, update } = useStudentProfileDraft()
@@ -123,7 +136,7 @@ export default function Step6CoCurricular() {
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#e05050] pb-2 text-3xl font-semibold text-[#223b60]">Organized Activities</h3>
                 <div className="grid grid-cols-1 gap-4 sm:max-w-md">
-                    {field('Do you have organized activities?', (
+                    {field('Have you organized activities?', (
                         <select
                             value={hasOrganizedActivities ? 'yes' : 'no'}
                             onChange={e => setHasOrganizedActivities(e.target.value)}
@@ -179,7 +192,7 @@ export default function Step6CoCurricular() {
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#1ea85b] pb-2 text-3xl font-semibold text-[#223b60]">Skill Development Program (SDP) / Training / MOOC</h3>
                 <div className="grid grid-cols-1 gap-4 sm:max-w-md">
-                    {field('Do you have done SDP / Training / MOOC?', (
+                    {field('Have you done SDP / Training / MOOC?', (
                         <select
                             value={hasSkillPrograms ? 'yes' : 'no'}
                             onChange={e => setHasSkillPrograms(e.target.value)}
@@ -212,7 +225,30 @@ export default function Step6CoCurricular() {
                                     </div>
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                                         {field('Program / Course Title', input('text', (program?.course_title as string) || '', v => updProgram(i, 'course_title', v), i === 0 ? 'e.g. Machine Learning Specialization' : 'Course Title'))}
-                                        {field('Organizing Agency / Platform', input('text', (program?.platform as string) || '', v => updProgram(i, 'platform', v), i === 0 ? 'e.g. Coursera, NPTEL, CDAC' : 'Platform / Agency'))}
+                                        {field('Organizing Agency / Platform', (() => {
+                                              const platformValue = program?.platform as string
+                                              const isCustom = platformValue && !SDP_PLATFORMS.includes(platformValue) && platformValue !== 'Other'
+                                              const displayValue = isCustom ? 'Other' : (platformValue || '')
+                                              const showInput = displayValue === 'Other'
+                                              return (
+                                                  <div className="flex flex-col gap-4">
+                                                      {select([...SDP_PLATFORMS, 'Other'], displayValue, v => updProgram(i, 'platform', v), 'Select Platform / Agency')}
+                                                      {showInput && input('text', isCustom ? platformValue : '', v => updProgram(i, 'platform', v), 'Enter custom platform')}
+                                                  </div>
+                                              )
+                                          })())}
+                                          {field('Domain', (() => {
+                                              const domainValue = program?.domain as string
+                                              const isCustom = domainValue && !PROJECT_DOMAINS.includes(domainValue) && domainValue !== 'Other'
+                                              const displayValue = isCustom ? 'Other' : (domainValue || '')
+                                              const showInput = displayValue === 'Other'
+                                              return (
+                                                  <div className="flex flex-col gap-4">
+                                                      {select([...PROJECT_DOMAINS, 'Other'], displayValue, v => updProgram(i, 'domain', v), 'Select Domain')}
+                                                      {showInput && input('text', isCustom ? domainValue : '', v => updProgram(i, 'domain', v), 'Enter custom domain')}
+                                                  </div>
+                                              )
+                                          })())}
                                         {field('Duration (in Hours)', input('number', String(program?.duration_hours || ''), v => updProgram(i, 'duration_hours', v === '' ? null : Number(v)), 'Hours'))}
                                         <div>
                                             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Date From &amp; To</label>
@@ -239,3 +275,5 @@ export default function Step6CoCurricular() {
         </div>
     )
 }
+
+

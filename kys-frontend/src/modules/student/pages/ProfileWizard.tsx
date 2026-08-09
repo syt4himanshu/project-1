@@ -121,12 +121,19 @@ export default function ProfileWizard() {
     return (
         <div className="min-h-screen bg-[var(--bg-soft)] px-3 py-5 sm:px-4 sm:py-8 transition-colors duration-300">
             <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--bg-soft)] shadow-[0_20px_45px_-24px_rgba(22,42,72,0.45)]">
-                <header className="border-t-[3px] border-[#f0b243] bg-gradient-to-r from-[#1f355f] to-[#3e5380] px-5 py-6 sm:px-8 sm:py-8 flex justify-between items-start">
-                    <div>
-                      <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Student Mentoring and Career Counselling Form</h1>
-                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#c8d3e7] sm:text-sm">Department of Computer Engineering</p>
+                <header className="border-t-[3px] border-[#f0b243] bg-white px-5 py-4 sm:px-8 sm:py-5 flex justify-between items-start gap-4">
+                    <div className="flex-1 flex flex-col gap-3 sm:gap-4 min-w-0">
+                      <img src="/logo.png" alt="Logo" className="h-16 sm:h-30 object-contain self-center object-center" />
+                      <div>
+                        <h1 className="font-serif text-2xl font-bold text-[#0f172a] sm:text-3xl">
+                          Department of Computer Science Engineering
+                        </h1>
+                        <h2 className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-[#1f355f] sm:text-sm">
+                          Student Mentoring and Career Counselling Form - KYS
+                        </h2>
+                      </div>
                     </div>
-                    <ThemeToggleButton className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-[var(--panel)]/10 text-white transition hover:bg-[var(--panel)]/20 mt-2" />
+                    <ThemeToggleButton className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-500 transition hover:bg-gray-100 mt-1" />
                 </header>
 
                 <div className="border-y border-[var(--border)] bg-[var(--panel)] px-5 py-5 sm:px-8 sm:py-6">

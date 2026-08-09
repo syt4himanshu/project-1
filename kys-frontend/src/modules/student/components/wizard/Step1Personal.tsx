@@ -64,7 +64,9 @@ export default function Step1Personal() {
             update({
                 personal_info: {
                     photoUrl: response.data?.photoUrl || '',
-                    photo_public_id: response.data?.photo_public_id || ''
+                    photo_public_id: response.data?.photo_public_id || '',
+                    photoPreviewUrl: response.data?.photo_preview_url || '',
+                    photo_preview_url: response.data?.photo_preview_url || ''
                 }
             })
             setUploadMsg('Photo uploaded successfully.')
@@ -276,19 +278,23 @@ export default function Step1Personal() {
                 {(pi.photoUrl as string) ? (
                     <>
                         <div className="mb-3 flex flex-col items-start gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3 sm:flex-row sm:items-center">
-                            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-[#d9e1ec] bg-slate-50 dark:border-[#334155] dark:bg-slate-800">
-                                <FileText className="h-10 w-10 text-slate-400" />
+                            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#d9e1ec] bg-slate-50 dark:border-[#334155] dark:bg-slate-800">
+                                {pi.photoPreviewUrl || pi.photo_preview_url ? (
+                                    <img src={String(pi.photoPreviewUrl || pi.photo_preview_url)} alt="PDF Preview" className="h-full w-full object-cover" />
+                                ) : (
+                                    <FileText className="h-10 w-10 text-slate-400" />
+                                )}
                             </div>
                             <div className="w-full min-w-0">
-                                <p className="text-sm font-medium text-[#32435f]">Current uploaded photo</p>
+                                <p className="text-sm font-medium text-[#32435f]">Current uploaded document</p>
                                 <a className="break-words text-sm text-[#2b5fa6] underline" href={String(pi.photoUrl)} target="_blank" rel="noreferrer">
-                                    Open uploaded image
+                                    Open uploaded document
                                 </a>
                             </div>
                         </div>
                     </>
                 ) : (
-                    <p className="mb-2 text-sm text-[#7a879c]">No photo uploaded yet.</p>
+                    <p className="mb-2 text-sm text-[#7a879c]">No document uploaded yet.</p>
                 )}
 
                 <div>

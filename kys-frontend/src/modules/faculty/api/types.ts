@@ -20,6 +20,7 @@ export interface MenteeRow {
   uid: string
   full_name: string
   photo_url?: string | null
+  photo_preview_url?: string | null
   first_name?: string
   middle_name?: string
   last_name?: string
@@ -68,6 +69,8 @@ export interface MinuteRow {
   semester: number
   date: string
   remarks: string
+  mentor_remarks?: string | null
+  issues?: string | null
   suggestion?: string | null
   action?: string | null
   created_by_faculty: boolean
@@ -88,6 +91,8 @@ export interface MenteeMinutesPayload {
 
 export interface AddMinuteInput {
   remarks: string
+  mentor_remarks?: string
+  issues?: string
   suggestion?: string
   action?: string
 }

@@ -52,6 +52,8 @@ router.post(
   [
     param('uid').isString().trim().notEmpty(),
     body('remarks').isString().trim().notEmpty().withMessage('Remarks are required'),
+    body('mentor_remarks').optional().isString().trim(),
+    body('issues').optional().isString().trim(),
     body('suggestion').optional().isString().trim(),
     body('action').optional().isString().trim(),
     validateRequest

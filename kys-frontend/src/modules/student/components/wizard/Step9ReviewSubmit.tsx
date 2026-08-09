@@ -169,7 +169,8 @@ export default function Step9ReviewSubmit() {
                         <Row label='Student Mentor Interest' value={co.student_mentor_interest} />
                         <Row label='Expectations from Institute' value={co.expectations_from_institute} />
                         <Row label='Programming Languages' value={sk.programming_languages} />
-                        <Row label='Technologies & Frameworks' value={sk.technologies_frameworks} />
+                        <Row label='Frontend technologies & frameworks' value={sk.frontend_technologies_frameworks} />
+                        <Row label='Backend technologies & Databases' value={sk.backend_technologies_databases} />
                         <Row label='Domains of Interest' value={sk.domains_of_interest} />
                         <Row label='Familiar Tools & Platforms' value={sk.familiar_tools_platforms} />
                     </TwoColGrid>

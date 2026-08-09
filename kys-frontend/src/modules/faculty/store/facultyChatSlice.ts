@@ -379,7 +379,7 @@ export const selectFacultyChatContextLabel = createSelector(
 export const selectFacultyChatAnalysisText = createSelector(
   [selectFacultyChatSelectedStudentUid],
   (selectedStudentUid) =>
-    selectedStudentUid ? 'Analyzing student profile...' : '',
+    selectedStudentUid ? 'Analyzing mentee profile...' : '',
 )
 
 export const selectFacultyChatIsStudentSelectionInvalid = (state: RootState) =>

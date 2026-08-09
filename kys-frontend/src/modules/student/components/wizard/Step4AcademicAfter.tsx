@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
 import { field, input, sectionCardCls, select } from './shared'
 
@@ -5,6 +6,9 @@ export default function Step4AcademicAfter() {
     const { data, update } = useStudentProfileDraft()
     const currentSem = Number(data.semester || 8)
     const records = (data.post_admission_records as Record<string, unknown>[]) || []
+    
+    const [activeSem, setActiveSem] = useState<number>(1)
+    const semCardRefs = useRef<Record<number, HTMLElement | null>>({})
 
     const getRecord = (sem: number) => records.find(r => Number(r.semester) === sem) || {}
 
@@ -26,10 +30,10 @@ export default function Step4AcademicAfter() {
 
     return (
         <div className="space-y-5">
-            {semesters.map(sem => {
+            {semesters.slice(0, activeSem).map(sem => {
                 const rec = getRecord(sem) as Record<string, unknown>
                 return (
-                    <section key={sem} className={sectionCardCls}>
+                    <section key={sem} ref={el => { semCardRefs.current[sem] = el }} className={sectionCardCls}>
                         <h3 className="mb-4 text-xl font-semibold text-[#223b60]">Semester {sem}</h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                             {field('SGPA / Percentage', input('number', String(rec.sgpa || ''), v => upd(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86'))}
@@ -49,6 +53,24 @@ export default function Step4AcademicAfter() {
                                 {field('Backlog Subjects', input('text', (rec.backlog_subjects as string) || '', v => upd(sem, 'backlog_subjects', v), 'e.g. list subjects comma separated'))}
                             </div>
                         </div>
+                        {sem === activeSem && (
+                            <div className="mt-3">
+                                {activeSem < semesters.length ? (
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            setActiveSem(prev => prev + 1)
+                                            setTimeout(() => semCardRefs.current[activeSem + 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+                                        }} 
+                                        className="rounded-xl border border-[#3b8ed9] bg-white dark:bg-[#1e293b] px-4 py-2 text-sm font-semibold text-[#3b8ed9] transition hover:bg-[#f0f6ff] dark:hover:bg-[#243044]"
+                                    >
+                                        Add Semester {activeSem + 1} →
+                                    </button>
+                                ) : (
+                                    <p className="text-sm font-medium text-[#12996c]">✓ All {semesters.length} semesters added</p>
+                                )}
+                            </div>
+                        )}
                     </section>
                 )
             })}
