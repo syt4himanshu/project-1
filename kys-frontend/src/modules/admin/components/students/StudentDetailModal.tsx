@@ -269,7 +269,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        onclone: (doc, el) => {
+        onclone: (_doc, el) => {
           el.classList.add('is-exporting')
         }
       })
