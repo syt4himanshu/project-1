@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { sequelize, User, Student, Faculty, StudentPersonalInfo } = require('../models');
+const { sequelize, User, Student, Faculty, StudentPersonalInfo, MentoringMinute } = require('../models');
 const { splitFullName, buildFullName, serializeModel } = require('../utils/helpers');
 const { serializeStudent } = require('../utils/serializers');
 const { unpackText } = require('../utils/profileCodec');
@@ -1122,6 +1122,27 @@ const listFacultyMentees = async (req, res, next) => {
     if (!faculty) return res.status(404).json({ error: 'Faculty not found' });
 
     const mentees = await Student.findAll({ where: { mentor_id: faculty.id }, order: [['id', 'ASC']] });
+
+    // Fetch ALL remarks dates for each mentee, sorted newest first
+    const menteeIds = mentees.map((s) => s.id);
+    const remarksDatesMap = {};
+    if (menteeIds.length > 0) {
+      const allMinutes = await MentoringMinute.findAll({
+        where: {
+          student_id: { [Op.in]: menteeIds },
+          date: { [Op.ne]: null },
+        },
+        attributes: ['student_id', 'date'],
+        order: [['date', 'DESC']],
+      });
+      for (const minute of allMinutes) {
+        if (!remarksDatesMap[minute.student_id]) {
+          remarksDatesMap[minute.student_id] = [];
+        }
+        remarksDatesMap[minute.student_id].push(minute.date);
+      }
+    }
+
     return res.status(200).json(
       mentees.map((s) => ({
         id: s.id,
@@ -1130,6 +1151,7 @@ const listFacultyMentees = async (req, res, next) => {
         semester: s.semester,
         section: s.section,
         year_of_admission: s.year_of_admission,
+        remarks_dates: remarksDatesMap[s.id] || [],
       })),
     );
   } catch (_error) {
@@ -1266,7 +1288,7 @@ const listAllocation = async (_req, res, next) => {
         `${f.first_name || ''} ${f.last_name || ''}`.trim() || String(f.email).split('@')[0],
       email: f.email,
       assigned_count: (f.mentees || []).length,
-      capacity: 20,
+      capacity: 30,
     }));
 
     return res.status(200).json(result);
@@ -1289,7 +1311,7 @@ const generateAllocation = async (req, res, next) => {
     });
     const selectedFaculty = faculties.find((f) => f.id === facultyId) || faculty;
     const assignedCount = (selectedFaculty.mentees || []).length;
-    const capacity = 20;
+    const capacity = 30;
     const remainingCapacity = Math.max(0, capacity - assignedCount);
 
     if (remainingCapacity === 0) {
@@ -1374,7 +1396,7 @@ const autoAllocateUnassigned = async (req, res, next) => {
       return res.status(400).json({ error: 'No faculty records available for allocation' });
     }
 
-    const CAPACITY = 20;
+    const CAPACITY = 30;
 
     const facultyState = faculties.map((f) => ({
       faculty_id: f.id,
@@ -1388,7 +1410,7 @@ const autoAllocateUnassigned = async (req, res, next) => {
 
     const eligibleFaculty = facultyState.filter((f) => f.current_count < CAPACITY);
     if (!eligibleFaculty.length) {
-      return res.status(400).json({ error: 'All faculty members have reached maximum capacity (20).' });
+      return res.status(400).json({ error: 'All faculty members have reached maximum capacity (30).' });
     }
 
     // Group unassigned students by semester + section to maintain balanced section mix

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { QueryState, ResponsiveDataView, type TableColumn } from '../../../shared/ui'
 import { sanitizeDisplayValue } from '../../../shared/utils/render'
@@ -79,7 +79,7 @@ export function AdminTeachersPage() {
       {
         id: 'assigned',
         header: 'Students Assigned',
-        cell: (row) => <span className="count-pill">{row.assignedCount} / 20</span>,
+        cell: (row) => <span className="count-pill">{row.assignedCount} / 30</span>,
       },
       {
         id: 'actions',

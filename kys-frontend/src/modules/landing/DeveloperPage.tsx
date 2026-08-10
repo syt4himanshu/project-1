@@ -52,14 +52,14 @@ export function DeveloperPage() {
       role: 'Frontend Developer',
       summaryLineOne: 'Contributed to frontend development and UI components.',
       image: '/Sidhant lohakar.jpeg',
-      objectPosition: 'center 30%',
+      objectPosition: 'center 75%',
     },
     {
       name: 'Kaushik Sahu',
       role: 'Backend Developer and Deployment',
       summaryLineOne: 'Handled backend architecture and application deployment.',
       image: '/Koushik Shahu.jpeg',
-      objectPosition: 'center 30%',
+      objectPosition: 'center 75%',
     },
   ]
 

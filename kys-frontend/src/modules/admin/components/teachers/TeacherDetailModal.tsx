@@ -133,6 +133,7 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
                       <th className="teacher-detail__col-sem">Semester</th>
                       <th className="teacher-detail__col-section">Section</th>
                       <th className="teacher-detail__col-year">Admission Year</th>
+                      <th className="teacher-detail__col-date">Mentorship Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -144,6 +145,19 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
                         <td className="teacher-detail__col-sem">{normalizeForDisplay(mentee.semester)}</td>
                         <td className="teacher-detail__col-section">{sanitizeDisplayValue(normalizeForDisplay(mentee.section))}</td>
                         <td className="teacher-detail__col-year">{normalizeForDisplay(mentee.yearOfAdmission)}</td>
+                        <td className="teacher-detail__col-date">
+                          {mentee.remarksDates && mentee.remarksDates.length > 0
+                            ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                {mentee.remarksDates.map((d, i) => (
+                                  <span key={i} style={{ whiteSpace: 'nowrap' }}>
+                                    {new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                  </span>
+                                ))}
+                              </div>
+                            )
+                            : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -210,6 +210,6 @@ export function AllocationPageContent() {
 }
 
 function normalizeCapacity(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return '20'
+  if (!Number.isFinite(value) || value <= 0) return '30'
   return String(value)
 }

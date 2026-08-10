@@ -229,15 +229,23 @@ async function getFacultyDetail({ token, facultyId }: AdminApiRequestOptions & {
     }),
   )
 
+  // Build a lookup for remarksDates from the /mentees endpoint response
+  // (summarizedMentees is built from studentSummaries which never carries this field)
+  const remarksDatesById = new Map(mentees.map((m) => [m.id, m.remarksDates ?? []]))
+  const remarksDatesByUid = new Map(mentees.map((m) => [m.uid, m.remarksDates ?? []]))
+
   const menteeBase = summarizedMentees.length > 0 ? summarizedMentees : mentees
   const mergedMentees = menteeBase.map((mentee) => {
     const fallback = summaryById.get(mentee.id) ?? summaryByUid.get(mentee.uid)
     const detailed = mentee.id ? detailById.get(mentee.id) : undefined
+    const remarksDates =
+      remarksDatesById.get(mentee.id) ?? remarksDatesByUid.get(mentee.uid) ?? []
     return {
       ...mentee,
       semester: detailed?.semester ?? mentee.semester ?? fallback?.semester ?? null,
       section: mentee.section || fallback?.section || 'N/A',
       yearOfAdmission: detailed?.yearOfAdmission ?? mentee.yearOfAdmission ?? fallback?.yearOfAdmission ?? null,
+      remarksDates,
     }
   })
 
@@ -350,7 +358,7 @@ async function autoAllocateUnassigned(
     initialCount: Number(item.initial_count || 0),
     newAssignedCount: Number(item.new_assigned_count || 0),
     finalCount: Number(item.final_count || 0),
-    capacity: Number(item.capacity || 20),
+    capacity: Number(item.capacity || 30),
     studentIds: Array.isArray(item.student_ids) ? item.student_ids.map(Number) : [],
     students: Array.isArray(item.students)
       ? item.students.map((s) => normalizeAllocationStudent(s as Record<string, unknown>))

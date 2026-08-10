@@ -235,6 +235,10 @@ export function normalizeAdminStudentDetail(raw: AdminStudentDetailApiResponse):
 }
 
 export function normalizeMenteeSummary(raw: AdminMenteeApiResponse): AdminMenteeSummary {
+  const rawDates = raw.remarks_dates ?? raw.remarksDates
+  const remarksDates: string[] = Array.isArray(rawDates)
+    ? rawDates.filter((d): d is string => typeof d === 'string' && Boolean(d))
+    : []
   return {
     id: toNumber(raw.id, 0),
     uid: normalizeDisplayText(raw.uid, 'UNKNOWN_UID'),
@@ -242,6 +246,7 @@ export function normalizeMenteeSummary(raw: AdminMenteeApiResponse): AdminMentee
     semester: toNullableNumber(raw.semester ?? raw.current_semester ?? raw.currentSemester),
     section: normalizeDisplayText(raw.section ?? raw.class_section ?? raw.classSection, 'N/A'),
     yearOfAdmission: toNullableNumber(raw.year_of_admission ?? raw.yearOfAdmission),
+    remarksDates,
   }
 }
 
@@ -251,7 +256,7 @@ export function normalizeAllocationEntry(raw: AdminAllocationApiResponse): Admin
     facultyName: normalizeDisplayText(raw.faculty_name, 'Unknown Faculty'),
     email: normalizeDisplayText(raw.email, 'N/A'),
     assignedCount: toNumber(raw.assigned_count, 0),
-    capacity: toNumber(raw.capacity, 20),
+    capacity: toNumber(raw.capacity, 30),
   }
 }
 

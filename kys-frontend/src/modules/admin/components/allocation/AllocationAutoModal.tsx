@@ -103,7 +103,7 @@ export function AllocationAutoModal({ open, onClose }: AllocationAutoModalProps)
             Capacity Reached
           </p>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            All faculty members have reached their maximum capacity of 20 mentees.
+            All faculty members have reached their maximum capacity of 30 mentees.
           </p>
         </div>
       ) : (

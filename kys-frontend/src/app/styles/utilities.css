@@ -981,15 +981,20 @@ a:hover {
 }
 
 .detail-list-table--teachers .teacher-detail__col-name {
-  width: 38%;
+  width: 22%;
   padding-left: 1rem;
 }
 
 .detail-list-table--teachers .teacher-detail__col-index,
 .detail-list-table--teachers .teacher-detail__col-sem,
 .detail-list-table--teachers .teacher-detail__col-section,
-.detail-list-table--teachers .teacher-detail__col-year {
+.detail-list-table--teachers .teacher-detail__col-year,
+.detail-list-table--teachers .teacher-detail__col-date {
   white-space: nowrap;
+}
+
+.detail-list-table--teachers .teacher-detail__col-date {
+  width: 16%;
 }
 
 .detail-list-table--teachers .teacher-detail__col-uid .mono-cell {
@@ -1727,6 +1732,8 @@ a:hover {
   border-radius: 999px;
   padding: 4px;
   background: linear-gradient(135deg, #adc6ff, #8fb6ff);
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .kys-developer__mentor-avatar {
@@ -1737,6 +1744,11 @@ a:hover {
   object-position: top center;
   background: #0e1622;
   border: 2px solid rgba(11, 19, 33, 0.9);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: high-quality;
 }
 
 .kys-developer__mentor-name {
@@ -1780,6 +1792,7 @@ a:hover {
   opacity: 0;
   transform: translateY(14px);
   animation: developerCardIn 0.55s ease forwards;
+  -webkit-font-smoothing: antialiased;
 }
 
 .kys-developer__avatar-wrap {
@@ -1788,6 +1801,8 @@ a:hover {
   border-radius: 999px;
   padding: 4px;
   background: linear-gradient(135deg, #adc6ff, #8fb6ff);
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .kys-developer__avatar {
@@ -1798,6 +1813,11 @@ a:hover {
   object-position: top center;
   background: #0e1622;
   border: 2px solid rgba(11, 19, 33, 0.9);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: high-quality;
 }
 
 /* Background-image avatar variant: zoom-out via background-size, focal point via background-position */
@@ -1810,6 +1830,9 @@ a:hover {
   background-repeat: no-repeat;
   border: 2px solid rgba(11, 19, 33, 0.9);
   box-sizing: border-box;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .kys-developer__content h3 {

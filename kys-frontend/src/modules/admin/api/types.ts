@@ -96,6 +96,7 @@ export interface AdminMenteeSummary {
   semester: number | null
   section: string
   yearOfAdmission: number | null
+  remarksDates: string[]
 }
 
 export interface AdminFacultyDetail {
@@ -309,6 +310,8 @@ export interface AdminMenteeApiResponse {
   classSection?: unknown
   year_of_admission?: unknown
   yearOfAdmission?: unknown
+  remarks_dates?: unknown
+  remarksDates?: unknown
 }
 
 export interface AdminAllocationApiResponse {
