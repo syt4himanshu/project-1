@@ -18,6 +18,13 @@ export function DeveloperPage() {
       name: 'Ayaz Ahmed Khan',
       designation: 'Assistant Professor, CSE',
       image: '/faculty-mentor-ayaz.jpg',
+      bgZoom: '72%',
+      bgPosition: 'center 20%',
+    },
+    {
+      name: 'Atharva Bhede',
+      designation: 'Student Mentor',
+      image: '/atharva-bhede.jpeg',
     },
   ]
 
@@ -35,8 +42,24 @@ export function DeveloperPage() {
       summaryLineOne: 'Designed polished UI interactions and improved overall usability across modules.',
       summaryLineTwo: 'Owned dashboard refinements, feature alignment, and cross-panel visual consistency.',
       image: '/yash-kys.jpg',
+      bgZoom: '72%',
+      bgPosition: 'center 15%',
       github: 'https://github.com/yashlute19',
       linkedin: 'https://linkedin.com/in/yashlute19/',
+    },
+    {
+      name: 'Siddhant Lohakar',
+      role: 'Frontend Developer',
+      summaryLineOne: 'Contributed to frontend development and UI components.',
+      image: '/Sidhant lohakar.jpeg',
+      objectPosition: 'center 30%',
+    },
+    {
+      name: 'Kaushik Sahu',
+      role: 'Backend Developer and Deployment',
+      summaryLineOne: 'Handled backend architecture and application deployment.',
+      image: '/Koushik Shahu.jpeg',
+      objectPosition: 'center 30%',
     },
   ]
 
@@ -62,14 +85,27 @@ export function DeveloperPage() {
               {facultyMentors.map((mentor, idx) => (
                 <article key={mentor.name} className="kys-developer__mentor-item" style={{ animationDelay: `${idx * 180}ms` }}>
                   <div className="kys-developer__mentor-avatar-wrap">
-                    <img
-                      className="kys-developer__mentor-avatar"
-                      src={mentor.image}
-                      alt={`${mentor.name} profile`}
-                      onError={(event) => {
-                        event.currentTarget.src = '/college-logo.png'
-                      }}
-                    />
+                    {mentor.bgZoom ? (
+                      <div
+                        className="kys-developer__mentor-avatar--bg"
+                        role="img"
+                        aria-label={`${mentor.name} profile`}
+                        style={{
+                          backgroundImage: `url(${mentor.image})`,
+                          backgroundSize: mentor.bgZoom,
+                          backgroundPosition: mentor.bgPosition ?? 'center center',
+                        }}
+                      />
+                    ) : (
+                      <img
+                        className="kys-developer__mentor-avatar"
+                        src={mentor.image}
+                        alt={`${mentor.name} profile`}
+                        onError={(event) => {
+                          event.currentTarget.src = '/college-logo.png'
+                        }}
+                      />
+                    )}
                   </div>
                   <h3 className="kys-developer__mentor-name">{mentor.name}</h3>
                   <p className="kys-developer__mentor-designation">{mentor.designation}</p>
@@ -82,7 +118,25 @@ export function DeveloperPage() {
               {developers.map((dev, idx) => (
                 <article key={dev.name} className="kys-developer__item" style={{ animationDelay: `${idx * 220}ms` }}>
                   <div className="kys-developer__avatar-wrap">
-                    <img className="kys-developer__avatar" src={dev.image} alt={`${dev.name} profile`} />
+                    {dev.bgZoom ? (
+                      <div
+                        className="kys-developer__avatar--bg"
+                        role="img"
+                        aria-label={`${dev.name} profile`}
+                        style={{
+                          backgroundImage: `url(${dev.image})`,
+                          backgroundSize: dev.bgZoom,
+                          backgroundPosition: dev.bgPosition ?? 'center center',
+                        }}
+                      />
+                    ) : (
+                      <img
+                        className="kys-developer__avatar"
+                        src={dev.image}
+                        alt={`${dev.name} profile`}
+                        style={dev.objectPosition ? { objectPosition: dev.objectPosition } : undefined}
+                      />
+                    )}
                   </div>
                   <div className="kys-developer__content">
                     <h3>{dev.name}</h3>
@@ -91,7 +145,7 @@ export function DeveloperPage() {
                     <p className="kys-developer__summary">{dev.summaryLineTwo}</p>
                     <div className="kys-developer__links">
                       {dev.github && <a href={dev.github} target="_blank" rel="noreferrer">GitHub</a>}
-                      <a href={dev.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
+                      {dev.linkedin && <a href={dev.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>}
                     </div>
                   </div>
                 </article>
