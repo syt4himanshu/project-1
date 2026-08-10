@@ -316,9 +316,8 @@ export default function Dashboard() {
                                           <div className="space-y-2 text-sm text-[#3f4d63]">
                                                 <p><span className="font-semibold">AI Remarks:</span> {m.remarks || 'None'}</p>
                                                 <p><span className="font-semibold">Mentor Remarks:</span> {m.mentor_remarks || 'None'}</p>
-                                                <p><span className="font-semibold">Issues:</span> {m.issues || 'None'}</p>
                                                 <p><span className="font-semibold">Suggestion:</span> {m.suggestion || 'None'}</p>
-                                              <p><span className="font-semibold">Action:</span> {m.action || 'None'}</p>
+                                                <p><span className="font-semibold">Action:</span> {m.action || 'None'}</p>
                                           </div>
                                       </article>
                                   )})}
