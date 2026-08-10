@@ -11,7 +11,18 @@ const EMPTY_FILTERS: AdminGeneralReportFilters = {
   minSgpa: '',
   maxSgpa: '',
   minBacklogs: '',
+  careerGoal: '',
 }
+
+const CAREER_GOAL_OPTIONS = [
+  '',
+  'Placement',
+  'Higher Studies',
+  'Entrepreneurship',
+  'Government Jobs and Exams',
+  'Government Exams',
+  'Not Decided',
+] as const
 
 function averageSgpa(row: AdminGeneralReportRow): number {
   const values = row.academicRecords
@@ -52,6 +63,7 @@ export function ReportGeneralTable() {
     const minSgpa = normalizedFilters.minSgpa ? Number(normalizedFilters.minSgpa) : null
     const maxSgpa = normalizedFilters.maxSgpa ? Number(normalizedFilters.maxSgpa) : null
     const minBacklogs = normalizedFilters.minBacklogs ? Number(normalizedFilters.minBacklogs) : null
+    const careerGoal = normalizedFilters.careerGoal
 
     return rows.filter((row) => {
       if (search) {
@@ -69,6 +81,8 @@ export function ReportGeneralTable() {
 
       const backlogs = totalBacklogs(row)
       if (minBacklogs !== null && backlogs < minBacklogs) return false
+
+      if (careerGoal && row.careerGoal !== careerGoal) return false
 
       return true
     })
@@ -223,6 +237,21 @@ export function ReportGeneralTable() {
             placeholder="0"
             inputMode="numeric"
           />
+        </label>
+
+        <label className={`admin-field reports-mobile-collapsible ${!showFilters ? 'mobile-hide' : ''}`} htmlFor="general-career-goal">
+          <span>Career Goal</span>
+          <select
+            id="general-career-goal"
+            value={filters.careerGoal}
+            onChange={(event) => setFilters((current) => ({ ...current, careerGoal: event.target.value }))}
+          >
+            {CAREER_GOAL_OPTIONS.map((option) => (
+              <option key={option || 'all'} value={option}>
+                {option || 'All'}
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className={`reports-reset-wrap reports-mobile-collapsible ${!showFilters ? 'mobile-hide' : ''}`}>

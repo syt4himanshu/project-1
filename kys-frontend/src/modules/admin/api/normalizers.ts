@@ -156,7 +156,7 @@ export function normalizeAdminUser(raw: AdminUserApiResponse): AdminUserSummary 
     role,
     name,
     photoUrl: normalizeDisplayText(raw.photoUrl) || null,
-    photoPreviewUrl: null,
+    photoPreviewUrl: normalizeDisplayText(raw.photoPreviewUrl) || null,
     status: normalizeDisplayText(raw.status, 'Active'),
     createdAt: normalizeDisplayText(raw.createdAt ?? raw.created_at ?? raw.created, '2024-01-01'),
   }
@@ -436,6 +436,7 @@ export function normalizeGeneralReportFilters(
     minSgpa: normalizeFilterValue(filters.minSgpa),
     maxSgpa: normalizeFilterValue(filters.maxSgpa),
     minBacklogs: normalizeFilterValue(filters.minBacklogs),
+    careerGoal: normalizeFilterValue(filters.careerGoal),
   }
 }
 

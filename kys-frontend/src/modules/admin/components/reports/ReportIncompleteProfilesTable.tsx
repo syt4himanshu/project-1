@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { QueryState, ResponsiveDataView, type TableColumn } from '../../../../shared/ui'
+import { Modal, QueryState, ResponsiveDataView, type TableColumn } from '../../../../shared/ui'
 import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import type { AdminIncompleteProfile } from '../../api'
 import {
@@ -8,8 +8,9 @@ import {
 } from '../../hooks'
 
 function currentYearOptions() {
-  const year = new Date().getFullYear()
-  return Array.from({ length: 10 }, (_, index) => year - index)
+  const startYear = 2018
+  const endYear = 2040
+  return Array.from({ length: endYear - startYear + 1 }, (_, index) => endYear - index)
 }
 
 function getInitials(name: string): string {
@@ -23,6 +24,7 @@ function getInitials(name: string): string {
 
 export function ReportIncompleteProfilesTable() {
   const [yearFilter, setYearFilter] = useState<string>('')
+  const [viewingProfile, setViewingProfile] = useState<AdminIncompleteProfile | null>(null)
 
   const parsedYear = yearFilter ? Number(yearFilter) : undefined
   const incompleteQuery = useAdminReportIncompleteQuery(parsedYear)
@@ -38,8 +40,27 @@ export function ReportIncompleteProfilesTable() {
         header: 'Missing Fields',
         cell: (row) => (
           <span className="reports-warning-text">
-            {row.missingFields.length > 0 ? row.missingFields.map((value) => sanitizeDisplayValue(value)).join(', ') : 'N/A'}
+            {row.missingFields.length > 2
+              ? `${row.missingFields.length} fields missing`
+              : row.missingFields.length > 0
+              ? row.missingFields.map((value) => sanitizeDisplayValue(value)).join(', ')
+              : 'N/A'}
           </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (row) => (
+          row.missingFields.length > 0 ? (
+            <button
+              type="button"
+              className="button button--soft button--small"
+              onClick={() => setViewingProfile(row)}
+            >
+              View Fields
+            </button>
+          ) : null
         ),
       },
     ],
@@ -86,9 +107,24 @@ export function ReportIncompleteProfilesTable() {
           </div>
           <div className="mobile-card__row">
             <span className="mobile-card__label">Missing Fields</span>
-            <span className="mobile-card__value">{missing.length > 0 ? missing.join(', ') : 'N/A'}</span>
+            <span className="mobile-card__value">
+              {missing.length > 2 ? `${missing.length} fields missing` : missing.length > 0 ? missing.join(', ') : 'N/A'}
+            </span>
           </div>
         </div>
+
+        {missing.length > 0 && (
+          <div className="mobile-card__actions">
+            <button
+              type="button"
+              className="button button--soft"
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => setViewingProfile(row)}
+            >
+              View Missing Fields
+            </button>
+          </div>
+        )}
 
       </div>
     )
@@ -146,6 +182,34 @@ export function ReportIncompleteProfilesTable() {
           renderMobileCard={renderIncompleteCard}
         />
       )}
+
+      <Modal
+        open={!!viewingProfile}
+        onClose={() => setViewingProfile(null)}
+        title="Missing Fields"
+      >
+        {viewingProfile && (
+          <div style={{ padding: '1rem', minWidth: '300px' }}>
+            <p style={{ marginBottom: '1rem', fontWeight: 500 }}>
+              {viewingProfile.name} ({viewingProfile.uid}) has {viewingProfile.missingFields.length} missing fields:
+            </p>
+            <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {viewingProfile.missingFields.map((field) => (
+                <li key={field}>{sanitizeDisplayValue(field)}</li>
+              ))}
+            </ul>
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => setViewingProfile(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </section>
   )
 }

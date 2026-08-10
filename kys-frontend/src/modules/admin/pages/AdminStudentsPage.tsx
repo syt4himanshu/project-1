@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { ResponsiveDataView, QueryState, type TableColumn } from '../../../shared/ui'
 import { sanitizeDisplayValue } from '../../../shared/utils/render'
@@ -13,6 +13,7 @@ const CAREER_GOAL_OPTIONS = [
   'Placement',
   'Higher Studies',
   'Entrepreneurship',
+  'Government Jobs and Exams',
   'Government Exams',
   'Not Decided',
 ] as const

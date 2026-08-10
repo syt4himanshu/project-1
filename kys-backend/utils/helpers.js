@@ -47,6 +47,10 @@ const serializeModel = (obj) => {
     data.photoUrl = data.photo_url;
     delete data.photo_url;
   }
+  if ('photo_preview_url' in data) {
+    data.photoPreviewUrl = data.photo_preview_url;
+    delete data.photo_preview_url;
+  }
 
   return data;
 };

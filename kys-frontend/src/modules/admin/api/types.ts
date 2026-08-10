@@ -219,6 +219,7 @@ export interface AdminUserApiResponse {
   name?: unknown
   full_name?: unknown
   photoUrl?: unknown
+  photoPreviewUrl?: unknown
   status?: unknown
   created?: unknown
   created_at?: unknown
@@ -407,6 +408,7 @@ export interface AdminGeneralReportFilters {
   minSgpa: string
   maxSgpa: string
   minBacklogs: string
+  careerGoal: string
 }
 
 export interface AdminIncompleteProfile {

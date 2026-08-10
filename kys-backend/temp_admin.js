@@ -46,7 +46,7 @@ const fullStudentIncludes = [
   'swoc',
 ];
 
-const KYS_PLACEHOLDER_VALUES = new Set(['n/a', 'na', 'none', 'nil', '-', '--', 'no backlog', 'no backlogs', 'other']);
+const KYS_PLACEHOLDER_VALUES = new Set(['n/a', 'na', 'none', 'nil', '-', '--', 'no backlog', 'no backlogs']);
 
 const stripKysArtifacts = (value) => {
   const text = value == null ? '' : String(value);
@@ -722,7 +722,7 @@ const listUsers = async (_req, res, next) => {
           model: Student,
           as: 'student_profile',
           attributes: ['id', 'uid', 'first_name', 'middle_name', 'last_name'],
-          include: [{ model: StudentPersonalInfo, as: 'personal_info', attributes: ['photo_url', 'photo_preview_url'], required: false }],
+          include: [{ model: StudentPersonalInfo, as: 'personal_info', attributes: ['photo_url'], required: false }],
           required: false,
         },
         {
@@ -750,7 +750,6 @@ const listUsers = async (_req, res, next) => {
             u.username
             : u.username,
       photoUrl: serializeModel(u.student_profile?.personal_info)?.photoUrl || null,
-      photoPreviewUrl: serializeModel(u.student_profile?.personal_info)?.photoPreviewUrl || null,
       status: 'Active',
       created: '2024-01-01',
     }));
@@ -1689,37 +1688,6 @@ const getAdminStudentRemarks = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  statistics,
-  listUsers,
-  createUser,
-  updateUser,
-  deleteUser,
-  resetPassword,
-  listFaculty,
-  listFacultyBasic,
-  listFacultyMentees,
-  generateMentees,
-  confirmMentees,
-  removeMentees,
-  listAllocation,
-  generateAllocation,
-  autoAllocateUnassigned,
-  confirmAllocation,
-  removeAllocation,
-  listAllocationAssignedStudents,
-  reportsStats,
-  reportsToppers,
-  reportsSemesterDistribution,
-  reportsBacklogs,
-  reportsGeneral,
-  reportsIncomplete,
-  exportAllStudents,
-  exportBacklogs,
-  exportIncomplete,
-  deleteStudentByUid,
-  deleteFacultyById,
-  getAdminStudentRemarks,
-  fullStudentIncludes,
-  serializeStudent,
-};
+
+
+module.exports = { getMissingRequiredFields };
