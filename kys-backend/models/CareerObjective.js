@@ -16,6 +16,7 @@ class CareerObjective extends Model {
         non_technical_areas: { type: DataTypes.STRING(255), allowNull: true },
         student_mentor_interest: { type: DataTypes.STRING(20), allowNull: true },
         expectations_from_institute: { type: DataTypes.TEXT, allowNull: true },
+        mentorship_domain: { type: DataTypes.STRING(100), allowNull: true },
         // New fields to match production
         placement_type: { type: DataTypes.STRING(50), allowNull: true },
         higher_studies_type: { type: DataTypes.STRING(50), allowNull: true },

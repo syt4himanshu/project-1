@@ -169,8 +169,15 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
       { label: 'College Email', value: showValue(pick(personalInfo, 'college_email', 'institution_email')) },
       { label: 'LinkedIn', value: showValue(pick(personalInfo, 'linkedin', 'linked_in_id', 'linkedin_id')) },
       { label: 'GitHub', value: showValue(pick(personalInfo, 'github', 'github_id')) },
+      { label: 'State', value: showValue(personalInfo.state) },
+      { label: 'City', value: showValue(personalInfo.city) },
+      { label: 'Pincode', value: showValue(personalInfo.pincode) },
+      { label: 'DIGIPIN', value: showValue(personalInfo.digipin) },
       { label: 'Permanent Address', value: showValue(pick(personalInfo, 'permanent_address', 'address')) },
       { label: 'Present Address', value: showValue(pick(personalInfo, 'present_address', 'current_address')) },
+      { label: 'Local Guardian Name', value: showValue(pick(personalInfo, 'guardian_name', 'local_guardian_name')) },
+      { label: 'Local Guardian Mobile', value: showValue(pick(personalInfo, 'guardian_mobile', 'local_guardian_mobile')) },
+      { label: 'Local Guardian Email', value: showValue(pick(personalInfo, 'guardian_email', 'local_guardian_email')) },
     ]
   }, [student, personalInfo])
 
@@ -188,10 +195,24 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
 
   const skillRows = useMemo<InfoRow[]>(() => [
     { label: 'Career Goal', value: showValue(careerObjective.career_goal) },
-    { label: 'Domain of Interest', value: showValue(careerObjective.domain_of_interest) },
+    { label: 'Specific Goal', value: showValue(careerObjective.specific_details) },
+    {
+      label: 'Interested in Campus Placement?',
+      value: typeof careerObjective.interested_in_campus_placement === 'boolean'
+        ? careerObjective.interested_in_campus_placement ? 'Yes' : 'No'
+        : showValue(careerObjective.campus_placement ?? careerObjective.interested_in_campus_placement),
+    },
+    {
+      label: 'Clarity and Preparedness Level',
+      value: showValue(careerObjective.clarity_preparedness ?? careerObjective.clarity_score),
+    },
+    { label: 'Areas of Interest (Non-Technical)', value: showValue(careerObjective.non_technical_areas) },
+    { label: 'Student Mentor Interest', value: showValue(careerObjective.student_mentor_interest) },
+    { label: 'Mentorship Domain', value: showValue(careerObjective.mentorship_domain) },
+    { label: 'Expectations from Institute', value: showValue(careerObjective.expectations_from_institute) },
     { label: 'Programming Languages', value: showValue(skills.programming_languages) },
-    { label: 'Frontend technologies & frameworks', value: showValue(skills.frontend_technologies_frameworks) },
-    { label: 'Backend technologies & Databases', value: showValue(skills.backend_technologies_databases) },
+    { label: 'Frontend Technologies & Frameworks', value: showValue(skills.frontend_technologies_frameworks) },
+    { label: 'Backend Technologies & Databases', value: showValue(skills.backend_technologies_databases) },
     { label: 'Domains of Interest', value: showValue(skills.domains ?? skills.domains_of_interest) },
     { label: 'Familiar Tools & Platforms', value: showValue(skills.tools ?? skills.familiar_tools_platforms) },
     { label: 'List Your Technical & Soft Skills', value: showValue(skills.technical_soft_skills_overall) },
@@ -222,7 +243,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
             ${styleTags}
             <style>body { margin: 0; padding: 16px; background: #fff; }</style>
           </head>
-          <body>${contentRef.current.innerHTML}</body>
+          <body class="is-exporting">${contentRef.current.innerHTML}</body>
         </html>
       `)
 
@@ -254,6 +275,9 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
+        onclone: (doc, el) => {
+          el.classList.add('is-exporting')
+        }
       })
 
       const imageData = canvas.toDataURL('image/png')
@@ -326,27 +350,92 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
 
       {student ? (
         <div className="faculty-preview" ref={contentRef}>
-          <DetailSection title="Photo">
-            <div className="admin-student-photo-wrap">
+          <style>{`
+            .print-header, .print-photo { display: none; }
+            .is-exporting .print-header { 
+                display: flex !important; 
+                flex-direction: column; 
+                align-items: center; 
+                margin-bottom: 24px; 
+            }
+            .is-exporting .print-logo { height: 80px; object-fit: contain; }
+            .is-exporting .print-header-text { text-align: center; margin-top: 16px; }
+            .is-exporting .print-dept { font-family: serif; font-size: 24px; font-weight: bold; color: #0f172a; margin: 0; }
+            .is-exporting .print-form-name { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; color: #64748b; text-transform: uppercase; margin-top: 4px; }
+            
+            .is-exporting .screen-photo { display: none !important; }
+            
+            .is-exporting .personal-info-container { 
+                display: flex !important; 
+                justify-content: space-between; 
+                align-items: flex-start; 
+                gap: 20px; 
+            }
+            .is-exporting .personal-info-tables { flex: 1; min-width: 0; }
+            .is-exporting .print-photo { 
+                display: block !important; 
+                width: 130px; 
+                height: 170px;
+                flex-shrink: 0; 
+                border: 2px solid #cbd5e1; 
+                border-radius: 8px;
+                overflow: hidden;
+                background: #f8fafc;
+                margin-top: 40px; 
+            }
+            .is-exporting .print-photo img { width: 100%; height: 100%; object-fit: cover; }
+            .is-exporting .print-photo-fallback { 
+                display: flex; align-items: center; justify-content: center; 
+                width: 100%; height: 100%; color: #94a3b8; font-size: 14px; 
+            }
+          `}</style>
+
+          <div className="print-header hidden">
+            <img src="/logo.png" alt="Logo" className="print-logo" />
+            <div className="print-header-text">
+              <h1 className="print-dept">Department of Computer Science Engineering</h1>
+              <p className="print-form-name">STUDENT MENTORING AND CAREER COUNSELLING FORM - KYS</p>
+            </div>
+          </div>
+
+          <div className="screen-photo">
+            <DetailSection title="Photo">
+              <div className="admin-student-photo-wrap">
+                <img
+                  src={extractStudentPhotoPreviewUrl({ personal_info: personalInfo }) || ''}
+                  alt={`${student.full_name} profile`}
+                  className="admin-student-photo-preview__image"
+                  loading="eager"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = 'none'
+                  }}
+                />
+                <div className="admin-student-photo-meta">
+                  <p className="admin-student-photo-meta__title">Current photo</p>
+                  <p className="admin-student-photo-meta__hint">Photo is shown if available.</p>
+                </div>
+              </div>
+            </DetailSection>
+          </div>
+
+          <div className="personal-info-container">
+            <div className="personal-info-tables">
+              <DetailSection title="Personal Information">
+                <InfoTable rows={personalRows} />
+              </DetailSection>
+            </div>
+            
+            <div className="print-photo hidden">
               <img
                 src={extractStudentPhotoPreviewUrl({ personal_info: personalInfo }) || ''}
-                alt={`${student.full_name} profile`}
-                className="admin-student-photo-preview__image"
-                loading="eager"
+                alt="Photo"
+                crossOrigin="anonymous"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = 'none'
                 }}
               />
-              <div className="admin-student-photo-meta">
-                <p className="admin-student-photo-meta__title">Current photo</p>
-                <p className="admin-student-photo-meta__hint">Photo is shown if available.</p>
-              </div>
             </div>
-          </DetailSection>
-
-          <DetailSection title="Personal Information">
-            <InfoTable rows={personalRows} />
-          </DetailSection>
+          </div>
 
           <DetailSection title="Parent Information">
             <InfoTable rows={parentRows} />
@@ -388,7 +477,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                   <tr>
                     <th>Semester</th>
                     <th>SGPA</th>
-                    <th>Season</th>
+                    <th>Session</th>
                     <th>Year</th>
                     <th>College Rank</th>
                     <th>Backlogs</th>
@@ -451,6 +540,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                     <p>Domain: {showValue(internship.domain)}</p>
                     <p>Location: {showValue(internship.city)}, {showValue(internship.state)}</p>
                     <p>Description: {showValue(internship.description)}</p>
+                    <p>Type: {showValue(internship.internship_type)}</p>
                     <p>Status: {showValue(internship.paid_unpaid)}</p>
                     {internship.paid_unpaid === 'Paid' && (
                       <>
@@ -502,7 +592,8 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                 <article key={`program-${index}`} className="detail-card">
                   <h5>Program {index + 1}</h5>
                   <p>Title: {showValue(pick(entry, 'course_title', 'title', 'name'))}</p>
-                  <p>Platform: {showValue(pick(entry, 'platform', 'provider', 'organization'))}</p>
+                  <p>Platform: {showValue(pick(entry, 'platform', 'organizing_agency', 'provider', 'organization'))}</p>
+                  <p>Domain: {showValue(pick(entry, 'domain'))}</p>
                   <p>Duration (Hours): {showValue(pick(entry, 'duration_hours', 'duration', 'hours'))}</p>
                   <p>From: {formatDate(pick(entry, 'date_from', 'from_date', 'start_date'))}</p>
                   <p>To: {formatDate(pick(entry, 'date_to', 'to_date', 'end_date'))}</p>

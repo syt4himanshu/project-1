@@ -1,5 +1,5 @@
 import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
-import { field, input, inputCls, sectionCardCls, select } from './shared'
+import { field, input, inputCls, sectionCardCls, select, searchableSelect } from './shared'
 import Step6CoCurricular from './Step6CoCurricular'
 import { State, City } from 'country-state-city'
 
@@ -270,12 +270,12 @@ export default function Step5ProjectsInternships() {
                             </div>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                                 {field('Internship Title', input('text', (internship?.title as string) || '', v => updInternship(i, 'title', v), 'e.g. Summer Internship 2024'))}
-                                {field('Company / Organization Name', input('text', (internship?.company_name as string) || '', v => updInternship(i, 'company_name', v), 'e.g. Web development Frontend'))}
+                                {field('Company / Organization Name', input('text', (internship?.company_name as string) || '', v => updInternship(i, 'company_name', v), 'e.g. ABC Company, XYZ College'))}
                                 {field('Designation', input('text', (internship?.designation as string) || '', v => updInternship(i, 'designation', v), 'e.g. Data Analyst Intern'))}
                                 {field('Domain', input('text', (internship?.domain as string) || '', v => updInternship(i, 'domain', v), 'e.g. Web Development'))}
                                 {field('Description', input('text', (internship?.description as string) || '', v => updInternship(i, 'description', v), 'Brief description'))}
                                 
-                                {field('State', select(
+                                {field('State', searchableSelect(
                                     State.getStatesOfCountry('IN').map(s => s.name),
                                     (internship?.state as string) || '',
                                     v => {
@@ -294,8 +294,8 @@ export default function Step5ProjectsInternships() {
                                     const selectedVal = isCustom || (internship?.city === 'Other') ? 'Other' : ((internship?.city as string) || '');
                                     
                                     return (
-                                        <div className="space-y-2">
-                                            {select(
+                                        <div className="flex flex-col gap-4">
+                                            {searchableSelect(
                                                 [...cityList, 'Other'],
                                                 selectedVal,
                                                 v => {

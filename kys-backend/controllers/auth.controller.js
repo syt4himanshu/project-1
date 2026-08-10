@@ -70,11 +70,21 @@ const login = async (req, res, next) => {
     const username = data.username || data.uid;
     const password = data.password;
 
-    const user = await User.findOne({ where: { username } });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!username) {
+      return res.status(200).json({ success: false, error: 'Username is required' });
+    }
+
+    const user = await User.findOne({ 
+      where: sequelize.where(
+        sequelize.fn('LOWER', sequelize.col('username')), 
+        String(username).toLowerCase()
+      ) 
+    });
+
+    if (!user) return res.status(200).json({ success: false, error: 'Invalid credentials' });
 
     const valid = await verifyPassword(password || '', user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!valid) return res.status(200).json({ success: false, error: 'Invalid credentials' });
 
     const token = signAccessToken(user);
     return res.json({

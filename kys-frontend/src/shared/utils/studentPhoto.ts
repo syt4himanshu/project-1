@@ -25,10 +25,16 @@ export function extractStudentPhotoUrl(value: unknown): string | null {
   const record = asRecord(value)
   const personalInfo = asRecord(record.personal_info)
 
-  // Standardized to photoUrl only
+  // Check all known field name variants: camelCase (frontend state) and snake_case (DB/API)
   return firstNonEmptyString(
+    personalInfo.photoPreviewUrl,
+    personalInfo.photo_preview_url,
     personalInfo.photoUrl,
+    personalInfo.photo_url,
+    record.photoPreviewUrl,
+    record.photo_preview_url,
     record.photoUrl,
+    record.photo_url,
   )
 }
 
@@ -39,8 +45,12 @@ export function extractStudentPhotoPreviewUrl(value: unknown): string | null {
   // Returns photo_preview_url if available, else falls back to photo_url (for backward compatibility)
   return firstNonEmptyString(
     personalInfo.photo_preview_url,
+    personalInfo.photoPreviewUrl,
     record.photo_preview_url,
+    record.photoPreviewUrl,
+    personalInfo.photo_url,
     personalInfo.photoUrl,
+    record.photo_url,
     record.photoUrl,
   )
 }

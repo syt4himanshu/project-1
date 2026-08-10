@@ -38,7 +38,13 @@ class StudentPersonalInfo extends Model {
         city: { type: DataTypes.STRING(120), allowNull: true },
         state: { type: DataTypes.STRING(120), allowNull: true },
         pincode: { type: DataTypes.STRING(6), allowNull: true },
-        digipin: { type: DataTypes.STRING(10), allowNull: true },
+        digipin: { 
+          type: DataTypes.STRING(10), 
+          allowNull: true,
+          set(value) {
+            this.setDataValue('digipin', typeof value === 'string' ? value.replace(/\s+/g, '') : value);
+          }
+        },
       },
       { sequelize, modelName: 'StudentPersonalInfo', tableName: 'student_personal_info', timestamps: false },
     );

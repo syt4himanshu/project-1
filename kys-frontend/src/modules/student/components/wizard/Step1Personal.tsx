@@ -4,7 +4,7 @@ import { State, City } from 'country-state-city'
 import { uploadProfilePhoto } from '../../api/student'
 import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
 import { FileText } from 'lucide-react'
-import { field, input, inputCls, select, sectionCardCls, textareaCls } from './shared'
+import { field, input, inputCls, select, searchableSelect, sectionCardCls, textareaCls } from './shared'
 
 export default function Step1Personal() {
     const { data, update, getFieldValidation, error } = useStudentProfileDraft()
@@ -168,7 +168,7 @@ export default function Step1Personal() {
             <div className="space-y-4">
                 <h3 className="mb-4 border-b border-[#c9d6ea] pb-2 text-2xl font-semibold text-[#223b60]">Location Details</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 mb-5">
-                    {field('State *', select(
+                    {field('State *', searchableSelect(
                         State.getStatesOfCountry('IN').map(s => s.name),
                         (pi.state as string) || '',
                         v => {
@@ -191,8 +191,8 @@ export default function Step1Personal() {
                         const selectedVal = isCustom || (pi.city === 'Other') ? 'Other' : ((pi.city as string) || '');
                         
                         return (
-                            <div className="space-y-2">
-                                {select(
+                            <div className="flex flex-col gap-4">
+                                {searchableSelect(
                                     [...cityList, 'Other'],
                                     selectedVal,
                                     async v => {
@@ -233,12 +233,21 @@ export default function Step1Personal() {
                         getValidation('Pincode', 'personal_info.pincode')
                     ))}
 
-                    {field('DIGIPIN', input(
-                        'text', 
-                        (pi.digipin as string) || '', 
-                        v => upd('digipin', v.toUpperCase()), 
-                        '10-character alphanumeric', 
-                        getValidation('DIGIPIN', 'personal_info.digipin')
+                    {field('DIGIPIN', (
+                        <div className="flex flex-col gap-1">
+                            {input(
+                                'text', 
+                                (pi.digipin as string) || '', 
+                                v => upd('digipin', v.toUpperCase()), 
+                                '10-character alphanumeric', 
+                                getValidation('DIGIPIN', 'personal_info.digipin')
+                            )}
+                            <div className="flex justify-end">
+                                <a href="https://dac.indiapost.gov.in/mydigipin/home" target="_blank" rel="noreferrer" className="text-xs text-[#2b5fa6] underline hover:text-[#1e4785]">
+                                    Know Your DIGIPIN
+                                </a>
+                            </div>
+                        </div>
                     ))}
                 </div>
 

@@ -33,6 +33,9 @@ interface StudentProfile {
     full_name?: string
     personal_info?: {
         photoUrl?: string
+        photo_url?: string
+        photoPreviewUrl?: string
+        photo_preview_url?: string
     }
 }
 

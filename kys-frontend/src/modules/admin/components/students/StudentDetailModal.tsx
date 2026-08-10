@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from 'react'
 import { toApiErrorMessage } from '../../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../../shared/ui'
 import { normalizeForDisplay } from '../../api'
-import { PhotoAvatar } from '../../../../shared/components/PhotoAvatar'
 import { extractStudentPhotoUrl } from '../../../../shared/utils/studentPhoto'
 import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import { useAdminStudentDetailQuery, useAdminStudentMentoringMinutesQuery } from '../../hooks'
@@ -87,7 +86,9 @@ function getProjectLabel(index: number): string {
 
 function getProjectSubtitle(project: AnyRecord): string {
   const description = showValue(project.description)
-  return description !== 'N/A' ? `Project Guide: ${description}` : 'Project Guide: N/A'
+  const domain = project.domain ? String(project.domain) : null
+  const guideText = description !== 'N/A' ? `Project Guide: ${description}` : 'Project Guide: N/A'
+  return domain ? `Domain: ${domain} | ${guideText}` : guideText
 }
 
 function getProjectBadgeClass(label: string) {
@@ -182,11 +183,15 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
       { label: 'College Email', value: showValue(personalInfo.college_email) },
       { label: 'LinkedIn', value: showValue(pick(personalInfo, 'linkedin', 'linked_in_id')) },
       { label: 'GitHub', value: showValue(pick(personalInfo, 'github', 'github_id')) },
+      { label: 'State', value: showValue(personalInfo.state) },
+      { label: 'City', value: showValue(personalInfo.city) },
+      { label: 'Pincode', value: showValue(personalInfo.pincode) },
+      { label: 'DIGIPIN', value: showValue(personalInfo.digipin) },
       { label: 'Permanent Address', value: showValue(pick(personalInfo, 'permanent_address', 'address')) },
       { label: 'Present Address', value: showValue(personalInfo.present_address) },
-      { label: 'Local Guardian Name', value: showValue(personalInfo.local_guardian_name) },
-      { label: 'Local Guardian Mobile', value: showValue(personalInfo.local_guardian_mobile) },
-      { label: 'Local Guardian Email', value: showValue(personalInfo.local_guardian_email) },
+      { label: 'Local Guardian Name', value: showValue(pick(personalInfo, 'guardian_name', 'local_guardian_name')) },
+      { label: 'Local Guardian Mobile', value: showValue(pick(personalInfo, 'guardian_mobile', 'local_guardian_mobile')) },
+      { label: 'Local Guardian Email', value: showValue(pick(personalInfo, 'guardian_email', 'local_guardian_email')) },
     ]
   }, [student, personalInfo])
 
@@ -231,7 +236,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
             ${styleTags}
             <style>body { margin: 0; padding: 16px; background: #fff; }</style>
           </head>
-          <body>${contentRef.current.innerHTML}</body>
+          <body class="is-exporting">${contentRef.current.innerHTML}</body>
         </html>
       `)
 
@@ -264,6 +269,9 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
+        onclone: (doc, el) => {
+          el.classList.add('is-exporting')
+        }
       })
 
       const imageData = canvas.toDataURL('image/png')
@@ -347,37 +355,108 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
 
       {student ? (
         <div className="detail-scroll" ref={contentRef}>
-          <DetailSection title="Photo">
-            <div className="admin-student-photo-wrap">
-              <PhotoAvatar
-                url={studentPhotoUrl}
-                alt={`${student.name} profile`}
-                className="admin-student-photo-preview__image"
-                loading="eager"
-                fallback={(
+          <style>{`
+            .print-header, .print-photo { display: none; }
+            .is-exporting .print-header { 
+                display: flex !important; 
+                flex-direction: column; 
+                align-items: center; 
+                margin-bottom: 24px; 
+            }
+            .is-exporting .print-logo { height: 80px; object-fit: contain; }
+            .is-exporting .print-header-text { text-align: center; margin-top: 16px; }
+            .is-exporting .print-dept { font-family: serif; font-size: 24px; font-weight: bold; color: #0f172a; margin: 0; }
+            .is-exporting .print-form-name { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; color: #64748b; text-transform: uppercase; margin-top: 4px; }
+            
+            .is-exporting .screen-photo { display: none !important; }
+            
+            .is-exporting .personal-info-container { 
+                display: flex !important; 
+                justify-content: space-between; 
+                align-items: flex-start; 
+                gap: 20px; 
+            }
+            .is-exporting .personal-info-tables { flex: 1; min-width: 0; }
+            .is-exporting .print-photo { 
+                display: block !important; 
+                width: 130px; 
+                height: 170px;
+                flex-shrink: 0; 
+                border: 2px solid #cbd5e1; 
+                border-radius: 8px;
+                overflow: hidden;
+                background: #f8fafc;
+                margin-top: 40px; 
+            }
+            .is-exporting .print-photo img { width: 100%; height: 100%; object-fit: cover; }
+            .is-exporting .print-photo-fallback { 
+                display: flex; align-items: center; justify-content: center; 
+                width: 100%; height: 100%; color: #94a3b8; font-size: 14px; 
+            }
+          `}</style>
+
+          <div className="print-header hidden">
+            <img src="/logo.png" alt="Logo" className="print-logo" />
+            <div className="print-header-text">
+              <h1 className="print-dept">Department of Computer Science Engineering</h1>
+              <p className="print-form-name">STUDENT MENTORING AND CAREER COUNSELLING FORM - KYS</p>
+            </div>
+          </div>
+
+          <div className="screen-photo">
+            <DetailSection title="Photo">
+              <div className="admin-student-photo-wrap">
+                {studentPhotoUrl ? (
+                  <img
+                    src={String((personalInfo as AnyRecord).photoPreviewUrl ?? (personalInfo as AnyRecord).photo_preview_url ?? studentPhotoUrl)}
+                    alt={`${student.name} profile`}
+                    className="admin-student-photo-preview__image"
+                    loading="eager"
+                    onError={(e) => {
+                      // Fall back to original URL if preview fails
+                      const img = e.currentTarget as HTMLImageElement
+                      if (img.src !== studentPhotoUrl) img.src = studentPhotoUrl
+                      else img.style.display = 'none'
+                    }}
+                  />
+                ) : (
                   <div className="admin-student-photo-preview__fallback">
                     {student.name.slice(0, 2).toUpperCase()}
                   </div>
                 )}
-              />
-              <div className="admin-student-photo-meta">
-                <p className="admin-student-photo-meta__title">
-                  {studentPhotoUrl ? 'Current Cloudinary photo' : 'No photo uploaded yet'}
-                </p>
-                {studentPhotoUrl ? (
-                  <a className="admin-student-photo-meta__link" href={studentPhotoUrl} target="_blank" rel="noreferrer">
-                    Open uploaded image
-                  </a>
-                ) : (
-                  <p className="admin-student-photo-meta__hint">The default initials avatar is shown until a photo is uploaded.</p>
-                )}
+                <div className="admin-student-photo-meta">
+                  <p className="admin-student-photo-meta__title">
+                    {studentPhotoUrl ? 'Current photo' : 'No photo uploaded yet'}
+                  </p>
+                  {studentPhotoUrl ? (
+                    <p className="admin-student-photo-meta__hint">Photo is shown if available.</p>
+                  ) : (
+                    <p className="admin-student-photo-meta__hint">No photo uploaded yet.</p>
+                  )}
+                </div>
               </div>
-            </div>
-          </DetailSection>
+            </DetailSection>
+          </div>
 
-          <DetailSection title="Personal Information">
-            <InfoTable rows={personalRows} />
-          </DetailSection>
+          <div className="personal-info-container">
+            <div className="personal-info-tables">
+              <DetailSection title="Personal Information">
+                <InfoTable rows={personalRows} />
+              </DetailSection>
+            </div>
+            
+            <div className="print-photo hidden">
+              {studentPhotoUrl ? (
+                <img
+                  src={String((personalInfo as AnyRecord).photoPreviewUrl ?? (personalInfo as AnyRecord).photo_preview_url ?? studentPhotoUrl)}
+                  alt="Photo"
+                  crossOrigin="anonymous"
+                />
+              ) : (
+                <div className="print-photo-fallback">Photo</div>
+              )}
+            </div>
+          </div>
 
           <DetailSection title="Parent Information">
             <InfoTable rows={parentRows} />
@@ -421,7 +500,7 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                     <tr>
                       <th>Semester</th>
                       <th>SGPA</th>
-                      <th>Season</th>
+                      <th>Session</th>
                       <th>Year</th>
                       <th>College Rank</th>
                       <th>Backlogs</th>
@@ -489,11 +568,22 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                 {internshipRows.map((internship, index) => (
                   <article key={`internship-${index}`} className="detail-card">
                     <h5>Internship {index + 1}</h5>
-                    <p>{showValue(internship.company_name ?? internship.company)}</p>
-                    <p>{showValue(internship.designation)}</p>
-                    <p>{showValue(internship.domain)}</p>
-                    <p>{showValue(internship.description)}</p>
-                    <p>{formatDate(internship.start_date)} to {formatDate(internship.end_date)}</p>
+                    <p>Title: {showValue(internship.title)}</p>
+                    <p>Company: {showValue(internship.company_name ?? internship.company)}</p>
+                    <p>Designation: {showValue(internship.designation)}</p>
+                    <p>Domain: {showValue(internship.domain)}</p>
+                    <p>Location: {showValue(internship.city)}, {showValue(internship.state)}</p>
+                    <p>Description: {showValue(internship.description)}</p>
+                    <p>Type: {showValue(internship.internship_type)}</p>
+                    <p>Status: {showValue(internship.paid_unpaid)}</p>
+                    {internship.paid_unpaid === 'Paid' && (
+                      <>
+                        <p>Paid Type: {showValue(internship.paid_type)}</p>
+                        {internship.paid_type === 'With stipend' && <p>Stipend: {showValue(internship.stipend_amount)}</p>}
+                        {internship.paid_type === 'Paid' && <p>Amount Paid: {showValue(internship.paid_amount)}</p>}
+                      </>
+                    )}
+                    <p>Duration: {formatDate(internship.start_date)} to {formatDate(internship.end_date)}</p>
                   </article>
                 ))}
               </div>
@@ -544,11 +634,12 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                 {programRows.map((program, index) => (
                   <article key={`program-${index}`} className="detail-card">
                     <h5>Program {index + 1}</h5>
-                    <p>Title: {showValue(program.course_title)}</p>
-                    <p>Platform: {showValue(program.platform)}</p>
-                    <p>Duration (Hours): {showValue(program.duration_hours)}</p>
-                    <p>From: {formatDate(program.date_from)}</p>
-                    <p>To: {formatDate(program.date_to)}</p>
+                    <p>Title: {showValue(pick(program as AnyRecord, 'course_title', 'title', 'name'))}</p>
+                    <p>Platform: {showValue(pick(program as AnyRecord, 'platform', 'organizing_agency', 'provider'))}</p>
+                    <p>Domain: {showValue(pick(program as AnyRecord, 'domain'))}</p>
+                    <p>Duration (Hours): {showValue(pick(program as AnyRecord, 'duration_hours', 'duration'))}</p>
+                    <p>From: {formatDate(pick(program as AnyRecord, 'date_from', 'from_date', 'start_date'))}</p>
+                    <p>To: {formatDate(pick(program as AnyRecord, 'date_to', 'to_date', 'end_date'))}</p>
                   </article>
                 ))}
               </div>
@@ -560,22 +651,8 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
           <DetailSection title="Skills and Career">
             <InfoTable
               rows={[
-                { label: 'Career Goal', value: showValue(student.careerGoal) },
-                { label: 'Programming Languages', value: showValue(skills.programming_languages) },
-                { label: 'Technologies & Frameworks', value: showValue(skills.technologies ?? skills.technologies_frameworks) },
-                { label: 'Domains of Interest', value: showValue(skills.domains ?? skills.domains_of_interest) },
-                { label: 'Familiar Tools & Platforms', value: showValue(skills.tools ?? skills.familiar_tools_platforms) },
-                { label: 'Technical & Soft Skills (Overall)', value: showValue(skills.technical_soft_skills_overall) },
-                { label: 'Additional Technical Skills', value: showValue(skills.additional_technical_skills) },
-                { label: 'Additional Soft Skills', value: showValue(skills.additional_soft_skills) },
-                { label: 'SWOC - Strengths', value: showValue(swoc.strengths) },
-                { label: 'SWOC - Weaknesses', value: showValue(swoc.weaknesses) },
-                { label: 'SWOC - Opportunities', value: showValue(swoc.opportunities) },
-                { label: 'SWOC - Challenges', value: showValue(swoc.challenges) },
-                {
-                  label: 'Clarity and Preparedness Level',
-                  value: showValue(careerObjective.clarity_preparedness ?? careerObjective.clarity_score),
-                },
+                { label: 'Career Goal', value: showValue(careerObjective.career_goal ?? student.careerGoal) },
+                { label: 'Specific Goal', value: showValue(careerObjective.specific_details) },
                 {
                   label: 'Interested in Campus Placement?',
                   value:
@@ -585,9 +662,26 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                         : 'No'
                       : showValue(careerObjective.campus_placement),
                 },
+                {
+                  label: 'Clarity and Preparedness Level',
+                  value: showValue(careerObjective.clarity_preparedness ?? careerObjective.clarity_score),
+                },
                 { label: 'Areas of Interest (Non-Technical)', value: showValue(careerObjective.non_technical_areas) },
                 { label: 'Student Mentor Interest', value: showValue(careerObjective.student_mentor_interest) },
+                { label: 'Mentorship Domain', value: showValue(careerObjective.mentorship_domain) },
                 { label: 'Expectations from Institute', value: showValue(careerObjective.expectations_from_institute) },
+                { label: 'Programming Languages', value: showValue(skills.programming_languages) },
+                { label: 'Frontend Technologies & Frameworks', value: showValue(skills.frontend_technologies_frameworks ?? skills.technologies ?? skills.technologies_frameworks) },
+                { label: 'Backend Technologies & Databases', value: showValue(skills.backend_technologies_databases) },
+                { label: 'Domains of Interest', value: showValue(skills.domains ?? skills.domains_of_interest) },
+                { label: 'Familiar Tools & Platforms', value: showValue(skills.tools ?? skills.familiar_tools_platforms) },
+                { label: 'Technical & Soft Skills (Overall)', value: showValue(skills.technical_soft_skills_overall) },
+                { label: 'Additional Technical Skills', value: showValue(skills.additional_technical_skills) },
+                { label: 'Additional Soft Skills', value: showValue(skills.additional_soft_skills) },
+                { label: 'SWOC - Strengths', value: showValue(swoc.strengths) },
+                { label: 'SWOC - Weaknesses', value: showValue(swoc.weaknesses) },
+                { label: 'SWOC - Opportunities', value: showValue(swoc.opportunities) },
+                { label: 'SWOC - Challenges', value: showValue(swoc.challenges) },
               ]}
             />
           </DetailSection>

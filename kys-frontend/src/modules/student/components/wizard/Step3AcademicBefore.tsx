@@ -4,6 +4,7 @@ import { field, input, inputCls, sectionCardCls, select } from './shared'
 
 const BOARDS = ['CBSE', 'State Board', 'ICSE', 'Other']
 const ENTRANCE_EXAMS = ['MHT-CET', 'JEE', 'Other']
+const YEAR_OPTIONS = Array.from({ length: 2040 - 2018 + 1 }, (_, i) => String(2018 + i))
 
 export default function Step3AcademicBefore() {
     const { data, update, error } = useStudentProfileDraft()
@@ -118,7 +119,7 @@ export default function Step3AcademicBefore() {
                             )
                     )}
                     {field('Percentage / Grade *', input('text', rec.percentage != null ? String(rec.percentage) : '', v => handlePercentageChange(examKey, v), 'e.g. 85.50', getValidation(`${examKey} Percentage / Grade`)))}
-                    {field('Year of Passing *', input('number', String(rec.year_of_passing || ''), v => upd(examKey, 'year_of_passing', v === '' ? null : Number(v)), 'e.g. 2024', getValidation(`${examKey} Year of Passing`)))}
+                    {field('Year of Passing *', select(YEAR_OPTIONS, String(rec.year_of_passing || ''), v => upd(examKey, 'year_of_passing', v === '' ? null : Number(v)), 'Select Year', getValidation(`${examKey} Year of Passing`)))}
                 </div>
             </section>
         )
@@ -185,7 +186,7 @@ export default function Step3AcademicBefore() {
                                 )
                             })())}
                             {field('Percentile *', input('text', entrance.percentage != null ? String(entrance.percentage) : '', v => handlePercentageChange('ENTRANCE_EXAM', v), 'Score / Percentile', getValidation('Entrance Percentile')))}
-                            {field('Year of Passing *', input('number', String(entrance.year_of_passing || ''), v => upd('ENTRANCE_EXAM', 'year_of_passing', v === '' ? null : Number(v)), 'Year of Passing', getValidation('Entrance Exam Year of Passing')))}
+                            {field('Year of Passing *', select(YEAR_OPTIONS, String(entrance.year_of_passing || ''), v => upd('ENTRANCE_EXAM', 'year_of_passing', v === '' ? null : Number(v)), 'Select Year', getValidation('Entrance Exam Year of Passing')))}
                         </div>
                     </section>
                     
@@ -194,7 +195,7 @@ export default function Step3AcademicBefore() {
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
                             {field('Program Title', input('text', (getRecord('EXTRA_PROGRAM').exam_type as string) || '', v => upd('EXTRA_PROGRAM', 'exam_type', v), 'Title of the Program'))}
                             {field('Score/Percentage (Numeric)', input('number', getRecord('EXTRA_PROGRAM').percentage != null ? String(getRecord('EXTRA_PROGRAM').percentage) : '', v => handlePercentageChange('EXTRA_PROGRAM', v), 'e.g. 85.5'))}
-                            {field('Year of Passing', input('number', String(getRecord('EXTRA_PROGRAM').year_of_passing || ''), v => upd('EXTRA_PROGRAM', 'year_of_passing', v === '' ? null : Number(v)), 'Year of Passing'))}
+                            {field('Year of Passing', select(YEAR_OPTIONS, String(getRecord('EXTRA_PROGRAM').year_of_passing || ''), v => upd('EXTRA_PROGRAM', 'year_of_passing', v === '' ? null : Number(v)), 'Select Year'))}
                         </div>
                     </section>
                 </>
@@ -218,10 +219,10 @@ export default function Step3AcademicBefore() {
                                         {field('SGPA / Percentage *', input('number', String(rec.sgpa || ''), v => updPostAdmission(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86', getValidation(`Semester ${sem} SGPA / Percentage`)))}
 
                                         <div>
-                                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Season & Year of Passing</label>
+                                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Session & Year of Passing</label>
                                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                {select(['Summer', 'Winter'], (rec.season as string) || '', v => updPostAdmission(sem, 'season', v), 'Season')}
-                                                {input('number', String(rec.year_of_passing || ''), v => updPostAdmission(sem, 'year_of_passing', v === '' ? null : Number(v)), 'Year e.g. 2023')}
+                                                {select(['Summer', 'Winter'], (rec.season as string) || '', v => updPostAdmission(sem, 'season', v), 'Session')}
+                                                {select(YEAR_OPTIONS, String(rec.year_of_passing || ''), v => updPostAdmission(sem, 'year_of_passing', v === '' ? null : Number(v)), 'Select Year')}
                                             </div>
                                         </div>
 

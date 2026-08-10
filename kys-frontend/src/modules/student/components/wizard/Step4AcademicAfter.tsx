@@ -39,9 +39,9 @@ export default function Step4AcademicAfter() {
                             {field('SGPA / Percentage', input('number', String(rec.sgpa || ''), v => upd(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86'))}
 
                             <div>
-                                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Season & Year of Passing</label>
+                                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Session & Year of Passing</label>
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                    {select(['Summer', 'Winter'], (rec.season as string) || '', v => upd(sem, 'season', v), 'Season')}
+                                    {select(['Summer', 'Winter'], (rec.season as string) || '', v => upd(sem, 'season', v), 'Session')}
                                     {input('number', String(rec.year_of_passing || ''), v => upd(sem, 'year_of_passing', v === '' ? null : Number(v)), 'Year e.g. 2023')}
                                 </div>
                             </div>

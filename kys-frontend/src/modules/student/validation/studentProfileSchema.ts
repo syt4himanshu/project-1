@@ -65,7 +65,7 @@ const studentProfileSchema = Joi.object({
     digipin: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^[a-zA-Z0-9]{10}$/)
+      .pattern(/^(?:\s*[a-zA-Z0-9]){10}\s*$/)
       .messages({
         'string.pattern.base': '{#label} must be a 10-character alphanumeric DIGIPIN',
       }),
@@ -309,7 +309,7 @@ const step0Schema = Joi.object({
     digipin: Joi.string()
       .trim()
       .allow('', null)
-      .pattern(/^[a-zA-Z0-9]{10}$/)
+      .pattern(/^(?:\s*[a-zA-Z0-9]){10}\s*$/)
       .messages({ 'string.pattern.base': 'must be a 10-character alphanumeric DIGIPIN' }),
   }).unknown(true),
 }).unknown(true)
@@ -448,4 +448,3 @@ export function validateStep3FormatErrors(data: Record<string, unknown>): { isVa
   const errors = error.details.map((d) => d.message.replace(/"/g, ''))
   return { isValid: false, errors }
 }
-

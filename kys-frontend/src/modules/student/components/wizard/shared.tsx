@@ -1,4 +1,4 @@
-import React, { type ReactNode } from 'react'
+import React, { type ReactNode, useState, useRef, useEffect } from 'react'
 
 
 export interface WizardStepProps {
@@ -122,4 +122,104 @@ export function select(
             )}
         </div>
     )
+}
+
+export function SearchableSelectComponent({
+    options,
+    value,
+    onChange,
+    placeholder = 'Select...',
+    validation
+}: {
+    options: string[]
+    value: string
+    onChange: (v: string) => void
+    placeholder?: string
+    validation?: FieldValidationState
+}) {
+    const [isOpen, setIsOpen] = useState(false)
+    const [search, setSearch] = useState('')
+    const containerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false)
+                validation?.markTouched?.()
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [validation])
+
+    const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()))
+
+    return (
+        <div className="space-y-1 relative" ref={containerRef}>
+            <div 
+                className={`${withValidationClass(inputCls, validation)} flex items-center justify-between cursor-pointer`}
+                onClick={() => {
+                    setIsOpen(!isOpen)
+                    if (!isOpen) setSearch('')
+                }}
+            >
+                <span className={`block truncate ${value ? '' : 'text-slate-400 dark:text-slate-500'}`}>{value || placeholder}</span>
+                <svg className="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            
+            {isOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-[#1e293b] border border-[#cfd7e4] dark:border-[#334155] rounded-xl shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-[#cfd7e4] dark:border-[#334155] bg-white dark:bg-[#1e293b]">
+                        <input
+                            type="text"
+                            className="w-full bg-[#f7f9fc] dark:bg-[#0f172a] rounded-lg px-3 py-2 text-sm outline-none text-slate-900 dark:text-white"
+                            placeholder="Search..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            autoFocus
+                        />
+                    </div>
+                    <div className="p-1" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                        <div
+                            className="px-3 py-2 text-sm cursor-pointer hover:bg-[#f0f6ff] dark:hover:bg-[#334155] rounded-lg text-slate-900 dark:text-white"
+                            onClick={() => {
+                                onChange('')
+                                setIsOpen(false)
+                            }}
+                        >
+                            {placeholder}
+                        </div>
+                        {filtered.length > 0 ? filtered.map(o => (
+                            <div
+                                key={o}
+                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-[#f0f6ff] dark:hover:bg-[#334155] rounded-lg text-slate-900 dark:text-white ${value === o ? 'bg-[#f0f6ff] dark:bg-[#334155] font-medium' : ''}`}
+                                onClick={() => {
+                                    onChange(o)
+                                    setIsOpen(false)
+                                }}
+                            >
+                                {o}
+                            </div>
+                        )) : (
+                            <div className="px-3 py-2 text-sm text-slate-400 text-center">No results found</div>
+                        )}
+                    </div>
+                </div>
+            )}
+            {validation?.error && validation.touched && (
+                <p className="text-xs font-medium" style={{ color: 'var(--danger)' }}>{formatValidationMessage(validation.error)}</p>
+            )}
+        </div>
+    )
+}
+
+export function searchableSelect(
+    options: string[],
+    value: string,
+    onChange: (v: string) => void,
+    placeholder = 'Select...',
+    validation?: FieldValidationState,
+) {
+    return <SearchableSelectComponent options={options} value={value} onChange={onChange} placeholder={placeholder} validation={validation} />
 }
