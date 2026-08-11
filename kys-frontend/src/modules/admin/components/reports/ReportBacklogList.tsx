@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { QueryState, ResponsiveDataView, type TableColumn } from '../../../../shared/ui'
+import { QueryState, ResponsiveDataView, type TableColumn, Modal } from '../../../../shared/ui'
 import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import type { AdminBacklogEntry } from '../../api'
 import { useAdminReportBacklogsQuery } from '../../hooks'
@@ -15,6 +15,7 @@ function getInitials(name: string): string {
 
 export function ReportBacklogList() {
   const [search, setSearch] = useState('')
+  const [selectedStudent, setSelectedStudent] = useState<AdminBacklogEntry | null>(null)
   const backlogsQuery = useAdminReportBacklogsQuery()
 
   const filteredRows = useMemo(() => {
@@ -37,11 +38,29 @@ export function ReportBacklogList() {
       {
         id: 'subjects',
         header: 'Backlog Subjects',
-        cell: (row) => (
-          <span className="reports-backlog-subjects">
-            {row.subjects.length > 0 ? row.subjects.map((subject) => sanitizeDisplayValue(subject)).join(', ') : 'N/A'}
-          </span>
-        ),
+        cell: (row) => {
+          const count = row.backlogCount ?? row.subjects.length
+          if (count === 0) {
+            return <span className="reports-backlog-subjects">N/A</span>
+          }
+          if (count > 2) {
+            return (
+              <button
+                type="button"
+                className="button button--ghost button--sm"
+                onClick={() => setSelectedStudent(row)}
+                style={{ padding: '4px 8px', fontSize: '0.875rem' }}
+              >
+                View Subjects
+              </button>
+            )
+          }
+          return (
+            <span className="reports-backlog-subjects">
+              {row.subjects.map((subject) => sanitizeDisplayValue(subject)).join(', ')}
+            </span>
+          )
+        },
       },
       { id: 'count', header: 'Count', cell: (row) => row.backlogCount ?? row.subjects.length },
     ],
@@ -85,7 +104,8 @@ export function ReportBacklogList() {
   }
 
   return (
-    <section className="admin-section card reports-card" aria-label="Backlog list report">
+    <>
+      <section className="admin-section card reports-card" aria-label="Backlog list report">
       <header className="reports-card__header">
         <h3>Students with Backlogs</h3>
         <label className="admin-field reports-inline-field" htmlFor="backlog-search">
@@ -119,6 +139,29 @@ export function ReportBacklogList() {
           renderMobileCard={renderBacklogCard}
         />
       )}
-    </section>
+      </section>
+
+      <Modal
+        open={selectedStudent !== null}
+        onClose={() => setSelectedStudent(null)}
+        title="Backlog Subjects"
+        subtitle={selectedStudent ? `${selectedStudent.name} (${selectedStudent.uid})` : ''}
+      >
+        {selectedStudent && (
+          <div style={{ paddingBottom: '1rem' }}>
+            <div className="mobile-card__pill-list" style={{ marginTop: '1rem' }}>
+              {selectedStudent.subjects
+                .flatMap(s => s.split(',').map(sub => sub.trim()))
+                .filter(Boolean)
+                .map((subject, index) => (
+                  <span key={`${subject}-${index}`} className="mobile-card__pill mobile-card__pill--danger">
+                    {sanitizeDisplayValue(subject)}
+                  </span>
+                ))}
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   )
 }
