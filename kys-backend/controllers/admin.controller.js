@@ -1170,6 +1170,7 @@ const listFacultyMentees = async (req, res, next) => {
       const allMinutes = await MentoringMinute.findAll({
         where: {
           student_id: { [Op.in]: menteeIds },
+          faculty_id: faculty.id,
           date: { [Op.ne]: null },
         },
         attributes: ['student_id', 'date'],

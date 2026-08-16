@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import * as XLSX from 'xlsx'
 import { toApiErrorMessage } from '../../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../../shared/ui'
 import { normalizeForDisplay } from '../../api'
@@ -14,12 +15,13 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
   const detailQuery = useAdminFacultyDetailQuery(facultyId)
   const detail = detailQuery.data
   const detailContentRef = useRef<HTMLDivElement | null>(null)
-  const [isExporting, setIsExporting] = useState(false)
+  const [isExportingExcel, setIsExportingExcel] = useState(false)
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
 
   const handlePdf = async () => {
-    if (!detailContentRef.current || !detail || isExporting) return
+    if (!detailContentRef.current || !detail || isExportingPdf) return
 
-    setIsExporting(true)
+    setIsExportingPdf(true)
     try {
       const { default: html2canvas } = await import('html2canvas')
       const { default: JsPdf } = await import('jspdf')
@@ -52,7 +54,67 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
       const facultyUid = sanitizeDisplayValue(detail.faculty.uid)
       pdf.save(`${facultyUid}-mentor-detail.pdf`)
     } finally {
-      setIsExporting(false)
+      setIsExportingPdf(false)
+    }
+  }
+
+  const handleExcel = () => {
+    if (!detail || isExportingExcel) return
+
+    setIsExportingExcel(true)
+    try {
+      const wsData: any[][] = []
+
+      wsData.push(['Profile'])
+      wsData.push(['Name', sanitizeDisplayValue(normalizeForDisplay(detail.faculty.name))])
+      wsData.push(['Email', sanitizeDisplayValue(normalizeForDisplay(detail.faculty.email))])
+      wsData.push(['Contact', sanitizeDisplayValue(normalizeForDisplay(detail.faculty.contact))])
+      wsData.push(['Assigned Students', detail.mentees.length])
+      wsData.push([])
+
+      wsData.push(['Assigned Students'])
+      if (detail.mentees.length === 0) {
+        wsData.push(['No students assigned to this mentor.'])
+      } else {
+        wsData.push(['#', 'UID', 'Name', 'Semester', 'Section', 'Admission Year', 'Mentorship Date'])
+        detail.mentees.forEach((mentee, index) => {
+          let datesStr = '—'
+          if (mentee.remarksDates && mentee.remarksDates.length > 0) {
+            datesStr = mentee.remarksDates
+              .map(d => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }))
+              .join(', ')
+          }
+          wsData.push([
+            index + 1,
+            sanitizeDisplayValue(normalizeForDisplay(mentee.uid)),
+            sanitizeDisplayValue(normalizeForDisplay(mentee.fullName)),
+            normalizeForDisplay(mentee.semester),
+            sanitizeDisplayValue(normalizeForDisplay(mentee.section)),
+            normalizeForDisplay(mentee.yearOfAdmission),
+            datesStr
+          ])
+        })
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData)
+
+      ws['!cols'] = [
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 30 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 35 },
+      ]
+
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Mentor Detail')
+
+      const facultyUid = sanitizeDisplayValue(detail.faculty.uid)
+      XLSX.writeFile(wb, `${facultyUid}-mentor-detail.xlsx`)
+    } finally {
+      setIsExportingExcel(false)
     }
   }
 
@@ -69,9 +131,17 @@ export function TeacherDetailModal({ facultyId, onClose }: TeacherDetailModalPro
             type="button"
             className="button button--ghost"
             onClick={() => void handlePdf()}
-            disabled={!detail || isExporting}
+            disabled={!detail || isExportingPdf || isExportingExcel}
           >
-            {isExporting ? 'Exporting...' : 'Download PDF'}
+            {isExportingPdf ? 'Exporting PDF...' : 'Download PDF'}
+          </button>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => void handleExcel()}
+            disabled={!detail || isExportingExcel || isExportingPdf}
+          >
+            {isExportingExcel ? 'Exporting Excel...' : 'Download Excel'}
           </button>
           <button type="button" className="button button--primary" onClick={onClose}>
             Close

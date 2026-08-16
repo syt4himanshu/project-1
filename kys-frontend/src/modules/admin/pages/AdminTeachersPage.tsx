@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import * as XLSX from 'xlsx'
+import { useAuth } from '../../../app/providers/auth-context'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { QueryState, ResponsiveDataView, type TableColumn } from '../../../shared/ui'
 import { sanitizeDisplayValue } from '../../../shared/utils/render'
-import type { AdminFacultySummary } from '../api'
+import { adminApi, type AdminFacultySummary } from '../api'
 import { TeacherDetailModal } from '../components/teachers/TeacherDetailModal'
 import { useAdminFacultyQuery } from '../hooks'
 
@@ -29,6 +31,8 @@ export function AdminTeachersPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [selectedFacultyId, setSelectedFacultyId] = useState<number | null>(null)
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'with' | 'without'>('all')
+  const [isExporting, setIsExporting] = useState(false)
+  const { token } = useAuth()
 
   useEffect(() => {
     document.title = 'Mentors Management - KYS'
@@ -53,6 +57,52 @@ export function AdminTeachersPage() {
       return matchesQuery && matchesAssignment
     })
   }, [assignmentFilter, facultyQuery.data, searchValue])
+
+  const handleExportExcel = async () => {
+    if (isExporting || !token) return
+    setIsExporting(true)
+    try {
+      const teachersToExport = filteredRows
+
+      const teacherDataPromises = teachersToExport.map(async (teacher) => {
+        let uniqueDates: string[] = []
+        if (teacher.assignedCount > 0) {
+          try {
+            const mentees = await adminApi.getFacultyMentees({ token, facultyId: teacher.id })
+            const allDates = mentees.flatMap(m => m.remarksDates || [])
+            uniqueDates = Array.from(new Set(allDates))
+              .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+              .map(d => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }))
+          } catch (e) {
+            console.error(`Failed to fetch mentees for ${teacher.name}`, e)
+          }
+        }
+        return {
+          name: sanitizeDisplayValue(teacher.name),
+          assignedCount: teacher.assignedCount,
+          datesString: uniqueDates.join(', ')
+        }
+      })
+
+      const teacherData = await Promise.all(teacherDataPromises)
+
+      const wsData = [
+        ['Mentor Scheme', '', ''],
+        ['Name of Mentor', 'No. of Students allotted', 'Dates of Interactions'],
+        ...teacherData.map(td => [td.name, td.assignedCount, td.datesString])
+      ]
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData)
+      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }]
+      ws['!cols'] = [{ wch: 30 }, { wch: 25 }, { wch: 50 }]
+
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Mentor Scheme')
+      XLSX.writeFile(wb, 'Mentor-Scheme.xlsx')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const columns = useMemo<TableColumn<AdminFacultySummary>[]>(
     () => [
@@ -199,6 +249,15 @@ export function AdminTeachersPage() {
         </div>
 
         <div className={`role-toolbar__inline ${!showFilters ? 'mobile-hide' : ''}`} style={{ gap: '0.6rem' }}>
+          <button
+            type="button"
+            className="button button--primary button--icon"
+            onClick={() => void handleExportExcel()}
+            disabled={isExporting}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">download</span>
+            {isExporting ? 'Exporting...' : 'Download Excel Mentor scheme'}
+          </button>
           <button
             type="button"
             className="button button--ghost button--icon role-chip-button"
