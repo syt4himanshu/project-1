@@ -14,6 +14,7 @@ const adminRoutes = require('./routes/admin.routes');
 const facultyRoutes = require('./routes/faculty.routes');
 const { studentsRouter, studentRouter, apiStudentsRouter } = require('./routes/student.routes');
 
+const { extractTokenIdentityOptional } = require('./middleware/auth');
 const { performHealthCheck } = require('./utils/healthCheck');
 const { requestTiming, getTimingStats, getSlowEndpoints } = require('./middleware/requestTiming');
 
@@ -61,6 +62,7 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 app.use(express.json({ limit: "50kb" }));
+app.use(extractTokenIdentityOptional);
 app.use(globalRateLimiter);
 app.use(requestTiming); // Enhanced request timing middleware
 app.use(standardTimeout); // Add timeout middleware

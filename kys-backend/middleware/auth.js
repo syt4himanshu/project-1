@@ -38,6 +38,36 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
+const extractTokenIdentityOptional = (req, _res, next) => {
+  const token = extractBearerToken(req);
+  if (!token) {
+    req.currentUser = null;
+    req.jwtPayload = null;
+    req.currentUserId = null;
+    return next();
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    if (hasJti(payload.jti)) {
+      req.currentUser = null;
+      req.jwtPayload = null;
+      req.currentUserId = null;
+      return next();
+    }
+
+    req.token = token;
+    req.jwtPayload = payload;
+    req.currentUserId = parseCurrentUserId(payload);
+    return next();
+  } catch (_error) {
+    req.currentUser = null;
+    req.jwtPayload = null;
+    req.currentUserId = null;
+    return next();
+  }
+};
+
 const verifyTokenOptional = async (req, _res, next) => {
   const token = extractBearerToken(req);
   if (!token) {
@@ -79,6 +109,9 @@ const roleRequired = (roles) => async (req, res, next) => {
 };
 
 module.exports = {
+  extractBearerToken,
+  parseCurrentUserId,
+  extractTokenIdentityOptional,
   verifyToken,
   verifyTokenOptional,
   roleRequired,

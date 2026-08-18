@@ -5,12 +5,14 @@ import { extractErrorMessage } from './errorMapper'
 export class HttpError extends Error {
   readonly status: number
   readonly payload: unknown
+  readonly retryAfter: number | null
 
-  constructor(message: string, status: number, payload: unknown) {
+  constructor(message: string, status: number, payload: unknown, retryAfter: number | null = null) {
     super(message)
     this.name = 'HttpError'
     this.status = status
     this.payload = payload
+    this.retryAfter = retryAfter
   }
 }
 
@@ -36,12 +38,41 @@ interface BlobRequestOptions extends Omit<RequestInit, 'body'> {
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
 /**
- * Check if error is retryable
+ * Parse Retry-After header into seconds
  */
-const isRetryableError = (error: unknown): boolean => {
+export function parseRetryAfterHeader(headerValue: string | null): number | null {
+  if (!headerValue) return null
+
+  const seconds = parseFloat(headerValue)
+  if (!Number.isNaN(seconds) && seconds >= 0) {
+    return Math.round(seconds)
+  }
+
+  const dateMs = Date.parse(headerValue)
+  if (!Number.isNaN(dateMs)) {
+    const diffSec = Math.ceil((dateMs - Date.now()) / 1000)
+    return Math.max(0, diffSec)
+  }
+
+  return null
+}
+
+/**
+ * Check if error is retryable.
+ * - 429 is only retryable if server specifies a Retry-After within maxDelayMs.
+ * - 5xx server errors and network fetch failures are retryable.
+ * - 4xx client errors (400, 401, 403, 404, etc.) are NOT retryable.
+ */
+const isRetryableError = (error: unknown, maxDelayMs = 5000): boolean => {
   if (error instanceof HttpError) {
-    // Retry on rate limit and server errors
-    return error.status === 429 || error.status >= 500
+    if (error.status === 429) {
+      if (error.retryAfter !== null && error.retryAfter >= 0) {
+        return (error.retryAfter * 1000) <= maxDelayMs
+      }
+      return false
+    }
+
+    return error.status >= 500
   }
 
   // Retry on network errors
@@ -127,14 +158,20 @@ export async function requestJson<T>(path: string, options: JsonRequestOptions =
           window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
         }
 
-        const message = extractErrorMessage(payload) || `Request failed with status ${response.status}`
-        const error = new HttpError(message, response.status, payload)
+        const retryAfterSec = parseRetryAfterHeader(response.headers.get('Retry-After'))
+        let message = extractErrorMessage(payload)
 
-        // Don't retry auth errors or client errors (except 429)
-        if (response.status === 401 || response.status === 403 || (response.status >= 400 && response.status < 500 && response.status !== 429)) {
-          throw error
+        if (!message) {
+          if (response.status === 429) {
+            message = retryAfterSec
+              ? `Too many requests. Please wait ${retryAfterSec}s and try again.`
+              : 'Too many requests. Please wait a moment and try again.'
+          } else {
+            message = `Request failed with status ${response.status}`
+          }
         }
 
+        const error = new HttpError(message, response.status, payload, retryAfterSec)
         throw error
       }
 
@@ -154,18 +191,23 @@ export async function requestJson<T>(path: string, options: JsonRequestOptions =
       lastError = error
 
       const isLastAttempt = attempt === maxAttempts
-      const canRetry = isRetryableError(error)
+      const canRetry = isRetryableError(error, maxDelay)
 
       if (isLastAttempt || !canRetry) {
         throw error
       }
 
-      console.warn(`Request failed (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms: ${path}`)
+      let waitTimeMs = delay
+      if (error instanceof HttpError && error.status === 429 && error.retryAfter !== null) {
+        waitTimeMs = Math.min(error.retryAfter * 1000, maxDelay)
+      }
+
+      console.warn(`Request failed (attempt ${attempt}/${maxAttempts}), retrying in ${waitTimeMs}ms: ${path}`)
 
       // Wait before retry
-      await sleep(delay)
+      await sleep(waitTimeMs)
 
-      // Exponential backoff
+      // Exponential backoff for subsequent attempts
       delay = Math.min(delay * 2, maxDelay)
     }
   }
@@ -194,9 +236,21 @@ export async function requestBlob(
       window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
     }
 
+    const retryAfterSec = parseRetryAfterHeader(response.headers.get('Retry-After'))
     const errorText = await response.text().catch(() => '')
-    const message = errorText || `Request failed with status ${response.status}`
-    throw new HttpError(message, response.status, errorText)
+    let message = errorText
+
+    if (!message) {
+      if (response.status === 429) {
+        message = retryAfterSec
+          ? `Too many requests. Please wait ${retryAfterSec}s and try again.`
+          : 'Too many requests. Please wait a moment and try again.'
+      } else {
+        message = `Request failed with status ${response.status}`
+      }
+    }
+
+    throw new HttpError(message, response.status, errorText, retryAfterSec)
   }
 
   const blob = await response.blob()

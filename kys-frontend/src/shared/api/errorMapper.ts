@@ -26,6 +26,14 @@ export function toApiErrorMessage(error: unknown, fallback = 'Request failed'): 
         return 'You do not have permission to view this resource.'
       case 404:
         return 'Requested resource was not found.'
+      case 429: {
+        const retryAfter = 'retryAfter' in error && typeof error.retryAfter === 'number' && error.retryAfter > 0
+          ? error.retryAfter
+          : null
+        return retryAfter
+          ? `Too many requests. Please wait ${retryAfter}s and try again.`
+          : 'Too many requests. Please wait a moment and try again.'
+      }
       default:
         break
     }

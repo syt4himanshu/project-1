@@ -6,6 +6,9 @@ const devApiProxyTarget = process.env.VITE_DEV_API_PROXY_TARGET || 'http://local
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: ['country-state-city'],
+  },
   server: {
     proxy: {
       '/api': {

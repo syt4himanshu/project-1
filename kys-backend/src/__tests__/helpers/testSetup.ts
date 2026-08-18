@@ -3,6 +3,10 @@ import { adminToken, loginAdmin } from './setup';
 
 beforeAll(async () => {
   if (!adminToken) {
-    await loginAdmin();
+    try {
+      await loginAdmin();
+    } catch (_e) {
+      // Ignored for tests that mock their own server/requests
+    }
   }
 });
