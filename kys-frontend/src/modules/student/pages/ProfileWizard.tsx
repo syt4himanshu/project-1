@@ -8,6 +8,7 @@ import Step5ProjectsInternships from '../components/wizard/Step5ProjectsInternsh
 import Step7SWOC from '../components/wizard/Step7SWOC'
 import Step9ReviewSubmit from '../components/wizard/Step9ReviewSubmit'
 import { useStudentProfileWizard } from '../hooks/useStudentProfileWizard'
+import { StudentProfileDraftProvider } from '../components/StudentProfileDraftProvider'
 import { ThemeToggleButton } from '../../../shared/ui/theme-toggle'
 import { useToast } from '../../../app/providers/toast-context'
 
@@ -40,7 +41,7 @@ export default function ProfileWizard() {
         error,
         progress,
         canSubmit,
-        lastDraftSavedLabel,
+        isLocked,
         draftWasRestored,
         draftRestoredAt,
         autoSyncMessage,
@@ -173,19 +174,13 @@ export default function ProfileWizard() {
                         })}
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-[var(--text-muted)]">
-                        <span>
-                            {lastDraftSavedLabel ? `Saved locally ${lastDraftSavedLabel}` : 'Saved locally just now'}
-                        </span>
-                    </div>
-
-                    {autoSyncMessage && (
+                    {!isLocked && autoSyncMessage && (
                         <div className="mt-2 text-xs font-medium text-[#62748d]">
                             {autoSyncPending ? autoSyncMessage : autoSyncMessage}
                         </div>
                     )}
 
-                    {showDraftBanner && draftRestoredAt && (
+                    {!isLocked && showDraftBanner && draftRestoredAt && (
                         <div className="mt-3 rounded-2xl border border-[#dbe5f2] bg-[#f7fbff] px-4 py-3 text-sm text-[#324a6b]">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
@@ -205,18 +200,33 @@ export default function ProfileWizard() {
                 </div>
 
                 <main className="px-5 py-6 sm:px-8 sm:py-8">
+                    {isLocked && (
+                        <div className="mb-6 rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-4 text-amber-900 dark:text-amber-200">
+                            <div className="flex items-center gap-2 font-semibold text-base">
+                                🔒 Profile Locked
+                            </div>
+                            <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                                Editing is disabled because your faculty mentor has locked this profile. You can view your information, but modifications are restricted.
+                            </p>
+                        </div>
+                    )}
+
                     <div className="mb-6">
                         <h2 className="font-serif text-3xl font-semibold text-[var(--text)] sm:text-4xl">{STEPS[step]}</h2>
                         <p className="mt-1 text-sm text-[var(--text-muted)] sm:text-base">{STEP_SUBTEXT[step]}</p>
                     </div>
 
-                    <div className="rounded-2xl border-0 bg-[var(--panel)] p-4 sm:p-5">
-                        {step === 0 && <Step1Personal />}
-                        {step === 1 && <Step3AcademicBefore />}
-                        {step === 2 && <Step5ProjectsInternships />}
-                        {step === 3 && <Step7SWOC />}
-                        {step === 4 && <Step9ReviewSubmit />}
-                    </div>
+                    <fieldset disabled={isLocked} className="border-0 p-0 m-0 min-w-0">
+                        <StudentProfileDraftProvider>
+                            <div className="rounded-2xl border-0 bg-[var(--panel)] p-4 sm:p-5">
+                                {step === 0 && <Step1Personal />}
+                                {step === 1 && <Step3AcademicBefore />}
+                                {step === 2 && <Step5ProjectsInternships />}
+                                {step === 3 && <Step7SWOC />}
+                                {step === 4 && <Step9ReviewSubmit />}
+                            </div>
+                        </StudentProfileDraftProvider>
+                    </fieldset>
 
                     {error && (
                         <div className="mt-4 rounded-xl border border-[#f2c4c4] bg-[#fff2f2] px-4 py-3 text-sm text-[#9b2c2c]">
@@ -243,10 +253,17 @@ export default function ProfileWizard() {
                             {step < STEPS.length - 1 ? (
                                 <button
                                     onClick={next}
-                                    disabled={saving}
+                                    disabled={!isLocked && saving}
                                     className="min-w-0 flex-0 rounded-xl bg-[#1f355f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(23,42,73,0.9)] transition hover:bg-[#172c4f] sm:flex-none sm:px-5"
                                 >
                                     {saving ? 'Saving...' : 'Next'}
+                                </button>
+                            ) : isLocked ? (
+                                <button
+                                    onClick={() => navigate('/student/dashboard')}
+                                    className="min-w-0 flex-0 rounded-xl bg-[#1f355f] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#172c4f] sm:flex-none sm:px-5"
+                                >
+                                    Back to Dashboard
                                 </button>
                             ) : (
                                 <button
@@ -258,17 +275,19 @@ export default function ProfileWizard() {
                                 </button>
                             )}
 
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    if (window.confirm('Clear all filled form data and start over?')) {
-                                        await clearForm()
-                                    }
-                                }}
-                                className="min-w-0 flex-0 rounded-xl border border-[#f0c8c8] bg-[#fff5f5] px-4 py-2.5 text-sm font-semibold text-[#b42318] transition hover:bg-[#ffeaea] sm:flex-none sm:px-5"
-                            >
-                                Clear Form
-                            </button>
+                            {!isLocked && (
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (window.confirm('Clear all filled form data and start over?')) {
+                                            await clearForm()
+                                        }
+                                    }}
+                                    className="min-w-0 flex-0 rounded-xl border border-[#f0c8c8] bg-[#fff5f5] px-4 py-2.5 text-sm font-semibold text-[#b42318] transition hover:bg-[#ffeaea] sm:flex-none sm:px-5"
+                                >
+                                    Clear Form
+                                </button>
+                            )}
                         </div>
 
                         <button

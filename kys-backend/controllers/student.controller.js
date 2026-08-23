@@ -27,6 +27,7 @@ const { sendResponse } = require('../utils/responseWrapper');
 const { encodeStudentProfilePayload, decodeStudentProfilePayload } = require('../utils/profileCodec');
 const { uploadStudentPhotoForRecord } = require('../utils/studentPhotoUpload');
 const { ensureStudentPersonalInfo, isControlledProfileError } = require('../utils/studentPersonalInfo');
+const { applyStudentProfileUpdate } = require('../utils/studentProfileUpdate');
 
 const includeAll = [
   'personal_info',
@@ -156,6 +157,9 @@ const getStudentsMe = async (req, res, next) => {
         semester: student.semester,
         section: student.section,
         year_of_admission: student.year_of_admission,
+        is_profile_locked: Boolean(student.is_profile_locked),
+        profile_locked_at: student.profile_locked_at || null,
+        profile_locked_by: student.profile_locked_by || null,
         personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
         past_education_records: (student.past_education_records || []).map(serializeModel),
         post_admission_records: (student.post_admission_records || []).map(serializeModel),
@@ -178,6 +182,17 @@ const putStudentsMe = async (req, res, next) => {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
     if (!student) {
       return sendResponse(res, { success: false, status: 404, error: 'Profile not found' });
+    }
+
+    if (student.is_profile_locked) {
+      return sendResponse(res, {
+        success: false,
+        status: 403,
+        error: {
+          code: 'PROFILE_LOCKED',
+          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+        },
+      });
     }
 
     const rawData = req.body || {};
@@ -330,19 +345,8 @@ const getStudentMe = async (req, res, next) => {
     if (!student.personal_info) {
       try {
         student.personal_info = await ensureStudentPersonalInfo(student.id);
-      } catch (error) {
-        if (isControlledProfileError(error)) {
-          return sendResponse(res, {
-            success: false,
-            status: error.statusCode || 400,
-            error: {
-              message: error.message,
-              code: error.code,
-              details: error.details || [],
-            },
-          });
-        }
-        throw error;
+      } catch (_error) {
+        // Proceed with null personal_info so students with incomplete profiles can still view profile
       }
     }
 
@@ -359,6 +363,9 @@ const getStudentMe = async (req, res, next) => {
       semester: student.semester,
       section: student.section,
       year_of_admission: student.year_of_admission,
+      is_profile_locked: Boolean(student.is_profile_locked),
+      profile_locked_at: student.profile_locked_at || null,
+      profile_locked_by: student.profile_locked_by || null,
       personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
       past_education_records: (student.past_education_records || []).map(serializeModel),
       post_admission_records: (student.post_admission_records || []).map(serializeModel),
@@ -387,96 +394,23 @@ const putStudentMe = async (req, res, next) => {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
     }
 
-    const rawData = req.body || {};
-    const data = encodeStudentProfilePayload(rawData);
-    if (!Object.keys(data).length) {
-      return sendResponse(res, { success: false, status: 400, error: 'No data provided' });
+    if (student.is_profile_locked) {
+      return sendResponse(res, {
+        success: false,
+        status: 403,
+        error: {
+          code: 'PROFILE_LOCKED',
+          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+        },
+      });
     }
 
     const tx = await sequelize.transaction();
     try {
-      if ('full_name' in rawData) {
-        const names = splitFullName(rawData.full_name || '');
-        student.first_name = names.first_name;
-        student.middle_name = names.middle_name;
-        student.last_name = names.last_name;
-      }
-      if ('semester' in data) student.semester = data.semester;
-      if ('section' in data) student.section = data.section;
-      if ('year_of_admission' in data) student.year_of_admission = data.year_of_admission;
-      await student.save({ transaction: tx });
-
-      if (Object.prototype.hasOwnProperty.call(data, 'past_education_records')) {
-        const peValidation = validatePastEducationPayload(data.past_education_records || []);
-        if (!peValidation.valid) {
-          await tx.rollback();
-          return sendResponse(res, { success: false, status: 400, error: peValidation.error });
-        }
-      }
-
-      if (Object.prototype.hasOwnProperty.call(data, 'post_admission_records')) {
-        const paValidation = validatePostAdmissionRecords(Number(student.semester || 0), data.post_admission_records || []);
-        if (!paValidation.valid) {
-          await tx.rollback();
-          return sendResponse(res, { success: false, status: 400, error: paValidation.error });
-        }
-      }
-
-      const modelMappings = {
-        personal_info: [StudentPersonalInfo, 'personal_info'],
-        past_education_records: [PastEducation, 'past_education_records'],
-        post_admission_records: [PostAdmissionAcademicRecord, 'post_admission_records'],
-        projects: [Project, 'projects'],
-        internships: [Internship, 'internships'],
-        cocurricular_participations: [CoCurricularParticipation, 'cocurricular_participations'],
-        cocurricular_organizations: [CoCurricularOrganization, 'cocurricular_organizations'],
-        career_objective: [CareerObjective, 'career_objective'],
-        skills: [Skills, 'skills'],
-        swoc: [SWOC, 'swoc'],
-      };
-
-      for (const [dataKey, [modelClass, relName]] of Object.entries(modelMappings)) {
-        if (!(dataKey in data)) continue;
-        let relPayload = data[dataKey];
-        if (relPayload == null) continue;
-
-        if (dataKey === 'past_education_records' && Array.isArray(relPayload)) {
-          relPayload = relPayload.filter(
-            (r) => r.exam_name && r.percentage !== null && r.percentage !== "" && r.year_of_passing !== null
-          );
-        }
-
-        if (dataKey === 'personal_info') {
-          relPayload = stripManagedPhotoFields(relPayload);
-          if (!Object.keys(relPayload || {}).length) continue;
-        }
-
-        if (Array.isArray(relPayload)) {
-          for (const item of relPayload) parseDatesInPayload(item);
-        } else {
-          parseDatesInPayload(relPayload);
-        }
-
-        if (['personal_info', 'career_objective', 'skills', 'swoc'].includes(relName)) {
-          const existing = student[relName];
-          if (existing) {
-            await existing.update(relPayload, { transaction: tx });
-          } else if (relName === 'personal_info') {
-            student[relName] = await ensureStudentPersonalInfo(student.id);
-            await student[relName].update(relPayload, { transaction: tx });
-          } else {
-            await modelClass.create({ ...relPayload, student_id: student.id }, { transaction: tx });
-          }
-        } else {
-          for (const existing of student[relName] || []) {
-            await existing.destroy({ transaction: tx });
-          }
-          if (Array.isArray(relPayload)) {
-            for (const item of relPayload) {
-              await modelClass.create({ ...item, student_id: student.id }, { transaction: tx });
-            }
-          }
-        }
+      const updateResult = await applyStudentProfileUpdate(student, req.body || {}, tx);
+      if (!updateResult.ok) {
+        await tx.rollback();
+        return sendResponse(res, { success: false, status: updateResult.status || 400, error: updateResult.error });
       }
 
       await tx.commit();
@@ -502,6 +436,17 @@ const uploadStudentPhoto = async (req, res, next) => {
     const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: ['personal_info'] });
     if (!student) {
       return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+    }
+
+    if (student.is_profile_locked) {
+      return sendResponse(res, {
+        success: false,
+        status: 403,
+        error: {
+          code: 'PROFILE_LOCKED',
+          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+        },
+      });
     }
 
     const result = await uploadStudentPhotoForRecord(student, req.file);

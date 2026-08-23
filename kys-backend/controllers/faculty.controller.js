@@ -1,4 +1,4 @@
-const { Faculty, Student, MentoringMinute } = require('../models');
+const { sequelize, Faculty, Student, MentoringMinute } = require('../models');
 const { serializeModel } = require('../utils/helpers');
 const { serializeStudent } = require('../utils/serializers');
 const {
@@ -10,7 +10,8 @@ const {
 const { generateFacultyInsights } = require('../services/groq.service');
 const { sendResponse } = require('../utils/responseWrapper');
 const logger = require('../utils/logger');
-const { getMenteesCache, setMenteesCache } = require('../utils/facultyMenteesCache');
+const { getMenteesCache, setMenteesCache, invalidateMenteesCache } = require('../utils/facultyMenteesCache');
+const { applyStudentProfileUpdate } = require('../utils/studentProfileUpdate');
 
 const includeAll = [
   'personal_info',
@@ -282,6 +283,109 @@ const facultyChatbot = async (req, res) => {
   }
 };
 
+const lockMenteeProfile = async (req, res, next) => {
+  try {
+    const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+    if (!faculty) return sendResponse(res, { success: false, status: 404, error: 'Faculty profile not found' });
+
+    const student = await Student.findOne({ where: { uid: req.params.uid, mentor_id: faculty.id } });
+    if (!student) return sendResponse(res, { success: false, status: 404, error: 'Mentee not found or not assigned to this faculty' });
+
+    student.is_profile_locked = true;
+    student.profile_locked_at = new Date();
+    student.profile_locked_by = faculty.id;
+    await student.save();
+
+    invalidateMenteesCache(faculty.id);
+
+    return sendResponse(res, {
+      success: true,
+      data: {
+        uid: student.uid,
+        is_profile_locked: student.is_profile_locked,
+        profile_locked_at: student.profile_locked_at,
+        profile_locked_by: student.profile_locked_by,
+        message: 'Mentee profile locked successfully.',
+      },
+    });
+  } catch (error) {
+    logger.error({ reqId: req.id, message: error.message, stack: error.stack });
+    return next(error);
+  }
+};
+
+const unlockMenteeProfile = async (req, res, next) => {
+  try {
+    const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+    if (!faculty) return sendResponse(res, { success: false, status: 404, error: 'Faculty profile not found' });
+
+    const student = await Student.findOne({ where: { uid: req.params.uid, mentor_id: faculty.id } });
+    if (!student) return sendResponse(res, { success: false, status: 404, error: 'Mentee not found or not assigned to this faculty' });
+
+    student.is_profile_locked = false;
+    student.profile_locked_at = null;
+    student.profile_locked_by = null;
+    await student.save();
+
+    invalidateMenteesCache(faculty.id);
+
+    return sendResponse(res, {
+      success: true,
+      data: {
+        uid: student.uid,
+        is_profile_locked: student.is_profile_locked,
+        profile_locked_at: student.profile_locked_at,
+        profile_locked_by: student.profile_locked_by,
+        message: 'Mentee profile unlocked successfully.',
+      },
+    });
+  } catch (error) {
+    logger.error({ reqId: req.id, message: error.message, stack: error.stack });
+    return next(error);
+  }
+};
+
+const updateMenteeProfileByFaculty = async (req, res, next) => {
+  try {
+    const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+    if (!faculty) return sendResponse(res, { success: false, status: 404, error: 'Faculty profile not found' });
+
+    const student = await Student.findOne({ where: { uid: req.params.uid, mentor_id: faculty.id }, include: includeAll });
+    if (!student) return sendResponse(res, { success: false, status: 404, error: 'Mentee not found or not assigned to this faculty' });
+
+    const tx = await sequelize.transaction();
+    try {
+      const updateResult = await applyStudentProfileUpdate(student, req.body || {}, tx);
+      if (!updateResult.ok) {
+        await tx.rollback();
+        return sendResponse(res, { success: false, status: updateResult.status || 400, error: updateResult.error });
+      }
+
+      await tx.commit();
+      invalidateMenteesCache(faculty.id);
+
+      const updatedStudent = await Student.findOne({ where: { id: student.id }, include: includeAll });
+      return sendResponse(res, {
+        success: true,
+        data: {
+          message: 'Mentee profile updated successfully.',
+          student: serializeStudent(updatedStudent, { includeIds: true }),
+        },
+      });
+    } catch (_error) {
+      await tx.rollback();
+      const status = _error?.statusCode && Number.isInteger(_error.statusCode) ? _error.statusCode : 500;
+      const errorMessage = typeof _error?.message === 'string' && _error.message.trim()
+        ? _error.message
+        : 'Failed to update mentee profile';
+      return sendResponse(res, { success: false, status, error: errorMessage });
+    }
+  } catch (error) {
+    logger.error({ reqId: req.id, message: error.message, stack: error.stack });
+    return next(error);
+  }
+};
+
 module.exports = {
   getMyFaculty,
   updateMyFaculty,
@@ -290,4 +394,7 @@ module.exports = {
   addMentoringMinute,
   getMenteeMentoringMinutes,
   facultyChatbot,
+  lockMenteeProfile,
+  unlockMenteeProfile,
+  updateMenteeProfileByFaculty,
 };

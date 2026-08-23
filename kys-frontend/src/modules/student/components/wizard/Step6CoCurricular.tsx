@@ -94,7 +94,7 @@ export default function Step6CoCurricular() {
     return (
         <div className="space-y-5">
             {/* ── Participation Activities ── */}
-            <section className={sectionCardCls}>
+            <section id="profile-section-participation" className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">Participation Activities</h3>
                 <p className="mb-4 text-sm text-[#7a879c]">(Technical Competition / Paper Presentation / Hackathon / etc.)</p>
 
@@ -133,7 +133,7 @@ export default function Step6CoCurricular() {
             </section>
 
             {/* ── Organized Activities ── */}
-            <section className={sectionCardCls}>
+            <section id="profile-section-organization" className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#e05050] pb-2 text-3xl font-semibold text-[#223b60]">Organized Activities</h3>
                 <div className="grid grid-cols-1 gap-4 sm:max-w-md">
                     {field('Have you organized activities?', (
@@ -189,7 +189,7 @@ export default function Step6CoCurricular() {
             </section>
 
             {/* ── Skill Development Programs ── */}
-            <section className={sectionCardCls}>
+            <section id="profile-section-skill-programs" className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#1ea85b] pb-2 text-3xl font-semibold text-[#223b60]">Skill Development Program (SDP) / Training / MOOC</h3>
                 <div className="grid grid-cols-1 gap-4 sm:max-w-md">
                     {field('Have you done SDP / Training / MOOC?', (

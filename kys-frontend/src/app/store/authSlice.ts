@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { ENDPOINTS } from '../../shared/api/endpointRegistry'
 import { requestJson } from '../../shared/api/httpClient'
-import { readStoredSession } from '../../shared/auth/storage'
+import { clearStoredSession, readStoredSession, writeStoredSession } from '../../shared/auth/storage'
 import { isUserRole, type AuthSession, type AuthUser } from '../../shared/auth/session'
 import type { RootState } from './index'
 
@@ -55,6 +55,7 @@ export const refreshAuthSession = createAsyncThunk(
     const stored = readStoredSession()
 
     if (!stored) {
+      clearStoredSession()
       return null
     }
 
@@ -67,14 +68,19 @@ export const refreshAuthSession = createAsyncThunk(
       const isValid = payload.valid === true
       const verifiedUser = normalizeUser(payload.user)
       if (!isValid || !verifiedUser) {
+        clearStoredSession()
         return null
       }
 
-      return {
+      const session: AuthSession = {
         accessToken: stored.accessToken,
         user: verifiedUser,
       }
+
+      writeStoredSession(session)
+      return session
     } catch {
+      clearStoredSession()
       return null
     }
   },
@@ -104,7 +110,7 @@ export const loginWithCredentials = createAsyncThunk(
       throw new Error('Login response did not include a valid role')
     }
 
-    return {
+    const session: AuthSession = {
       accessToken,
       user: normalizedUser ?? {
         id: 0,
@@ -112,6 +118,11 @@ export const loginWithCredentials = createAsyncThunk(
         role: roleFromPayload,
       },
     }
+
+    // Synchronously persist session before thunk completes and before route navigation
+    writeStoredSession(session)
+
+    return session
   },
 )
 
@@ -119,6 +130,9 @@ export const logoutCurrentUser = createAsyncThunk(
   'auth/logoutCurrentUser',
   async (_arg: void, { getState }): Promise<void> => {
     const token = selectAuthToken(getState() as RootState)
+
+    // Synchronously clear stored session
+    clearStoredSession()
 
     if (!token) return
 
@@ -138,6 +152,7 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     authExpired(state) {
+      clearStoredSession()
       state.session = null
       state.status = 'anonymous'
     },
@@ -148,11 +163,19 @@ const authSlice = createSlice({
         state.session = action.payload
         state.status = action.payload ? 'authenticated' : 'anonymous'
       })
+      .addCase(refreshAuthSession.rejected, (state) => {
+        state.session = null
+        state.status = 'anonymous'
+      })
       .addCase(loginWithCredentials.fulfilled, (state, action) => {
         state.session = action.payload
         state.status = 'authenticated'
       })
       .addCase(logoutCurrentUser.fulfilled, (state) => {
+        state.session = null
+        state.status = 'anonymous'
+      })
+      .addCase(logoutCurrentUser.rejected, (state) => {
         state.session = null
         state.status = 'anonymous'
       })

@@ -59,6 +59,45 @@ export function useMentee(uid: string) {
   })
 }
 
+export function useLockMentee(uid: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => facultyClient.lockMentee(uid),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: facultyKeys.mentees() }),
+        qc.invalidateQueries({ queryKey: facultyKeys.mentee(uid) }),
+      ])
+    },
+  })
+}
+
+export function useUnlockMentee(uid: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => facultyClient.unlockMentee(uid),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: facultyKeys.mentees() }),
+        qc.invalidateQueries({ queryKey: facultyKeys.mentee(uid) }),
+      ])
+    },
+  })
+}
+
+export function useUpdateMenteeProfile(uid: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: unknown) => facultyClient.updateMenteeProfile(uid, data),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: facultyKeys.mentees() }),
+        qc.invalidateQueries({ queryKey: facultyKeys.mentee(uid) }),
+      ])
+    },
+  })
+}
+
 // ─── Mentoring minutes (paginated) ───────────────────────────────────────────
 
 export function useMenteeMinutes(uid: string, offset = 0, limit = DEFAULT_MINUTES_PAGE_SIZE) {

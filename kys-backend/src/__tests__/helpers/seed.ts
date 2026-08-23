@@ -26,8 +26,7 @@ const rand = () => Math.random().toString(36).slice(2, 10);
 const token = async () => adminToken || (await loginAdmin());
 
 export async function createTestStudent(overrides: StudentOverrides = {}) {
-  const now = Date.now();
-  const uid = overrides.uid || `ST${now}${rand().slice(0, 3)}`;
+  const uid = overrides.uid || `ST${Date.now().toString(36)}${rand().slice(0, 4)}`.slice(0, 18);
 
   const payload = {
     username: overrides.username || uid,

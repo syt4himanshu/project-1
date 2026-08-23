@@ -2,7 +2,14 @@ import { requestJson } from '../../../shared/api/httpClient'
 import { ENDPOINTS } from '../../../shared/api/endpointRegistry'
 import { readStoredSession } from '../../../shared/auth/storage'
 
-function getToken() {
+export interface StudentApiRequestOptions {
+  token?: string | null
+}
+
+function resolveToken(options?: StudentApiRequestOptions): string | null {
+  if (options?.token !== undefined) {
+    return options.token
+  }
   return readStoredSession()?.accessToken ?? null
 }
 
@@ -13,11 +20,11 @@ function toApiError(error: unknown, fallback: string): Error {
   return new Error(fallback)
 }
 
-export async function getProfile() {
+export async function getProfile(options: StudentApiRequestOptions = {}) {
   try {
     const data = await requestJson<Record<string, unknown>>(ENDPOINTS.student.me, {
       method: 'GET',
-      token: getToken(),
+      token: resolveToken(options),
     })
     return { data }
   } catch (error) {
@@ -25,11 +32,11 @@ export async function getProfile() {
   }
 }
 
-export async function updateProfile(payload: unknown) {
+export async function updateProfile(payload: unknown, options: StudentApiRequestOptions = {}) {
   try {
     const data = await requestJson<Record<string, unknown>>(ENDPOINTS.student.me, {
       method: 'PUT',
-      token: getToken(),
+      token: resolveToken(options),
       body: payload,
     })
     return { data }
@@ -38,29 +45,29 @@ export async function updateProfile(payload: unknown) {
   }
 }
 
-export async function getMentor() {
+export async function getMentor(options: StudentApiRequestOptions = {}) {
   const data = await requestJson<Record<string, unknown>>(ENDPOINTS.students.mentor, {
     method: 'GET',
-    token: getToken(),
+    token: resolveToken(options),
   })
   return { data }
 }
 
-export async function getMentoringMinutes() {
+export async function getMentoringMinutes(options: StudentApiRequestOptions = {}) {
   const data = await requestJson<Array<Record<string, unknown>>>(ENDPOINTS.students.mentoringMinutes, {
     method: 'GET',
-    token: getToken(),
+    token: resolveToken(options),
   })
   return { data }
 }
 
-export async function uploadProfilePhoto(file: File) {
+export async function uploadProfilePhoto(file: File, options: StudentApiRequestOptions = {}) {
   const formData = new FormData()
   formData.append('photo', file)
 
   const data = await requestJson<Record<string, unknown>>(ENDPOINTS.student.uploadPhoto, {
     method: 'POST',
-    token: getToken(),
+    token: resolveToken(options),
     body: formData,
   })
 

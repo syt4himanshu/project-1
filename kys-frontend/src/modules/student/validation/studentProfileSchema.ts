@@ -87,6 +87,8 @@ const studentProfileSchema = Joi.object({
     guardian_name: Joi.string().trim().max(120).allow('', null),
     guardian_mobile: phoneNumber,
     guardian_email: optionalEmail,
+    emergency_contact_name: Joi.string().trim().max(120).allow('', null),
+    emergency_contact_number: phoneNumber,
   }).unknown(true),
 
   past_education_records: Joi.array().items(Joi.object({
@@ -113,6 +115,7 @@ const studentProfileSchema = Joi.object({
     description: text200.messages({
       'string.max': 'Project description must not exceed 200 characters',
     }),
+    project_guide: text255,
   }).unknown(true)),
 
   internships: Joi.array().items(Joi.object({
@@ -167,6 +170,9 @@ const studentProfileSchema = Joi.object({
     student_mentor_interest: Joi.string().trim().max(20).allow('', null),
     mentorship_domain: Joi.string().trim().max(100).allow('', null),
     expectations_from_institute: text200,
+    placement_type: Joi.string().trim().max(50).allow('', null),
+    higher_studies_type: Joi.string().trim().max(50).allow('', null),
+    higher_studies_location: Joi.string().trim().max(20).allow('', null),
   }).unknown(true),
 
   skills: Joi.object({

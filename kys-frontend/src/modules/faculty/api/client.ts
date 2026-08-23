@@ -10,10 +10,12 @@ import type {
   ChatbotResponse,
   FacultyProfile,
   FacultyProfileUpdateInput,
+  LockMenteeResponse,
   MenteeMinutesPayload,
   MenteePayload,
   MenteeRow,
   MutationResult,
+  UpdateMenteeProfileResponse,
 } from './types'
 
 function token() {
@@ -62,6 +64,25 @@ export const facultyClient = {
       `${ENDPOINTS.faculty.menteeMinutes(uid)}${buildQuery({ limit, offset })}`,
       { token: token() },
     ),
+
+  lockMentee: (uid: string) =>
+    requestJson<LockMenteeResponse>(ENDPOINTS.faculty.lockMentee(uid), {
+      method: 'PUT',
+      token: token(),
+    }),
+
+  unlockMentee: (uid: string) =>
+    requestJson<LockMenteeResponse>(ENDPOINTS.faculty.unlockMentee(uid), {
+      method: 'PUT',
+      token: token(),
+    }),
+
+  updateMenteeProfile: (uid: string, data: unknown) =>
+    requestJson<UpdateMenteeProfileResponse>(ENDPOINTS.faculty.updateMenteeProfile(uid), {
+      method: 'PUT',
+      body: data,
+      token: token(),
+    }),
 
   addMentoringMinute: (uid: string, data: AddMinuteInput) =>
     requestJson<MutationResult>(ENDPOINTS.faculty.menteeMinutes(uid), {

@@ -140,7 +140,7 @@ export default function Step3AcademicBefore() {
     const semesters = Array.from({ length: Math.max(currentSem - 1, 0) }, (_, i) => i + 1)
 
     return (
-        <div className="space-y-5">
+        <div id="profile-section-past-education-root" className="space-y-5">
             {renderEducationSection('SSC (X) Details', 'SSC', 'Board', 'Select Board')}
 
             <section className={sectionCardCls}>
@@ -204,7 +204,7 @@ export default function Step3AcademicBefore() {
 
             {admissionType === 'diploma' && renderEducationSection('Diploma Details', 'DIPLOMA', 'Diploma Board', 'Enter Diploma Board', true)}
 
-            <section className={sectionCardCls}>
+            <section id="profile-section-academics" className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">Academic Information - After Admission</h3>
                 {semesters.length === 0 ? (
                     <p className="text-sm text-[#6e7e95]">No records needed for Semester 1 students.</p>

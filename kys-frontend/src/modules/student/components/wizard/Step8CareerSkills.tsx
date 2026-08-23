@@ -29,7 +29,7 @@ export default function Step8CareerSkills() {
 
     return (
         <div className="space-y-5">
-            <section className={sectionCardCls}>
+            <section id="profile-section-career-fields" className={sectionCardCls}>
                 <div className="space-y-4">
                     {field('Career Goal *', (() => {
                         const goalOptions = ['Placement', 'Higher Studies', 'Entrepreneurship', 'Government Jobs and Exams']
@@ -77,6 +77,22 @@ export default function Step8CareerSkills() {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                         {field('Clarity and Preparedness Level *', select(['Unsatisfactory', 'Satisfactory', 'Good', 'Excellent'], (co.clarity_preparedness as string) || '', v => updCo('clarity_preparedness', v), 'Select Level', getFieldValidation('career_objective.clarity_preparedness')))}
                         {field('Interested in Campus Placement? *', select(['Yes', 'No'], interested, v => updCo('interested_in_campus_placement', v === 'Yes' ? true : v === 'No' ? false : null), 'Select Option', getFieldValidation('career_objective.interested_in_campus_placement')))}
+                    </div>
+
+                    {interested === 'Yes' && field('Campus Placement Reasons', (
+                        <textarea
+                            value={(co.campus_placement_reasons as string) || ''}
+                            onChange={e => updCo('campus_placement_reasons', e.target.value)}
+                            rows={3}
+                            placeholder='Why are you interested in campus placement?'
+                            className={textareaCls}
+                        />
+                    ))}
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+                        {field('Placement Type', input('text', (co.placement_type as string) || '', v => updCo('placement_type', v), 'e.g. Core / IT / Finance'))}
+                        {field('Higher Studies Type', input('text', (co.higher_studies_type as string) || '', v => updCo('higher_studies_type', v), 'e.g. GATE / CAT'))}
+                        {field('Higher Studies Location', select(['India', 'Abroad', 'Both'], (co.higher_studies_location as string) || '', v => updCo('higher_studies_location', v), 'Select Location'))}
                     </div>
 
                     <div>
@@ -130,7 +146,7 @@ export default function Step8CareerSkills() {
                 </div>
             </section>
 
-            <section className={sectionCardCls}>
+            <section id="profile-section-skills" className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">Skills</h3>
                 <div className="space-y-4">
                     {field('List Your Technical & Soft Skills', (
@@ -171,6 +187,16 @@ export default function Step8CareerSkills() {
                             onChange={e => updSk('programming_languages', e.target.value)}
                             rows={3}
                             placeholder='e.g. JavaScript, Python, C, C++'
+                            className={textareaCls}
+                        />
+                    ))}
+
+                    {field('Technologies & Frameworks', (
+                        <textarea
+                            value={(sk.technologies_frameworks as string) || ''}
+                            onChange={e => updSk('technologies_frameworks', e.target.value)}
+                            rows={3}
+                            placeholder='e.g. overall tech stack summary'
                             className={textareaCls}
                         />
                     ))}

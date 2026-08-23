@@ -111,7 +111,7 @@ export default function Step5ProjectsInternships() {
     }
 
     return (
-        <div className="space-y-5">
+        <div id="profile-section-projects" className="space-y-5">
             <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#1ea85b] pb-2 text-3xl font-semibold text-[#223b60]">Mini Project</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
@@ -129,7 +129,11 @@ export default function Step5ProjectsInternships() {
                             </div>
                         )
                     })())}
-                    {field('Project Guide', input('text', (projects[0]?.description as string) || '', v => updProject(0, 'description', v), 'Name of project guide / mentor'))}
+                    {field('Project Guide', input('text', String(projects[0]?.project_guide || projects[0]?.description || ''), v => {
+                        const updated = [...projects]
+                        updated[0] = { ...updated[0], description: v, project_guide: v }
+                        update({ projects: updated })
+                    }, 'Name of project guide / mentor'))}
                 </div>
             </section>
 
@@ -150,7 +154,11 @@ export default function Step5ProjectsInternships() {
                             </div>
                         )
                     })())}
-                    {field('Project Guide', input('text', (projects[1]?.description as string) || '', v => updProject(1, 'description', v), 'Name of project guide / mentor'))}
+                    {field('Project Guide', input('text', String(projects[1]?.project_guide || projects[1]?.description || ''), v => {
+                        const updated = [...projects]
+                        updated[1] = { ...updated[1], description: v, project_guide: v }
+                        update({ projects: updated })
+                    }, 'Name of project guide / mentor'))}
                 </div>
             </section>
 
@@ -187,7 +195,11 @@ export default function Step5ProjectsInternships() {
                                 </div>
                             )
                         })())}
-                        {field('Project Guide', input('text', (projects[2]?.description as string) || '', v => updProject(2, 'description', v), 'Name of project guide / mentor'))}
+                        {field('Project Guide', input('text', String(projects[2]?.project_guide || projects[2]?.description || ''), v => {
+                            const updated = [...projects]
+                            updated[2] = { ...updated[2], description: v, project_guide: v }
+                            update({ projects: updated })
+                        }, 'Name of project guide / mentor'))}
                     </div>
                 </section>
             )}
@@ -220,7 +232,11 @@ export default function Step5ProjectsInternships() {
                                     </div>
                                 )
                             })())}
-                            {field('Project Guide', input('text', (project?.description as string) || '', v => updProject(i, 'description', v), 'Name of project guide / mentor'))}
+                            {field('Project Guide', input('text', String(project?.project_guide || project?.description || ''), v => {
+                                const updated = [...projects]
+                                updated[i] = { ...updated[i], description: v, project_guide: v }
+                                update({ projects: updated })
+                            }, 'Name of project guide / mentor'))}
                         </div>
                     </section>
                 )
@@ -236,7 +252,7 @@ export default function Step5ProjectsInternships() {
                 </button>
             </div>
 
-            <section className={sectionCardCls}>
+            <section id="profile-section-internships" className={sectionCardCls}>
                 <h3 className="mb-4 border-b-2 border-[#df981e] pb-2 text-3xl font-semibold text-[#223b60]">Internship Details</h3>
                 <div className="grid grid-cols-1 gap-4 sm:max-w-md">
                     {field('Do you have internship experience?', (
@@ -347,7 +363,7 @@ export default function Step5ProjectsInternships() {
                 </div>
             )}
 
-            <div className="mb-6">
+            <div id="profile-section-cocurricular-participation" className="mb-6">
                 <h2 className="font-serif text-3xl font-semibold text-[var(--text)] sm:text-4xl">Co-Curricular Activities</h2>
                 <p className="mt-1 text-sm text-[var(--text-muted)] sm:text-base">Provide details of your co-curricular activities</p>
             </div>

@@ -54,6 +54,9 @@ const serializeStudent = (student, { includeIds = false } = {}) => {
     mentor_name: mentorName(student),
     career_goal: careerGoal(student),
     domain_of_interest: domainOfInterest(student),
+    is_profile_locked: Boolean(student.is_profile_locked),
+    profile_locked_at: student.profile_locked_at || null,
+    profile_locked_by: student.profile_locked_by || null,
   };
 
   if (includeIds) {
@@ -78,6 +81,9 @@ const serializeStudentSummary = (student) => ({
   mentor_name: mentorName(student),
   career_goal: careerGoal(student),
   domain_of_interest: domainOfInterest(student),
+  is_profile_locked: Boolean(student.is_profile_locked),
+  profile_locked_at: student.profile_locked_at || null,
+  profile_locked_by: student.profile_locked_by || null,
 });
 
 module.exports = {

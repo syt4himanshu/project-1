@@ -18,6 +18,9 @@ class Student extends Model {
         admission_type: { type: DataTypes.STRING(20), allowNull: true },
         user_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
         mentor_id: { type: DataTypes.INTEGER, allowNull: true },
+        is_profile_locked: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        profile_locked_at: { type: DataTypes.DATE, allowNull: true },
+        profile_locked_by: { type: DataTypes.INTEGER, allowNull: true },
       },
       {
         sequelize,

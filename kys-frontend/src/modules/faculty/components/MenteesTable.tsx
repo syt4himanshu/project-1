@@ -44,6 +44,7 @@ export function MenteesTable({
                         <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-left">
                             <th className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">UID</th>
                             <th className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">Name</th>
+                            <th className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">Status</th>
                             <th className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">Semester</th>
                             <th className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">Section</th>
                             <th className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">Year</th>
@@ -56,7 +57,7 @@ export function MenteesTable({
                             : rows.length === 0
                                 ? (
                                     <tr>
-                                        <td colSpan={6} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                        <td colSpan={7} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                             No mentees assigned yet. Assignments are managed by the administrator.
                                         </td>
                                     </tr>
@@ -68,6 +69,17 @@ export function MenteesTable({
                                     >
                                         <td className="px-4 py-3 font-mono text-gray-900 dark:text-white">{r.uid}</td>
                                         <td className="px-4 py-3 text-gray-900 dark:text-white">{r.full_name}</td>
+                                        <td className="px-4 py-3">
+                                            {r.is_profile_locked ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+                                                    🔒 Locked
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300">
+                                                    ● Active
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{r.semester}</td>
                                         <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{r.section ?? '—'}</td>
                                         <td className="px-4 py-3 text-gray-700 dark:text-gray-300">

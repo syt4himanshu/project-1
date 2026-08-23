@@ -67,6 +67,46 @@ export async function loginAdmin(): Promise<string> {
 
 
 
+let serverProcess: any = null;
+
 export default async function globalSetup() {
-  // Keep global setup lightweight; per-suite login still runs via beforeAll above.
+  const targetUrl = process.env.TEST_BASE_URL || 'http://localhost:5002';
+  try {
+    const res = await fetch(`${targetUrl}/health`);
+    if (res.ok) return;
+  } catch {
+    // Server not running, spawn it
+    const { spawn } = await import('child_process');
+    const path = await import('path');
+    const serverPath = path.resolve(__dirname, '../../../server.js');
+    serverProcess = spawn('node', [serverPath], {
+      cwd: path.resolve(__dirname, '../../../'),
+      env: { ...process.env, PORT: '5002' },
+      stdio: 'inherit',
+    });
+
+    // Wait for server to become healthy
+    const start = Date.now();
+    let ready = false;
+    while (Date.now() - start < 15000) {
+      try {
+        const res = await fetch(`${targetUrl}/health`);
+        if (res.ok) {
+          ready = true;
+          break;
+        }
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
+    if (!ready) {
+      console.warn('Warning: Test server did not start within 15s');
+    }
+  }
+
+  return async () => {
+    if (serverProcess) {
+      serverProcess.kill();
+    }
+  };
 }

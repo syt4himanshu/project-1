@@ -2,7 +2,14 @@ import { requestJson } from '../../../shared/api/httpClient'
 import { ENDPOINTS } from '../../../shared/api/endpointRegistry'
 import { readStoredSession } from '../../../shared/auth/storage'
 
-function getToken() {
+export interface StudentAuthRequestOptions {
+  token?: string | null
+}
+
+function resolveToken(options?: StudentAuthRequestOptions): string | null {
+  if (options?.token !== undefined) {
+    return options.token
+  }
   return readStoredSession()?.accessToken ?? null
 }
 
@@ -13,11 +20,15 @@ function toApiError(error: unknown, fallback: string): Error {
   return new Error(fallback)
 }
 
-export async function changePassword(old_password: string, new_password: string) {
+export async function changePassword(
+  old_password: string,
+  new_password: string,
+  options: StudentAuthRequestOptions = {},
+) {
   try {
     const data = await requestJson<unknown>(ENDPOINTS.auth.changePassword, {
       method: 'POST',
-      token: getToken(),
+      token: resolveToken(options),
       body: { old_password, new_password },
     })
     return { data }
@@ -26,8 +37,8 @@ export async function changePassword(old_password: string, new_password: string)
   }
 }
 
-export async function logout() {
-  const token = getToken()
+export async function logout(options: StudentAuthRequestOptions = {}) {
+  const token = resolveToken(options)
   const data = await requestJson<unknown>(ENDPOINTS.auth.logout, {
     method: 'POST',
     token,

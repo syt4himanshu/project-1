@@ -190,7 +190,24 @@ export function FacultyDashboardPage() {
                       fallback={<div className="faculty-student-row__avatar">{getInitials(row.full_name)}</div>}
                     />
                     <div>
-                      <p className="faculty-student-row__name">{row.full_name}</p>
+                      <p className="faculty-student-row__name">
+                        {row.full_name}
+                        {row.is_profile_locked && (
+                          <span style={{
+                            display: 'inline-block',
+                            marginLeft: '8px',
+                            padding: '1px 8px',
+                            borderRadius: '9999px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            backgroundColor: '#fef3c7',
+                            color: '#92400e',
+                            verticalAlign: 'middle',
+                          }}>
+                            🔒 Locked
+                          </span>
+                        )}
+                      </p>
                       <div className="faculty-student-row__meta">
                         <span>Sem {row.semester}</span>
                         <span>{row.section?.trim() || 'Section N/A'}</span>

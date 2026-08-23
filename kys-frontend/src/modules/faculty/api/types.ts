@@ -27,6 +27,9 @@ export interface MenteeRow {
   semester: number
   section?: string
   year_of_admission?: number
+  is_profile_locked?: boolean
+  profile_locked_at?: string | null
+  profile_locked_by?: number | null
 }
 
 export interface MenteesPage {
@@ -49,6 +52,9 @@ export interface MenteePayload {
   semester: number
   section?: string
   year_of_admission?: number
+  is_profile_locked?: boolean
+  profile_locked_at?: string | null
+  profile_locked_by?: number | null
   personal_info?: unknown
   past_education_records?: unknown[]
   post_admission_records?: unknown[]
@@ -60,6 +66,20 @@ export interface MenteePayload {
   career_objective?: unknown
   skills?: unknown
   swoc?: unknown
+  admission_type?: string
+}
+
+export interface LockMenteeResponse {
+  uid: string
+  is_profile_locked: boolean
+  profile_locked_at: string | null
+  profile_locked_by: number | null
+  message: string
+}
+
+export interface UpdateMenteeProfileResponse {
+  message: string
+  student?: MenteePayload
 }
 
 // ─── Mentoring minutes ───────────────────────────────────────────────────────

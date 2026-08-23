@@ -9,7 +9,7 @@ export default function Step7SWOC() {
 
     return (
         <div className="space-y-5">
-            <section className={sectionCardCls}>
+            <section id="profile-section-swoc" className={sectionCardCls}>
                 <div className="space-y-4">
                     {field('Strengths *', (
                         <textarea
@@ -53,7 +53,7 @@ export default function Step7SWOC() {
                 </div>
             </section>
 
-            <div className="mb-6">
+            <div id="profile-section-career" className="mb-6">
                 <h2 className="font-serif text-3xl font-semibold text-[var(--text)] sm:text-4xl">Career Objectives and Skills</h2>
                 <p className="mt-1 text-sm text-[var(--text-muted)] sm:text-base">Share your career goals and skills assessment</p>
             </div>

@@ -1,107 +1,129 @@
-import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { toApiErrorMessage } from '../../../shared/api/errorMapper'
-import { Modal, QueryState } from '../../../shared/ui'
-import { extractStudentPhotoPreviewUrl } from '../../../shared/utils/studentPhoto'
-import { sanitizeDisplayValue } from '../../../shared/utils/render'
-import { useMentee } from '../hooks'
+import { useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toApiErrorMessage } from "../../../shared/api/errorMapper";
+import { Modal, QueryState } from "../../../shared/ui";
+import { extractStudentPhotoPreviewUrl } from "../../../shared/utils/studentPhoto";
+import { sanitizeDisplayValue } from "../../../shared/utils/render";
+import { useToast } from "../../../app/providers/toast-context";
+import { useMentee, useLockMentee, useUnlockMentee } from "../hooks";
+import { FacultyMenteeEditModal } from "./FacultyMenteeEditModal";
+import { Lock, Unlock, Edit3 } from "lucide-react";
 
 interface StudentPreviewModalProps {
-  uid: string
-  open: boolean
-  onClose: () => void
+  uid: string;
+  open: boolean;
+  onClose: () => void;
 }
 
 interface InfoRow {
-  label: string
-  value: string
+  label: string;
+  value: string;
 }
 
-type AnyRecord = Record<string, unknown>
+type AnyRecord = Record<string, unknown>;
 
 function formatDate(value: unknown): string {
-  const text = String(value ?? '').trim()
-  if (!text) return 'N/A'
+  const text = String(value ?? "").trim();
+  if (!text) return "N/A";
 
-  const parsed = new Date(text)
-  if (Number.isNaN(parsed.getTime())) return text
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return text;
 
-  return new Intl.DateTimeFormat('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(parsed)
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(parsed);
 }
 
 function toText(value: unknown): string {
-  if (value == null) return ''
-  if (typeof value === 'string') return value.trim()
-  return String(value).trim()
+  if (value == null) return "";
+  if (typeof value === "string") return value.trim();
+  return String(value).trim();
 }
 
 function isEmpty(value: unknown): boolean {
-  const text = toText(value).toLowerCase()
-  return text === '' || text === 'n/a' || text === 'na' || text === 'none' || text === '-' || text === '--' || text === 'null' || text === 'undefined'
+  const text = toText(value).toLowerCase();
+  return (
+    text === "" ||
+    text === "n/a" ||
+    text === "na" ||
+    text === "none" ||
+    text === "-" ||
+    text === "--" ||
+    text === "null" ||
+    text === "undefined"
+  );
 }
 
 function showValue(value: unknown): string {
-  return isEmpty(value) ? 'N/A' : sanitizeDisplayValue(toText(value))
+  return isEmpty(value) ? "N/A" : sanitizeDisplayValue(toText(value));
 }
 
 function pick(record: AnyRecord | undefined, ...keys: string[]): unknown {
-  if (!record) return undefined
+  if (!record) return undefined;
   for (const key of keys) {
-    if (!isEmpty(record[key])) return record[key]
+    if (!isEmpty(record[key])) return record[key];
   }
-  return undefined
+  return undefined;
 }
 
-function fixedSlots(records: AnyRecord[] | undefined, count: number): AnyRecord[] {
-  return Array.from({ length: count }, (_, index) => records?.[index] ?? {})
+function fixedSlots(
+  records: AnyRecord[] | undefined,
+  count: number,
+): AnyRecord[] {
+  return Array.from({ length: count }, (_, index) => records?.[index] ?? {});
 }
 
 function extractBacklogSubjects(record: AnyRecord): string[] {
-  const raw = toText(pick(record, 'backlog_subjects', 'subjects', 'backlogSubjects'))
-  if (!raw) return []
+  const raw = toText(
+    pick(record, "backlog_subjects", "subjects", "backlogSubjects"),
+  );
+  if (!raw) return [];
   return raw
     .split(/[\n,;]+/)
     .map((item) => item.trim())
-    .filter((item) => !isEmpty(item) && item !== '0')
+    .filter((item) => !isEmpty(item) && item !== "0");
 }
 
 function toNumberOrFallback(value: unknown, fallback = 0): number {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : fallback
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function sortAcademicRecords(records: AnyRecord[]): AnyRecord[] {
-  return [...records].sort((a, b) => toNumberOrFallback(a.semester) - toNumberOrFallback(b.semester))
+  return [...records].sort(
+    (a, b) => toNumberOrFallback(a.semester) - toNumberOrFallback(b.semester),
+  );
 }
 
 function getProjectLabel(index: number): string {
-  if (index === 0) return 'Mini Project'
-  if (index === 1) return 'Major Project'
-  if (index === 2) return 'UBA / Collaborative Project'
-  return 'Other Project'
+  if (index === 0) return "Mini Project";
+  if (index === 1) return "Major Project";
+  if (index === 2) return "UBA / Collaborative Project";
+  return "Other Project";
 }
 
 function getProjectSubtitle(project: AnyRecord): string {
-  const description = showValue(project.description)
-  const domain = project.domain ? String(project.domain) : null
-  const guideText = description !== 'N/A' ? `Project Guide: ${description}` : 'Project Guide: N/A'
-  return domain ? `Domain: ${domain} | ${guideText}` : guideText
+  const description = showValue(project.description);
+  const domain = project.domain ? String(project.domain) : null;
+  const guideText =
+    description !== "N/A"
+      ? `Project Guide: ${description}`
+      : "Project Guide: N/A";
+  return domain ? `Domain: ${domain} | ${guideText}` : guideText;
 }
 
 function getProjectBadgeClass(label: string) {
   switch (label) {
-    case 'UBA / Collaborative Project':
-      return 'border-[#7a5c00] bg-[#fff4cc] text-[#7a5c00]'
-    case 'Mini Project':
-      return 'border-[#4a6b9a] bg-[#e8f0fb] text-[#315484]'
-    case 'Major Project':
-      return 'border-[#7b4fd6] bg-[#efe7ff] text-[#5a35a8]'
+    case "UBA / Collaborative Project":
+      return "border-[#7a5c00] bg-[#fff4cc] text-[#7a5c00]";
+    case "Mini Project":
+      return "border-[#4a6b9a] bg-[#e8f0fb] text-[#315484]";
+    case "Major Project":
+      return "border-[#7b4fd6] bg-[#efe7ff] text-[#5a35a8]";
     default:
-      return 'border-[#bfd1ea] bg-[#edf4fb] text-[#355b8f]'
+      return "border-[#bfd1ea] bg-[#edf4fb] text-[#355b8f]";
   }
 }
 
@@ -117,124 +139,393 @@ function InfoTable({ rows }: { rows: InfoRow[] }) {
         ))}
       </tbody>
     </table>
-  )
+  );
 }
 
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+function DetailSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="faculty-preview__section">
       <h5>{title}</h5>
       {children}
     </section>
-  )
+  );
 }
 
-export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalProps) {
-  const contentRef = useRef<HTMLDivElement | null>(null)
-  const [isExporting, setIsExporting] = useState(false)
-  const navigate = useNavigate()
-  const menteeQuery = useMentee(uid)
-  const student = menteeQuery.data
+export function StudentPreviewModal({
+  uid,
+  open,
+  onClose,
+}: StudentPreviewModalProps) {
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const navigate = useNavigate();
+  const toast = useToast();
+  const menteeQuery = useMentee(uid);
+  const student = menteeQuery.data;
 
-  const personalInfo = useMemo(() => (student?.personal_info && typeof student.personal_info === 'object' ? student.personal_info as AnyRecord : {}), [student?.personal_info])
-  const skills = useMemo(() => (student?.skills && typeof student.skills === 'object' ? student.skills as AnyRecord : {}), [student?.skills])
-  const swoc = useMemo(() => (student?.swoc && typeof student.swoc === 'object' ? student.swoc as AnyRecord : {}), [student?.swoc])
-  const careerObjective = useMemo(() => (student?.career_objective && typeof student.career_objective === 'object' ? student.career_objective as AnyRecord : {}), [student?.career_objective])
+  // Profile Lock state
+  const lockMutation = useLockMentee(uid);
+  const unlockMutation = useUnlockMentee(uid);
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
+  const [unlockConfirmOpen, setUnlockConfirmOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [lockError, setLockError] = useState("");
 
-  const pastEducation = useMemo(() => (Array.isArray(student?.past_education_records) ? student.past_education_records as AnyRecord[] : []), [student?.past_education_records])
-  const academicRecords = useMemo(() => sortAcademicRecords(Array.isArray(student?.post_admission_records) ? student.post_admission_records as AnyRecord[] : []), [student?.post_admission_records])
-  const projects = useMemo(() => (Array.isArray(student?.projects) ? student.projects as AnyRecord[] : []), [student?.projects])
-  const internships = useMemo(() => (Array.isArray(student?.internships) ? student.internships as AnyRecord[] : []), [student?.internships])
-  const participations = useMemo(() => fixedSlots(Array.isArray(student?.cocurricular_participations) ? student.cocurricular_participations as AnyRecord[] : [], 3), [student?.cocurricular_participations])
-  const organizations = useMemo(() => fixedSlots(Array.isArray(student?.cocurricular_organizations) ? student.cocurricular_organizations as AnyRecord[] : [], 3), [student?.cocurricular_organizations])
-  const programRows = useMemo(() => fixedSlots(Array.isArray(student?.skill_programs) ? student.skill_programs as AnyRecord[] : [], 3), [student?.skill_programs])
+  const handleLock = async () => {
+    setLockError("");
+    try {
+      await lockMutation.mutateAsync();
+      toast.success("Mentee profile locked successfully.");
+      setLockConfirmOpen(false);
+    } catch (error) {
+      setLockError(toApiErrorMessage(error, "Failed to lock mentee profile."));
+    }
+  };
+
+  const handleUnlock = async () => {
+    setLockError("");
+    try {
+      await unlockMutation.mutateAsync();
+      toast.success("Mentee profile unlocked successfully.");
+      setUnlockConfirmOpen(false);
+    } catch (error) {
+      setLockError(toApiErrorMessage(error, "Failed to unlock mentee profile."));
+    }
+  };
+
+  const personalInfo = useMemo(
+    () =>
+      student?.personal_info && typeof student.personal_info === "object"
+        ? (student.personal_info as AnyRecord)
+        : {},
+    [student?.personal_info],
+  );
+  const studentPhotoPreviewUrl = useMemo(
+    () => extractStudentPhotoPreviewUrl({ personal_info: personalInfo }),
+    [personalInfo],
+  );
+  const skills = useMemo(
+    () =>
+      student?.skills && typeof student.skills === "object"
+        ? (student.skills as AnyRecord)
+        : {},
+    [student?.skills],
+  );
+  const swoc = useMemo(
+    () =>
+      student?.swoc && typeof student.swoc === "object"
+        ? (student.swoc as AnyRecord)
+        : {},
+    [student?.swoc],
+  );
+  const careerObjective = useMemo(
+    () =>
+      student?.career_objective && typeof student.career_objective === "object"
+        ? (student.career_objective as AnyRecord)
+        : {},
+    [student?.career_objective],
+  );
+
+  const pastEducation = useMemo(
+    () =>
+      Array.isArray(student?.past_education_records)
+        ? (student.past_education_records as AnyRecord[])
+        : [],
+    [student?.past_education_records],
+  );
+  const academicRecords = useMemo(
+    () =>
+      sortAcademicRecords(
+        Array.isArray(student?.post_admission_records)
+          ? (student.post_admission_records as AnyRecord[])
+          : [],
+      ),
+    [student?.post_admission_records],
+  );
+  const projects = useMemo(
+    () =>
+      Array.isArray(student?.projects) ? (student.projects as AnyRecord[]) : [],
+    [student?.projects],
+  );
+  const internships = useMemo(
+    () =>
+      Array.isArray(student?.internships)
+        ? (student.internships as AnyRecord[])
+        : [],
+    [student?.internships],
+  );
+  const participations = useMemo(
+    () =>
+      fixedSlots(
+        Array.isArray(student?.cocurricular_participations)
+          ? (student.cocurricular_participations as AnyRecord[])
+          : [],
+        3,
+      ),
+    [student?.cocurricular_participations],
+  );
+  const organizations = useMemo(
+    () =>
+      fixedSlots(
+        Array.isArray(student?.cocurricular_organizations)
+          ? (student.cocurricular_organizations as AnyRecord[])
+          : [],
+        3,
+      ),
+    [student?.cocurricular_organizations],
+  );
+  const programRows = useMemo(
+    () =>
+      fixedSlots(
+        Array.isArray(student?.skill_programs)
+          ? (student.skill_programs as AnyRecord[])
+          : [],
+        3,
+      ),
+    [student?.skill_programs],
+  );
 
   const personalRows = useMemo<InfoRow[]>(() => {
-    if (!student) return []
+    if (!student) return [];
 
     return [
-      { label: 'Full Name', value: showValue(student.full_name) },
-      { label: 'UID', value: showValue(student.uid) },
-      { label: 'Semester', value: showValue(student.semester) },
-      { label: 'Section', value: showValue(student.section) },
-      { label: 'Year of Admission', value: showValue(student.year_of_admission) },
-      { label: 'Roll No. / MIS UID', value: showValue(pick(personalInfo, 'roll_no', 'roll_number', 'mis_uid', 'uid', 'misid')) },
-      { label: 'Date of Birth', value: formatDate(pick(personalInfo, 'dob', 'date_of_birth')) },
-      { label: 'Gender', value: showValue(personalInfo.gender) },
-      { label: 'Blood Group', value: showValue(personalInfo.blood_group) },
-      { label: 'Category', value: showValue(personalInfo.category) },
-      { label: 'Aadhar Number', value: showValue(pick(personalInfo, 'aadhar', 'aadhar_number', 'aadhar_card_number')) },
-      { label: 'Mobile', value: showValue(pick(personalInfo, 'mobile', 'mobile_no', 'mobile_number', 'contact_number')) },
-      { label: 'Personal Email', value: showValue(pick(personalInfo, 'personal_email', 'email')) },
-      { label: 'College Email', value: showValue(pick(personalInfo, 'college_email', 'institution_email')) },
-      { label: 'LinkedIn', value: showValue(pick(personalInfo, 'linkedin', 'linked_in_id', 'linkedin_id')) },
-      { label: 'GitHub', value: showValue(pick(personalInfo, 'github', 'github_id')) },
-      { label: 'State', value: showValue(personalInfo.state) },
-      { label: 'City', value: showValue(personalInfo.city) },
-      { label: 'Pincode', value: showValue(personalInfo.pincode) },
-      { label: 'DIGIPIN', value: showValue(personalInfo.digipin) },
-      { label: 'Permanent Address', value: showValue(pick(personalInfo, 'permanent_address', 'address')) },
-      { label: 'Present Address', value: showValue(pick(personalInfo, 'present_address', 'current_address')) },
-      { label: 'Local Guardian Name', value: showValue(pick(personalInfo, 'guardian_name', 'local_guardian_name')) },
-      { label: 'Local Guardian Mobile', value: showValue(pick(personalInfo, 'guardian_mobile', 'local_guardian_mobile')) },
-      { label: 'Local Guardian Email', value: showValue(pick(personalInfo, 'guardian_email', 'local_guardian_email')) },
-    ]
-  }, [student, personalInfo])
+      { label: "Full Name", value: showValue(student.full_name) },
+      { label: "UID", value: showValue(student.uid) },
+      { label: "Semester", value: showValue(student.semester) },
+      { label: "Section", value: showValue(student.section) },
+      {
+        label: "Year of Admission",
+        value: showValue(student.year_of_admission),
+      },
+      {
+        label: "Roll No. / MIS UID",
+        value: showValue(
+          pick(
+            personalInfo,
+            "roll_no",
+            "roll_number",
+            "mis_uid",
+            "uid",
+            "misid",
+          ),
+        ),
+      },
+      {
+        label: "Date of Birth",
+        value: formatDate(pick(personalInfo, "dob", "date_of_birth")),
+      },
+      { label: "Gender", value: showValue(personalInfo.gender) },
+      { label: "Blood Group", value: showValue(personalInfo.blood_group) },
+      { label: "Category", value: showValue(personalInfo.category) },
+      {
+        label: "Aadhar Number",
+        value: showValue(
+          pick(personalInfo, "aadhar", "aadhar_number", "aadhar_card_number"),
+        ),
+      },
+      {
+        label: "Mobile",
+        value: showValue(
+          pick(
+            personalInfo,
+            "mobile",
+            "mobile_no",
+            "mobile_number",
+            "contact_number",
+          ),
+        ),
+      },
+      {
+        label: "Personal Email",
+        value: showValue(pick(personalInfo, "personal_email", "email")),
+      },
+      {
+        label: "College Email",
+        value: showValue(
+          pick(personalInfo, "college_email", "institution_email"),
+        ),
+      },
+      {
+        label: "LinkedIn",
+        value: showValue(
+          pick(personalInfo, "linkedin", "linked_in_id", "linkedin_id"),
+        ),
+      },
+      {
+        label: "GitHub",
+        value: showValue(pick(personalInfo, "github", "github_id")),
+      },
+      { label: "State", value: showValue(personalInfo.state) },
+      { label: "City", value: showValue(personalInfo.city) },
+      { label: "Pincode", value: showValue(personalInfo.pincode) },
+      { label: "DIGIPIN", value: showValue(personalInfo.digipin) },
+      {
+        label: "Permanent Address",
+        value: showValue(pick(personalInfo, "permanent_address", "address")),
+      },
+      {
+        label: "Present Address",
+        value: showValue(
+          pick(personalInfo, "present_address", "current_address"),
+        ),
+      },
+      {
+        label: "Local Guardian Name",
+        value: showValue(
+          pick(personalInfo, "guardian_name", "local_guardian_name"),
+        ),
+      },
+      {
+        label: "Local Guardian Mobile",
+        value: showValue(
+          pick(personalInfo, "guardian_mobile", "local_guardian_mobile"),
+        ),
+      },
+      {
+        label: "Local Guardian Email",
+        value: showValue(
+          pick(personalInfo, "guardian_email", "local_guardian_email"),
+        ),
+      },
+    ];
+  }, [student, personalInfo]);
 
-  const parentRows = useMemo<InfoRow[]>(() => [
-    { label: "Father's Name", value: showValue(personalInfo.father_name) },
-    { label: "Father's Mobile", value: showValue(pick(personalInfo, 'father_mobile', 'father_mobile_no')) },
-    { label: "Father's Email", value: showValue(personalInfo.father_email) },
-    { label: "Father's Occupation", value: showValue(personalInfo.father_occupation) },
-    { label: "Mother's Name", value: showValue(personalInfo.mother_name) },
-    { label: "Mother's Mobile", value: showValue(pick(personalInfo, 'mother_mobile', 'mother_mobile_no')) },
-    { label: "Mother's Email", value: showValue(personalInfo.mother_email) },
-    { label: "Mother's Occupation", value: showValue(personalInfo.mother_occupation) },
-    { label: 'Emergency Contact', value: showValue(pick(personalInfo, 'emergency_contact', 'emergency_contact_number')) },
-  ], [personalInfo])
+  const parentRows = useMemo<InfoRow[]>(
+    () => [
+      { label: "Father's Name", value: showValue(personalInfo.father_name) },
+      {
+        label: "Father's Mobile",
+        value: showValue(
+          pick(personalInfo, "father_mobile", "father_mobile_no"),
+        ),
+      },
+      { label: "Father's Email", value: showValue(personalInfo.father_email) },
+      {
+        label: "Father's Occupation",
+        value: showValue(personalInfo.father_occupation),
+      },
+      { label: "Mother's Name", value: showValue(personalInfo.mother_name) },
+      {
+        label: "Mother's Mobile",
+        value: showValue(
+          pick(personalInfo, "mother_mobile", "mother_mobile_no"),
+        ),
+      },
+      { label: "Mother's Email", value: showValue(personalInfo.mother_email) },
+      {
+        label: "Mother's Occupation",
+        value: showValue(personalInfo.mother_occupation),
+      },
+      {
+        label: "Emergency Contact",
+        value: showValue(
+          pick(personalInfo, "emergency_contact", "emergency_contact_number"),
+        ),
+      },
+    ],
+    [personalInfo],
+  );
 
-  const skillRows = useMemo<InfoRow[]>(() => [
-    { label: 'Career Goal', value: showValue(careerObjective.career_goal) },
-    { label: 'Specific Goal', value: showValue(careerObjective.specific_details) },
-    {
-      label: 'Interested in Campus Placement?',
-      value: typeof careerObjective.interested_in_campus_placement === 'boolean'
-        ? careerObjective.interested_in_campus_placement ? 'Yes' : 'No'
-        : showValue(careerObjective.campus_placement ?? careerObjective.interested_in_campus_placement),
-    },
-    {
-      label: 'Clarity and Preparedness Level',
-      value: showValue(careerObjective.clarity_preparedness ?? careerObjective.clarity_score),
-    },
-    { label: 'Areas of Interest (Non-Technical)', value: showValue(careerObjective.non_technical_areas) },
-    { label: 'Student Mentor Interest', value: showValue(careerObjective.student_mentor_interest) },
-    { label: 'Mentorship Domain', value: showValue(careerObjective.mentorship_domain) },
-    { label: 'Expectations from Institute', value: showValue(careerObjective.expectations_from_institute) },
-    { label: 'Programming Languages', value: showValue(skills.programming_languages) },
-    { label: 'Frontend Technologies & Frameworks', value: showValue(skills.frontend_technologies_frameworks) },
-    { label: 'Backend Technologies & Databases', value: showValue(skills.backend_technologies_databases) },
-    { label: 'Domains of Interest', value: showValue(skills.domains ?? skills.domains_of_interest) },
-    { label: 'Familiar Tools & Platforms', value: showValue(skills.tools ?? skills.familiar_tools_platforms) },
-    { label: 'List Your Technical & Soft Skills', value: showValue(skills.technical_soft_skills_overall) },
-    { label: 'Additional Technical Skills You Want To Acquire', value: showValue(skills.additional_technical_skills) },
-    { label: 'Additional Soft Skills You Want To Acquire', value: showValue(skills.additional_soft_skills) },
-    { label: 'SWOC - Strengths', value: showValue(swoc.strengths) },
-    { label: 'SWOC - Weaknesses', value: showValue(swoc.weaknesses) },
-    { label: 'SWOC - Opportunities', value: showValue(swoc.opportunities) },
-    { label: 'SWOC - Challenges', value: showValue(swoc.challenges) },
-  ], [careerObjective, skills, swoc])
+  const skillRows = useMemo<InfoRow[]>(
+    () => [
+      { label: "Career Goal", value: showValue(careerObjective.career_goal) },
+      {
+        label: "Specific Goal",
+        value: showValue(careerObjective.specific_details),
+      },
+      {
+        label: "Interested in Campus Placement?",
+        value:
+          typeof careerObjective.interested_in_campus_placement === "boolean"
+            ? careerObjective.interested_in_campus_placement
+              ? "Yes"
+              : "No"
+            : showValue(
+                careerObjective.campus_placement ??
+                  careerObjective.interested_in_campus_placement,
+              ),
+      },
+      {
+        label: "Clarity and Preparedness Level",
+        value: showValue(
+          careerObjective.clarity_preparedness ?? careerObjective.clarity_score,
+        ),
+      },
+      {
+        label: "Areas of Interest (Non-Technical)",
+        value: showValue(careerObjective.non_technical_areas),
+      },
+      {
+        label: "Student Mentor Interest",
+        value: showValue(careerObjective.student_mentor_interest),
+      },
+      {
+        label: "Mentorship Domain",
+        value: showValue(careerObjective.mentorship_domain),
+      },
+      {
+        label: "Expectations from Institute",
+        value: showValue(careerObjective.expectations_from_institute),
+      },
+      {
+        label: "Programming Languages",
+        value: showValue(skills.programming_languages),
+      },
+      {
+        label: "Frontend Technologies & Frameworks",
+        value: showValue(skills.frontend_technologies_frameworks),
+      },
+      {
+        label: "Backend Technologies & Databases",
+        value: showValue(skills.backend_technologies_databases),
+      },
+      {
+        label: "Domains of Interest",
+        value: showValue(skills.domains ?? skills.domains_of_interest),
+      },
+      {
+        label: "Familiar Tools & Platforms",
+        value: showValue(skills.tools ?? skills.familiar_tools_platforms),
+      },
+      {
+        label: "List Your Technical & Soft Skills",
+        value: showValue(skills.technical_soft_skills_overall),
+      },
+      {
+        label: "Additional Technical Skills You Want To Acquire",
+        value: showValue(skills.additional_technical_skills),
+      },
+      {
+        label: "Additional Soft Skills You Want To Acquire",
+        value: showValue(skills.additional_soft_skills),
+      },
+      { label: "SWOC - Strengths", value: showValue(swoc.strengths) },
+      { label: "SWOC - Weaknesses", value: showValue(swoc.weaknesses) },
+      { label: "SWOC - Opportunities", value: showValue(swoc.opportunities) },
+      { label: "SWOC - Challenges", value: showValue(swoc.challenges) },
+    ],
+    [careerObjective, skills, swoc],
+  );
 
   const handlePrint = async () => {
-    if (!contentRef.current || !student) return
+    if (!contentRef.current || !student) return;
 
-    setIsExporting(true)
+    setIsExporting(true);
     try {
-      const printWindow = window.open('', '_blank', 'width=1200,height=900')
-      if (!printWindow) return
+      const printWindow = window.open("", "_blank", "width=1200,height=900");
+      if (!printWindow) return;
 
-      const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      const styleTags = Array.from(
+        document.querySelectorAll('style, link[rel="stylesheet"]'),
+      )
         .map((node) => node.outerHTML)
-        .join('\n')
+        .join("\n");
 
       printWindow.document.write(`
         <html>
@@ -245,104 +536,182 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
           </head>
           <body class="is-exporting">${contentRef.current.innerHTML}</body>
         </html>
-      `)
+      `);
 
-      printWindow.document.close()
+      printWindow.document.close();
       await new Promise<void>((resolve) => {
         printWindow.onload = () => {
-          printWindow.focus()
-          printWindow.print()
+          printWindow.focus();
+          printWindow.print();
           window.setTimeout(() => {
-            printWindow.close()
-            resolve()
-          }, 200)
-        }
-      })
+            printWindow.close();
+            resolve();
+          }, 200);
+        };
+      });
     } finally {
-      setIsExporting(false)
+      setIsExporting(false);
     }
-  }
+  };
 
   const handlePdf = async () => {
-    if (!contentRef.current || !student) return
+    if (!contentRef.current || !student) return;
 
-    setIsExporting(true)
+    setIsExporting(true);
     try {
-      const { default: html2canvas } = await import('html2canvas')
-      const { default: JsPdf } = await import('jspdf')
+      const { default: html2canvas } = await import("html2canvas");
+      const { default: JsPdf } = await import("jspdf");
 
       const canvas = await html2canvas(contentRef.current, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: "#ffffff",
         onclone: (_doc, el) => {
-          el.classList.add('is-exporting')
-        }
-      })
+          el.classList.add("is-exporting");
+        },
+      });
 
-      const imageData = canvas.toDataURL('image/png')
-      const pdf = new JsPdf({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const imageData = canvas.toDataURL("image/png");
+      const pdf = new JsPdf({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
 
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const imageWidth = pageWidth
-      const imageHeight = (canvas.height * imageWidth) / canvas.width
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imageWidth = pageWidth;
+      const imageHeight = (canvas.height * imageWidth) / canvas.width;
 
-      let heightLeft = imageHeight
-      let position = 0
+      let heightLeft = imageHeight;
+      let position = 0;
 
-      pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight)
-      heightLeft -= pageHeight
+      pdf.addImage(imageData, "PNG", 0, position, imageWidth, imageHeight);
+      heightLeft -= pageHeight;
 
       while (heightLeft > 0) {
-        position = heightLeft - imageHeight
-        pdf.addPage()
-        pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight)
-        heightLeft -= pageHeight
+        position = heightLeft - imageHeight;
+        pdf.addPage();
+        pdf.addImage(imageData, "PNG", 0, position, imageWidth, imageHeight);
+        heightLeft -= pageHeight;
       }
 
-      pdf.save(`${student.uid}-student-profile.pdf`)
+      pdf.save(`${student.uid}-student-profile.pdf`);
     } finally {
-      setIsExporting(false)
+      setIsExporting(false);
     }
-  }
+  };
 
   const goToMentoringPanel = () => {
-    if (!student) return
-    onClose()
-    navigate(`/faculty/mentees/${encodeURIComponent(student.uid)}`)
-  }
+    if (!student) return;
+    onClose();
+    navigate(`/faculty/mentees/${encodeURIComponent(student.uid)}`);
+  };
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
       title="Mentee Detail"
-      subtitle={student ? `${student.full_name} (${student.uid})` : 'Loading mentee details...'}
+      subtitle={
+        student
+          ? `${student.full_name} (${student.uid})${
+              student.is_profile_locked ? " [🔒 Locked]" : ""
+            }`
+          : "Loading mentee details..."
+      }
       size="xl"
-      footer={(
+      footer={
         <div className="faculty-preview__footer-actions">
-          <button type="button" className="button button--soft" onClick={() => void handlePrint()} disabled={menteeQuery.isPending || menteeQuery.isError || isExporting || !student}>
+          {student?.is_profile_locked ? (
+            <button
+              type="button"
+              className="button button--warning"
+              onClick={() => setUnlockConfirmOpen(true)}
+              disabled={unlockMutation.isPending || !student}
+            >
+              <Unlock size={16} style={{ marginRight: '6px' }} />
+              {unlockMutation.isPending ? 'Unlocking...' : 'Unlock Profile'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="button button--danger"
+              onClick={() => setLockConfirmOpen(true)}
+              disabled={lockMutation.isPending || !student}
+            >
+              <Lock size={16} style={{ marginRight: '6px' }} />
+              {lockMutation.isPending ? 'Locking...' : 'Lock Profile'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => setEditModalOpen(true)}
+            disabled={!student}
+          >
+            <Edit3 size={16} style={{ marginRight: '6px' }} />
+            Edit Profile
+          </button>
+          <button
+            type="button"
+            className="button button--soft"
+            onClick={() => void handlePrint()}
+            disabled={
+              menteeQuery.isPending ||
+              menteeQuery.isError ||
+              isExporting ||
+              !student
+            }
+          >
             Print
           </button>
-          <button type="button" className="button button--soft" onClick={goToMentoringPanel} disabled={!student}>
+          <button
+            type="button"
+            className="button button--soft"
+            onClick={goToMentoringPanel}
+            disabled={!student}
+          >
             Give Remarks
           </button>
-          <button type="button" className="button button--soft" onClick={() => void handlePdf()} disabled={menteeQuery.isPending || menteeQuery.isError || isExporting || !student}>
-            {isExporting ? 'Exporting...' : 'Download PDF'}
+          <button
+            type="button"
+            className="button button--soft"
+            onClick={() => void handlePdf()}
+            disabled={
+              menteeQuery.isPending ||
+              menteeQuery.isError ||
+              isExporting ||
+              !student
+            }
+          >
+            {isExporting ? "Exporting..." : "Download PDF"}
           </button>
-          <button type="button" className="button button--soft" onClick={onClose}>
+          <button
+            type="button"
+            className="button button--soft"
+            onClick={onClose}
+          >
             Close
           </button>
         </div>
-      )}
+      }
     >
-      {menteeQuery.isPending ? <QueryState title="Loading mentee profile" description="Fetching latest mentee record..." /> : null}
+      {menteeQuery.isPending ? (
+        <QueryState
+          title="Loading mentee profile"
+          description="Fetching latest mentee record..."
+        />
+      ) : null}
       {menteeQuery.isError ? (
         <QueryState
           tone="error"
           title="Unable to load mentee details"
-          description={toApiErrorMessage(menteeQuery.error, 'Please try again.')}
+          description={toApiErrorMessage(
+            menteeQuery.error,
+            "Please try again.",
+          )}
           actionLabel="Retry"
           onAction={() => void menteeQuery.refetch()}
         />
@@ -350,6 +719,40 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
 
       {student ? (
         <div className="faculty-preview" ref={contentRef}>
+          {/* Profile Lock Status Banner */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            marginBottom: '16px',
+            borderRadius: '8px',
+            backgroundColor: student.is_profile_locked ? '#fef2f2' : '#f0fdf4',
+            border: `1px solid ${student.is_profile_locked ? '#fecaca' : '#bbf7d0'}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {student.is_profile_locked ? (
+                <Lock size={18} style={{ color: '#dc2626' }} />
+              ) : (
+                <Unlock size={18} style={{ color: '#16a34a' }} />
+              )}
+              <span style={{
+                fontWeight: 600,
+                fontSize: '14px',
+                color: student.is_profile_locked ? '#dc2626' : '#16a34a',
+              }}>
+                {student.is_profile_locked ? '🔒 Profile Locked' : '● Editable by Student'}
+              </span>
+            </div>
+            {student.is_profile_locked && student.profile_locked_at && (
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                Locked on: {new Intl.DateTimeFormat('en-IN', {
+                  day: '2-digit', month: 'short', year: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                }).format(new Date(String(student.profile_locked_at)))}
+              </span>
+            )}
+          </div>
           <style>{`
             .print-header, .print-photo { display: none; }
             .is-exporting .print-header { 
@@ -393,26 +796,43 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
           <div className="print-header hidden">
             <img src="/logo.png" alt="Logo" className="print-logo" />
             <div className="print-header-text">
-              <h1 className="print-dept">Department of Computer Science Engineering</h1>
-              <p className="print-form-name">STUDENT MENTORING AND CAREER COUNSELLING FORM - KYS</p>
+              <h1 className="print-dept">
+                Department of Computer Science Engineering
+              </h1>
+              <p className="print-form-name">
+                STUDENT MENTORING AND CAREER COUNSELLING FORM - KYS
+              </p>
             </div>
           </div>
 
           <div className="screen-photo">
             <DetailSection title="Photo">
               <div className="admin-student-photo-wrap">
-                <img
-                  src={extractStudentPhotoPreviewUrl({ personal_info: personalInfo }) || ''}
-                  alt={`${student.full_name} profile`}
-                  className="admin-student-photo-preview__image"
-                  loading="eager"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = 'none'
-                  }}
-                />
+                {studentPhotoPreviewUrl ? (
+                  <img
+                    src={studentPhotoPreviewUrl}
+                    alt={`${student.full_name} profile`}
+                    className="admin-student-photo-preview__image"
+                    loading="eager"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display =
+                        "none";
+                    }}
+                  />
+                ) : (
+                  <div className="admin-student-photo-preview__fallback">
+                    {String(student.full_name || "")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </div>
+                )}
                 <div className="admin-student-photo-meta">
-                  <p className="admin-student-photo-meta__title">Current photo</p>
-                  <p className="admin-student-photo-meta__hint">Photo is shown if available.</p>
+                  <p className="admin-student-photo-meta__title">
+                    Current photo
+                  </p>
+                  <p className="admin-student-photo-meta__hint">
+                    Photo is shown if available.
+                  </p>
                 </div>
               </div>
             </DetailSection>
@@ -424,16 +844,21 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                 <InfoTable rows={personalRows} />
               </DetailSection>
             </div>
-            
+
             <div className="print-photo hidden">
-              <img
-                src={extractStudentPhotoPreviewUrl({ personal_info: personalInfo }) || ''}
-                alt="Photo"
-                crossOrigin="anonymous"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none'
-                }}
-              />
+              {studentPhotoPreviewUrl ? (
+                <img
+                  src={studentPhotoPreviewUrl}
+                  alt="Photo"
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display =
+                      "none";
+                  }}
+                />
+              ) : (
+                <div className="print-photo-fallback">Photo</div>
+              )}
             </div>
           </div>
 
@@ -456,17 +881,40 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                 <tbody>
                   {pastEducation.map((record, index) => (
                     <tr key={`past-${index}`}>
-                      <td>{showValue(pick(record, 'exam', 'exam_name'))}</td>
-                      <td>{showValue(pick(record, 'exam_type', 'entrance_exam_type'))}</td>
-                      <td>{showValue(pick(record, 'board', 'board_name', 'exam_board'))}</td>
-                      <td>{showValue(pick(record, 'percentage', 'exam_score', 'marks'))}</td>
-                      <td>{showValue(pick(record, 'year_of_passing', 'year', 'passing_year'))}</td>
+                      <td>{showValue(pick(record, "exam", "exam_name"))}</td>
+                      <td>
+                        {showValue(
+                          pick(record, "exam_type", "entrance_exam_type"),
+                        )}
+                      </td>
+                      <td>
+                        {showValue(
+                          pick(record, "board", "board_name", "exam_board"),
+                        )}
+                      </td>
+                      <td>
+                        {showValue(
+                          pick(record, "percentage", "exam_score", "marks"),
+                        )}
+                      </td>
+                      <td>
+                        {showValue(
+                          pick(
+                            record,
+                            "year_of_passing",
+                            "year",
+                            "passing_year",
+                          ),
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <p className="faculty-preview__empty">No past education records.</p>
+              <p className="faculty-preview__empty">
+                No past education records.
+              </p>
             )}
           </DetailSection>
 
@@ -487,13 +935,42 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                 <tbody>
                   {academicRecords.map((record, index) => (
                     <tr key={`academic-${index}`}>
-                      <td>{showValue(pick(record, 'semester', 'sem'))}</td>
-                      <td>{showValue(pick(record, 'sgpa', 'grade_point'))}</td>
-                      <td>{showValue(pick(record, 'season', 'term'))}</td>
-                      <td>{showValue(pick(record, 'year_of_passing', 'year', 'academic_year'))}</td>
-                      <td>{showValue(pick(record, 'college_rank', 'rank'))}</td>
-                      <td>{showValue(pick(record, 'backlogs', 'backlog_count', 'backlogCount') ?? (extractBacklogSubjects(record).length || undefined))}</td>
-                      <td>{showValue(pick(record, 'backlog_subjects', 'subjects', 'backlogSubjects'))}</td>
+                      <td>{showValue(pick(record, "semester", "sem"))}</td>
+                      <td>{showValue(pick(record, "sgpa", "grade_point"))}</td>
+                      <td>{showValue(pick(record, "season", "term"))}</td>
+                      <td>
+                        {showValue(
+                          pick(
+                            record,
+                            "year_of_passing",
+                            "year",
+                            "academic_year",
+                          ),
+                        )}
+                      </td>
+                      <td>{showValue(pick(record, "college_rank", "rank"))}</td>
+                      <td>
+                        {showValue(
+                          pick(
+                            record,
+                            "backlogs",
+                            "backlog_count",
+                            "backlogCount",
+                          ) ??
+                            (extractBacklogSubjects(record).length ||
+                              undefined),
+                        )}
+                      </td>
+                      <td>
+                        {showValue(
+                          pick(
+                            record,
+                            "backlog_subjects",
+                            "subjects",
+                            "backlogSubjects",
+                          ),
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -507,20 +984,24 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
             {projects.length > 0 ? (
               <div className="detail-card-list">
                 {projects.map((project, index) => {
-                  const label = getProjectLabel(index)
-                  const subtitle = getProjectSubtitle(project)
+                  const label = getProjectLabel(index);
+                  const subtitle = getProjectSubtitle(project);
 
                   return (
                     <article key={`project-${index}`} className="detail-card">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <h5 className="m-0">{showValue(project.title)}</h5>
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${getProjectBadgeClass(label)}`}>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${getProjectBadgeClass(
+                            label,
+                          )}`}
+                        >
                           {label}
                         </span>
                       </div>
                       <p className="text-sm text-[#5f6f86]">{subtitle}</p>
                     </article>
-                  )
+                  );
                 })}
               </div>
             ) : (
@@ -535,26 +1016,43 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
                   <article key={`internship-${index}`} className="detail-card">
                     <h5>Internship {index + 1}</h5>
                     <p>Title: {showValue(internship.title)}</p>
-                    <p>Company: {showValue(pick(internship, 'company_name', 'company'))}</p>
+                    <p>
+                      Company:{" "}
+                      {showValue(pick(internship, "company_name", "company"))}
+                    </p>
                     <p>Designation: {showValue(internship.designation)}</p>
                     <p>Domain: {showValue(internship.domain)}</p>
-                    <p>Location: {showValue(internship.city)}, {showValue(internship.state)}</p>
+                    <p>
+                      Location: {showValue(internship.city)},{" "}
+                      {showValue(internship.state)}
+                    </p>
                     <p>Description: {showValue(internship.description)}</p>
                     <p>Type: {showValue(internship.internship_type)}</p>
                     <p>Status: {showValue(internship.paid_unpaid)}</p>
-                    {internship.paid_unpaid === 'Paid' && (
+                    {internship.paid_unpaid === "Paid" && (
                       <>
                         <p>Paid Type: {showValue(internship.paid_type)}</p>
-                        {internship.paid_type === 'With stipend' && <p>Stipend: {showValue(internship.stipend_amount)}</p>}
-                        {internship.paid_type === 'Paid' && <p>Amount Paid: {showValue(internship.paid_amount)}</p>}
+                        {internship.paid_type === "With stipend" && (
+                          <p>Stipend: {showValue(internship.stipend_amount)}</p>
+                        )}
+                        {internship.paid_type === "Paid" && (
+                          <p>
+                            Amount Paid: {showValue(internship.paid_amount)}
+                          </p>
+                        )}
                       </>
                     )}
-                    <p>Duration: {formatDate(internship.start_date)} to {formatDate(internship.end_date)}</p>
+                    <p>
+                      Duration: {formatDate(internship.start_date)} to{" "}
+                      {formatDate(internship.end_date)}
+                    </p>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="faculty-preview__empty">No internships submitted.</p>
+              <p className="faculty-preview__empty">
+                No internships submitted.
+              </p>
             )}
           </DetailSection>
 
@@ -563,7 +1061,7 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
               {participations.map((entry, index) => (
                 <article key={`participation-${index}`} className="detail-card">
                   <h5>Activity {index + 1}</h5>
-                  <p>Name: {showValue(pick(entry, 'name', 'activity'))}</p>
+                  <p>Name: {showValue(pick(entry, "name", "activity"))}</p>
                   <p>Date: {formatDate(entry.date)}</p>
                   <p>Level: {showValue(entry.level)}</p>
                   <p>Awards: {showValue(entry.awards)}</p>
@@ -577,10 +1075,13 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
               {organizations.map((entry, index) => (
                 <article key={`organization-${index}`} className="detail-card">
                   <h5>Activity {index + 1}</h5>
-                  <p>Name: {showValue(pick(entry, 'name', 'organization'))}</p>
+                  <p>Name: {showValue(pick(entry, "name", "organization"))}</p>
                   <p>Date: {formatDate(entry.date)}</p>
                   <p>Level: {showValue(entry.level)}</p>
-                  <p>Remark / Role: {showValue(pick(entry, 'remark', 'role', 'position'))}</p>
+                  <p>
+                    Remark / Role:{" "}
+                    {showValue(pick(entry, "remark", "role", "position"))}
+                  </p>
                 </article>
               ))}
             </div>
@@ -591,12 +1092,39 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
               {programRows.map((entry, index) => (
                 <article key={`program-${index}`} className="detail-card">
                   <h5>Program {index + 1}</h5>
-                  <p>Title: {showValue(pick(entry, 'course_title', 'title', 'name'))}</p>
-                  <p>Platform: {showValue(pick(entry, 'platform', 'organizing_agency', 'provider', 'organization'))}</p>
-                  <p>Domain: {showValue(pick(entry, 'domain'))}</p>
-                  <p>Duration (Hours): {showValue(pick(entry, 'duration_hours', 'duration', 'hours'))}</p>
-                  <p>From: {formatDate(pick(entry, 'date_from', 'from_date', 'start_date'))}</p>
-                  <p>To: {formatDate(pick(entry, 'date_to', 'to_date', 'end_date'))}</p>
+                  <p>
+                    Title:{" "}
+                    {showValue(pick(entry, "course_title", "title", "name"))}
+                  </p>
+                  <p>
+                    Platform:{" "}
+                    {showValue(
+                      pick(
+                        entry,
+                        "platform",
+                        "organizing_agency",
+                        "provider",
+                        "organization",
+                      ),
+                    )}
+                  </p>
+                  <p>Domain: {showValue(pick(entry, "domain"))}</p>
+                  <p>
+                    Duration (Hours):{" "}
+                    {showValue(
+                      pick(entry, "duration_hours", "duration", "hours"),
+                    )}
+                  </p>
+                  <p>
+                    From:{" "}
+                    {formatDate(
+                      pick(entry, "date_from", "from_date", "start_date"),
+                    )}
+                  </p>
+                  <p>
+                    To:{" "}
+                    {formatDate(pick(entry, "date_to", "to_date", "end_date"))}
+                  </p>
                 </article>
               ))}
             </div>
@@ -608,5 +1136,95 @@ export function StudentPreviewModal({ uid, open, onClose }: StudentPreviewModalP
         </div>
       ) : null}
     </Modal>
-  )
+
+    {/* Lock Confirmation Dialog */}
+    <Modal
+      open={lockConfirmOpen}
+      onClose={() => { setLockConfirmOpen(false); setLockError(""); }}
+      title="Lock Mentee Profile"
+      subtitle={student ? `${student.full_name} (${student.uid})` : ""}
+      size="sm"
+      footer={
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="button button--soft"
+            onClick={() => { setLockConfirmOpen(false); setLockError(""); }}
+            disabled={lockMutation.isPending}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="button button--danger"
+            onClick={() => void handleLock()}
+            disabled={lockMutation.isPending}
+          >
+            {lockMutation.isPending ? 'Locking...' : 'Lock Profile'}
+          </button>
+        </div>
+      }
+    >
+      <p style={{ margin: '16px 0' }}>
+        Are you sure you want to <strong>lock</strong> this student&apos;s profile?
+      </p>
+      <p style={{ margin: '8px 0', color: '#6b7280', fontSize: '14px' }}>
+        The student will not be able to edit their profile until you unlock it.
+        You can still edit the profile while it is locked.
+      </p>
+      {lockError && (
+        <p style={{ color: '#dc2626', marginTop: '12px', fontSize: '14px' }}>{lockError}</p>
+      )}
+    </Modal>
+
+    {/* Unlock Confirmation Dialog */}
+    <Modal
+      open={unlockConfirmOpen}
+      onClose={() => { setUnlockConfirmOpen(false); setLockError(""); }}
+      title="Unlock Mentee Profile"
+      subtitle={student ? `${student.full_name} (${student.uid})` : ""}
+      size="sm"
+      footer={
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="button button--soft"
+            onClick={() => { setUnlockConfirmOpen(false); setLockError(""); }}
+            disabled={unlockMutation.isPending}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="button button--warning"
+            onClick={() => void handleUnlock()}
+            disabled={unlockMutation.isPending}
+          >
+            {unlockMutation.isPending ? 'Unlocking...' : 'Unlock Profile'}
+          </button>
+        </div>
+      }
+    >
+      <p style={{ margin: '16px 0' }}>
+        Are you sure you want to <strong>unlock</strong> this student&apos;s profile?
+      </p>
+      <p style={{ margin: '8px 0', color: '#6b7280', fontSize: '14px' }}>
+        The student will regain the ability to edit their own profile.
+      </p>
+      {lockError && (
+        <p style={{ color: '#dc2626', marginTop: '12px', fontSize: '14px' }}>{lockError}</p>
+      )}
+    </Modal>
+
+    {/* Edit Profile Modal */}
+    {student && editModalOpen && (
+      <FacultyMenteeEditModal
+        uid={uid}
+        open={editModalOpen}
+        mentee={student}
+        onClose={() => setEditModalOpen(false)}
+      />
+    )}
+  </>
+  );
 }

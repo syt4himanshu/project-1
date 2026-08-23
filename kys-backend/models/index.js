@@ -46,6 +46,7 @@ Faculty.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 Faculty.hasMany(Student, { foreignKey: 'mentor_id', as: 'mentees' });
 Student.belongsTo(Faculty, { foreignKey: 'mentor_id', as: 'mentor' });
+Student.belongsTo(Faculty, { foreignKey: 'profile_locked_by', as: 'locked_by_faculty', onDelete: 'SET NULL' });
 
 Student.hasOne(StudentPersonalInfo, { foreignKey: 'student_id', as: 'personal_info', onDelete: 'CASCADE' });
 StudentPersonalInfo.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });

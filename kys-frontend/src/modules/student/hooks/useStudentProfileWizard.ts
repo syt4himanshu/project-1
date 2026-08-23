@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../../app/store/hooks'
+import { enqueueToast } from '../../../app/store/toastSlice'
 import { updateProfile } from '../api/student'
+import { useProfileDraftContext, type ProfilePhotoUploadResult } from '../context/ProfileDraftContext'
 import {
   deriveDraftKey,
   loadStudentProfileWizard,
@@ -13,13 +15,14 @@ import {
   selectStudentProfileProgress,
   selectStudentProfileStatus,
   selectStudentProfileStep,
+  STUDENT_PROFILE_STEP_COUNT,
   studentProfileActions,
   submitStudentProfile,
 } from '../store/studentProfileSlice'
 import { clearDraft, clearDraftResetMark, getDraftMetadata, markDraftReset, saveDraft } from '../utils/studentProfileDraft'
 import { validateStudentProfileDataDetailed } from '../validation/studentProfileSchema'
 
-export function useStudentProfileDraft() {
+export function useReduxStudentProfileDraft() {
   const dispatch = useAppDispatch()
   const data = useAppSelector(selectStudentProfileData)
   const loading = useAppSelector(selectStudentProfileIsLoading)
@@ -47,6 +50,8 @@ export function useStudentProfileDraft() {
 
   useEffect(() => {
     if (loading) {
+      // Validation is gated until the Redux profile load settles.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync validation gate with load status
       setValidationReady(false)
       return
     }
@@ -91,7 +96,35 @@ export function useStudentProfileDraft() {
     }
   }, [validationIssues, touchedFields, error, markFieldTouched])
 
-  return { data, update, getFieldValidation, error, markFieldTouched }
+  return {
+    data,
+    update,
+    getFieldValidation,
+    error,
+    markFieldTouched,
+    uploadPhoto: undefined as ((file: File) => Promise<ProfilePhotoUploadResult>) | undefined,
+    editorRole: 'student' as const,
+  }
+}
+
+/**
+ * Shared profile draft hook used by student wizard steps and faculty mentee editor.
+ * Requires a ProfileDraftProvider (StudentProfileDraftProvider or faculty local provider).
+ */
+export function useStudentProfileDraft() {
+  const ctx = useProfileDraftContext()
+  if (!ctx) {
+    throw new Error('useStudentProfileDraft must be used within a ProfileDraftProvider')
+  }
+  return {
+    data: ctx.data,
+    update: ctx.update,
+    getFieldValidation: ctx.getFieldValidation,
+    error: ctx.error,
+    markFieldTouched: ctx.markFieldTouched,
+    uploadPhoto: ctx.uploadPhoto,
+    editorRole: ctx.editorRole ?? 'student',
+  }
 }
 
 function serializeProfileData(data: Record<string, unknown>) {
@@ -258,6 +291,7 @@ function getPayloadForStep(data: Record<string, unknown>, step: number) {
 }
 
 function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknown>, loading: boolean, step: number) {
+  const dispatch = useAppDispatch()
   const [state, setState] = useState<AutoSyncState>({ status: 'idle', message: '', pending: false })
   const currentSignatureRef = useRef('')
   const lastSyncedSignatureRef = useRef('')
@@ -284,7 +318,7 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
   }, [])
 
   const syncNow = useCallback(async (payload: Record<string, unknown>, reason: 'idle' | 'online' | 'retry' | 'submit') => {
-    if (loading) return false
+    if (loading || data.is_profile_locked) return false
     if (isOffline()) {
       setStatus('offline', 'Offline - saved locally', true)
       return false
@@ -310,7 +344,19 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
       setStatus('synced', 'Saved to cloud', false)
       flushSubmitWaiters()
       return true
-    } catch {
+    } catch (error) {
+      const messageStr = error instanceof Error ? error.message : String(error)
+      if (messageStr.includes('PROFILE_LOCKED') || messageStr.includes('locked')) {
+        dispatch(studentProfileActions.patchStudentProfileData({ is_profile_locked: true }))
+        dispatch(enqueueToast({
+          title: 'Profile Locked',
+          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+          intent: 'error',
+        }))
+        setStatus('idle', 'Profile is locked by mentor', false)
+        return false
+      }
+
       const offline = isOffline()
       setStatus(offline ? 'offline' : 'failed', offline ? 'Offline - saved locally' : 'Failed to sync (will retry)', true)
 
@@ -336,10 +382,11 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
         void syncNow(queued, 'online')
       }
     }
-  }, [flushSubmitWaiters, loading, setStatus])
+  }, [data.is_profile_locked, dispatch, flushSubmitWaiters, loading, setStatus])
 
   const scheduleSync = useCallback((nextData: Record<string, unknown>) => {
     latestDataRef.current = nextData
+    if (nextData.is_profile_locked || data.is_profile_locked) return
     const signature = serializeProfileData(nextData)
     currentSignatureRef.current = signature
     if (!signature || signature === lastSyncedSignatureRef.current) return
@@ -353,15 +400,16 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
     idleTimerRef.current = window.setTimeout(() => {
       void syncNow(latestDataRef.current, 'idle')
     }, AUTOSAVE_IDLE_DELAY_MS)
-  }, [setStatus, syncNow])
+  }, [data.is_profile_locked, setStatus, syncNow])
 
   useEffect(() => {
-    if (loading) return
+    if (loading || data.is_profile_locked) return
     scheduleSync(data)
   }, [data, loading, scheduleSync])
 
   useEffect(() => {
     const onOnline = () => {
+      if (data.is_profile_locked) return
       if (currentSignatureRef.current !== lastSyncedSignatureRef.current) {
         setStatus('syncing', 'Syncing...', true)
         void syncNow(latestDataRef.current, 'online')
@@ -373,6 +421,7 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
     }
 
     const onBeforeUnload = () => {
+      if (loading || data.is_profile_locked) return
       if (idleTimerRef.current !== null) {
         window.clearTimeout(idleTimerRef.current)
         idleTimerRef.current = null
@@ -398,9 +447,10 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
       window.removeEventListener('offline', onOffline)
       window.removeEventListener('beforeunload', onBeforeUnload)
     }
-  }, [setStatus, syncNow])
+  }, [data.is_profile_locked, loading, setStatus, syncNow, draftKey])
 
   const flushPendingSync = useCallback(async (fullPayload = false) => {
+    if (data.is_profile_locked) return
     if (idleTimerRef.current !== null) {
       window.clearTimeout(idleTimerRef.current)
       idleTimerRef.current = null
@@ -409,14 +459,14 @@ function useStudentProfileAutoSync(draftKey: string, data: Record<string, unknow
     if (currentSignatureRef.current !== lastSyncedSignatureRef.current) {
       await syncNow(latestDataRef.current, fullPayload ? 'submit' : 'idle')
     }
-  }, [syncNow])
+  }, [data.is_profile_locked, syncNow])
 
   const waitForSync = useCallback(async () => {
-    if (!inFlightRef.current) return
+    if (!inFlightRef.current || data.is_profile_locked) return
     await new Promise<void>((resolve) => {
       submitWaitersRef.current.push(resolve)
     })
-  }, [])
+  }, [data.is_profile_locked])
 
   return {
     status: state.status,
@@ -459,7 +509,17 @@ export function useStudentProfileWizard() {
     }
   }, [draftPersistence, draftRestored, draftUpdatedAt])
 
+  const isLocked = Boolean(data.is_profile_locked)
+
   const next = useCallback(async () => {
+    if (isLocked) {
+      dispatch(studentProfileActions.setStudentProfileStep(Math.min(step + 1, STUDENT_PROFILE_STEP_COUNT - 1)))
+      if (typeof window !== 'undefined' && window.innerWidth < 640) {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+      return
+    }
+
     try {
       await autoSync.flushPendingSync()
       await autoSync.waitForSync()
@@ -470,7 +530,7 @@ export function useStudentProfileWizard() {
     } catch {
       // State already captures the validation or save error.
     }
-  }, [dispatch, autoSync])
+  }, [dispatch, autoSync, isLocked, step])
 
   const prev = useCallback(() => {
     dispatch(studentProfileActions.goToPreviousStudentProfileStep())
@@ -510,6 +570,7 @@ export function useStudentProfileWizard() {
     error,
     progress,
     canSubmit,
+    isLocked,
     lastDraftSavedAt: draftPersistence.lastDraftSavedAt,
     lastDraftSavedLabel: draftPersistence.lastDraftSavedLabel,
     draftWasRestored: draftRestored,

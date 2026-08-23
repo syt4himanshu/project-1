@@ -31,6 +31,9 @@ interface Mentor {
 
 interface StudentProfile {
     full_name?: string
+    is_profile_locked?: boolean
+    profile_locked_at?: string | null
+    profile_locked_by?: number | null
     personal_info?: {
         photoUrl?: string
         photo_url?: string
@@ -55,7 +58,7 @@ function initials(name: string) {
 }
 
 export default function Dashboard() {
-    const { user, logout } = useAuth()
+    const { token, user, logout } = useAuth()
     const navigate = useNavigate()
 
     const [profile, setProfile] = useState<StudentProfile | null>(null)
@@ -72,32 +75,45 @@ export default function Dashboard() {
     const resetMarked = useMemo(() => isDraftResetMarked(draftKey), [draftKey])
 
     useEffect(() => {
-        getProfile()
+        if (!token) return
+
+        let isMounted = true
+
+        getProfile({ token })
             .then(r => {
+                if (!isMounted) return
                 const profileData = (r.data ?? {}) as StudentProfile
                 setProfile(profileData)
             })
             .catch(() => { })
-            .finally(() => setLoadingProfile(false))
+            .finally(() => {
+                if (isMounted) setLoadingProfile(false)
+            })
 
-        getMentoringMinutes()
-            .then(r => setMinutes(r.data as unknown as MentoringMinute[]))
+        getMentoringMinutes({ token })
+            .then(r => {
+                if (!isMounted) return
+                setMinutes(r.data as unknown as MentoringMinute[])
+            })
             .catch(() => { })
-            .finally(() => setLoadingMinutes(false))
+            .finally(() => {
+                if (isMounted) setLoadingMinutes(false)
+            })
 
+        getMentor({ token })
+            .then(r => {
+                if (!isMounted) return
+                setMentor(r.data as unknown as Mentor)
+            })
             .catch(() => { })
-            .finally(() => setLoadingProfile(false))
+            .finally(() => {
+                if (isMounted) setLoadingMentor(false)
+            })
 
-        getMentoringMinutes()
-            .then(r => setMinutes(r.data as unknown as MentoringMinute[]))
-            .catch(() => { })
-            .finally(() => setLoadingMinutes(false))
-
-        getMentor()
-            .then(r => setMentor(r.data as unknown as Mentor))
-            .catch(() => { })
-            .finally(() => setLoadingMentor(false))
-    }, [])
+        return () => {
+            isMounted = false
+        }
+    }, [token])
 
     const studentName = useMemo(() => {
         const fullName = profile?.full_name?.trim()
@@ -190,11 +206,28 @@ export default function Dashboard() {
             </section>
 
             <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+                {profile?.is_profile_locked && (
+                    <div className="mb-6 rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-4 text-amber-900 dark:text-amber-200">
+                        <div className="flex items-center gap-2 font-semibold text-base">
+                            🔒 Profile Locked
+                        </div>
+                        <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                            Your faculty mentor has locked your profile. You can view your profile, but you cannot edit it while it is locked.
+                        </p>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <section className="rounded-3xl border border-[var(--border)] bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-6 shadow-sm">
                         <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#4f6ea1]">Profile</p>
-                        <h2 className="font-serif text-3xl font-semibold text-[var(--text)]">Update Profile</h2>
-                        <p className="mt-1 text-sm text-[var(--text-muted)]">Keep your academic and personal details current</p>
+                        <h2 className="font-serif text-3xl font-semibold text-[var(--text)]">
+                            {profile?.is_profile_locked ? 'View Profile' : 'Update Profile'}
+                        </h2>
+                        <p className="mt-1 text-sm text-[var(--text-muted)]">
+                            {profile?.is_profile_locked
+                                ? 'View your academic and personal details (Editing locked by mentor)'
+                                : 'Keep your academic and personal details current'}
+                        </p>
 
                         <div className="mt-6 rounded-2xl border border-[var(--border)] bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] p-4">
                             <div className="flex items-center gap-3">
@@ -216,11 +249,23 @@ export default function Dashboard() {
                             onClick={() => navigate('/student/profile')}
                             className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#223f6a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#193154]"
                         >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 20h9" />
-                                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                            </svg>
-                            Update Profile
+                            {profile?.is_profile_locked ? (
+                                <>
+                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                        <circle cx="12" cy="12" r="3" />
+                                    </svg>
+                                    View Profile
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M12 20h9" />
+                                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                    </svg>
+                                    Update Profile
+                                </>
+                            )}
                         </button>
                     </section>
 

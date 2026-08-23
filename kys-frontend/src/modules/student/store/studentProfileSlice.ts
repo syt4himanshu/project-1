@@ -300,7 +300,10 @@ export const loadStudentProfileWizard = createAsyncThunk(
       const serverData = (response.data || {}) as Record<string, unknown>
       const serverUpdatedAt = typeof serverData.updated_at === 'string' ? serverData.updated_at : null
       const draftUpdatedAt = draft ? draft.updatedAt : null
-      const shouldRestoreDraft = Boolean(draft && draftMetadata?.updatedAt && isDraftNewerThan(draftUpdatedAt, serverUpdatedAt))
+
+      // If profile is locked on backend, MUST use serverData (do not allow draft to bypass lock)
+      const isLocked = Boolean(serverData.is_profile_locked)
+      const shouldRestoreDraft = !isLocked && Boolean(draft && draftMetadata?.updatedAt && isDraftNewerThan(draftUpdatedAt, serverUpdatedAt))
 
       return {
         data: shouldRestoreDraft && draft ? mergeStudentProfileData(serverData, draft.data) : serverData,
@@ -342,6 +345,17 @@ export const saveStudentProfileStep = createAsyncThunk<
   'studentProfile/saveStudentProfileStep',
   async (_arg, { dispatch, getState, rejectWithValue }) => {
     const state = getState().studentProfile
+
+    if (state.data.is_profile_locked) {
+      const message = 'Your profile is locked by your faculty mentor and cannot be edited.'
+      dispatch(enqueueToast({
+        title: 'Profile Locked',
+        message,
+        intent: 'error',
+      }))
+      return rejectWithValue(message)
+    }
+
     const missing = getMissingRequiredFields(state.step, state.data)
     if (missing.length > 0) {
       const message = `Please fill required fields: ${missing.join(', ')}`
@@ -353,8 +367,6 @@ export const saveStudentProfileStep = createAsyncThunk<
       return rejectWithValue(message)
     }
 
-    // Run format validation scoped specifically to the current step's fields.
-    // This prevents format validation errors from other steps from bleeding into this step.
     let formatCheck: { isValid: boolean; errors: string[] } = { isValid: true, errors: [] }
     if (state.step === 0) {
       formatCheck = validateStep0FormatErrors(state.data)
@@ -388,6 +400,20 @@ export const saveStudentProfileStep = createAsyncThunk<
 
       return { nextStep: Math.min(state.step + 1, STUDENT_PROFILE_STEP_COUNT - 1) }
     } catch (error) {
+      const messageStr = error instanceof Error ? error.message : String(error)
+      const isLockedErr = messageStr.includes('PROFILE_LOCKED') || messageStr.includes('locked')
+
+      if (isLockedErr) {
+        dispatch(studentProfileActions.patchStudentProfileData({ is_profile_locked: true }))
+        const lockedMsg = 'Your profile is locked by your faculty mentor and cannot be edited.'
+        dispatch(enqueueToast({
+          title: 'Profile Locked',
+          message: lockedMsg,
+          intent: 'error',
+        }))
+        return rejectWithValue(lockedMsg)
+      }
+
       const message = error instanceof Error
         ? error.message || 'Failed to save this step on server. Please try again.'
         : 'Failed to save this step on server. Please try again.'
@@ -410,6 +436,17 @@ export const submitStudentProfile = createAsyncThunk<
   'studentProfile/submitStudentProfile',
   async (_arg, { dispatch, getState, rejectWithValue }) => {
     const state = getState().studentProfile
+
+    if (state.data.is_profile_locked) {
+      const message = 'Your profile is locked by your faculty mentor and cannot be edited.'
+      dispatch(enqueueToast({
+        title: 'Profile Locked',
+        message,
+        intent: 'error',
+      }))
+      return rejectWithValue(message)
+    }
+
     const validation = validateStudentProfileData(state.data)
     if (!validation.isValid) {
       dispatch(enqueueToast({
@@ -434,6 +471,20 @@ export const submitStudentProfile = createAsyncThunk<
       await updateProfile(finalData)
       clearDraft(state.draftKey)
     } catch (error) {
+      const messageStr = error instanceof Error ? error.message : String(error)
+      const isLockedErr = messageStr.includes('PROFILE_LOCKED') || messageStr.includes('locked')
+
+      if (isLockedErr) {
+        dispatch(studentProfileActions.patchStudentProfileData({ is_profile_locked: true }))
+        const lockedMsg = 'Your profile is locked by your faculty mentor and cannot be edited.'
+        dispatch(enqueueToast({
+          title: 'Profile Locked',
+          message: lockedMsg,
+          intent: 'error',
+        }))
+        return rejectWithValue(lockedMsg)
+      }
+
       const message = error instanceof Error ? error.message || 'Failed to save profile' : 'Failed to save profile'
       dispatch(enqueueToast({
         title: 'Error',

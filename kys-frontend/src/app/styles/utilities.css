@@ -3,14 +3,20 @@
 }
 
 /* Base tailwind-like utilities since they're missing */
-.h-5 { height: 1.25rem; }
-.w-5 { width: 1.25rem; }
+.h-5 {
+  height: 1.25rem;
+}
+
+.w-5 {
+  width: 1.25rem;
+}
 
 /* Hide native Edge/IE password reveal so it doesn't conflict with custom eye icons */
 input::-ms-reveal,
 input::-ms-clear {
   display: none !important;
 }
+
 input::-webkit-contacts-auto-fill-button,
 input::-webkit-credentials-auto-fill-button {
   visibility: hidden;
@@ -647,15 +653,15 @@ a:hover {
   background: #f8fafc;
 }
 
-  .button--soft {
-    background: #dbeafe;
-    color: #1e3a8a;
-    border-color: transparent;
-  }
+.button--soft {
+  background: #dbeafe;
+  color: #1e3a8a;
+  border-color: transparent;
+}
 
-  .button--soft:hover:not(:disabled) {
-    background: #bfdbfe;
-  }
+.button--soft:hover:not(:disabled) {
+  background: #bfdbfe;
+}
 
 .button--danger {
   color: white;
@@ -1594,7 +1600,7 @@ a:hover {
 }
 
 .kys-landing__logo-ring {
-  width: 124px; 
+  width: 124px;
   height: 124px;
   border-radius: 999px;
   padding: 2px;
@@ -1978,7 +1984,7 @@ a:hover {
     padding: 0 1rem;
     gap: 1rem;
   }
-  
+
   .role-select-kys__spacer {
     display: none;
   }
@@ -3578,7 +3584,7 @@ a:hover {
   .role-shell--admin .dashboard-main,
   .role-shell--faculty .dashboard-main {
     padding: 1rem;
-      }
+  }
 
   .role-shell--admin .dashboard-main {
     min-height: 100vh;
@@ -3628,7 +3634,9 @@ a:hover {
   .role-shell--admin .admin-toolbar-grid--users,
   .role-shell--admin .admin-toolbar-grid--students,
   .role-shell--admin .admin-toolbar-fields-grid--two,
-  .role-shell--admin .admin-toolbar-fields-grid--three { grid-template-columns: 1fr; }
+  .role-shell--admin .admin-toolbar-fields-grid--three {
+    grid-template-columns: 1fr;
+  }
 
   .role-shell--admin .reports-card__controls,
   .role-shell--admin .reports-card__header,
@@ -3740,6 +3748,7 @@ a:hover {
     padding: 0.36rem 0.8rem;
   }
 }
+
 /* Faculty panel redesign */
 .role-shell--faculty .dashboard-main {
   display: grid;
@@ -4054,7 +4063,7 @@ a:hover {
   gap: 0.3rem;
 }
 
-.faculty-chat__textarea-label > span {
+.faculty-chat__textarea-label>span {
   color: #64748b;
   font-size: 0.75rem;
   font-weight: 600;
@@ -4176,6 +4185,7 @@ a:hover {
     flex-direction: column;
   }
 }
+
 /* Faculty layout without sidebar */
 .faculty-shell {
   min-height: 100vh;
@@ -4388,7 +4398,7 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
     background: #fff;
   }
 
-  body.faculty-chatbot-mode .faculty-chat__textarea-label > span {
+  body.faculty-chatbot-mode .faculty-chat__textarea-label>span {
     font-size: 0.82rem;
   }
 
@@ -4544,6 +4554,947 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
   font-size: 0.77rem;
 }
 
+/* ── Faculty full-profile editor ─────────────────────────────────────────── */
+
+.faculty-profile-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.faculty-profile-editor__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.faculty-profile-editor__panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  width: min(100%, 1400px);
+  height: calc(100vh - 1rem);
+  max-height: calc(100vh - 1rem);
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #dbe4f1);
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+/* ── Header ── */
+.faculty-profile-editor__header {
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  background: linear-gradient(180deg, #fafbfd 0%, #f4f6fa 100%);
+}
+
+.faculty-profile-editor__identity {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+}
+
+.faculty-profile-editor__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #e2e8f0;
+  background: linear-gradient(135deg, #dbeafe 0%, #e8eef7 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #1e40af;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.faculty-profile-editor__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.faculty-profile-editor__identity-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.faculty-profile-editor__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.faculty-profile-editor__title-row h2 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.faculty-profile-editor__icon-btn {
+  border: 1px solid transparent;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.faculty-profile-editor__icon-btn:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+.faculty-profile-editor__name {
+  margin: 0.15rem 0 0.3rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.faculty-profile-editor__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.faculty-profile-editor__meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ── Lock banner ── */
+.faculty-profile-editor__lock {
+  margin-top: 0.6rem;
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  max-width: 32rem;
+}
+
+.faculty-profile-editor__lock strong {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.faculty-profile-editor__lock p {
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  opacity: 0.85;
+}
+
+.faculty-profile-editor__lock--locked {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.faculty-profile-editor__lock--open {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+/* ── Body: sidebar + content ── */
+.faculty-profile-editor__body {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: 0;
+}
+
+/* ── Sidebar ── */
+.faculty-profile-editor__sidebar {
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid var(--border, #e2e8f0);
+  background: #fafbfd;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Custom scrollbar for sidebar */
+.faculty-profile-editor__sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+.faculty-profile-editor__sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.faculty-profile-editor__sidebar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.faculty-profile-editor__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: #64748b;
+  border-radius: 0 8px 8px 0;
+  padding: 0.5rem 0.6rem 0.5rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.35;
+}
+
+.faculty-profile-editor__nav-item:hover {
+  background: #f1f5f9;
+  color: #334155;
+  border-left-color: #cbd5e1;
+}
+
+.faculty-profile-editor__nav-item.is-active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-left-color: #1d4ed8;
+  font-weight: 600;
+}
+
+.faculty-profile-editor__nav-item.is-active svg {
+  color: #2563eb;
+}
+
+.faculty-profile-editor__nav-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.faculty-profile-editor__nav-count {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  min-width: 1.2rem;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.faculty-profile-editor__nav-item.is-active .faculty-profile-editor__nav-count {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.faculty-profile-editor__nav-item:not(.is-active) .faculty-profile-editor__nav-count {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+/* ── Main content area ── */
+.faculty-profile-editor__content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.25rem 1.75rem 2rem;
+  background: var(--bg-soft, #f5f7fb);
+}
+
+/* Custom scrollbar for content */
+.faculty-profile-editor__content::-webkit-scrollbar {
+  width: 6px;
+}
+.faculty-profile-editor__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.faculty-profile-editor__content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+.faculty-profile-editor__content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.faculty-profile-editor__stack {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 100%;
+}
+
+/* ── Section heading (title + prev/next nav above the form) ─────────────────── */
+.faculty-profile-editor__section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.875rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.faculty-profile-editor__section-heading-text h3 {
+  margin: 0 0 0.15rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.faculty-profile-editor__section-heading-text p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.faculty-profile-editor__section-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.faculty-profile-editor__section-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  border-radius: 8px;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.faculty-profile-editor__section-nav-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #1e293b;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.faculty-profile-editor__section-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.faculty-profile-editor__section-progress {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  font-weight: 500;
+  padding: 0 0.25rem;
+}
+
+/* ── Error banner ── */
+.faculty-profile-editor__errors {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.6rem 1.25rem;
+  border-top: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.82rem;
+}
+
+.faculty-profile-editor__errors ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+}
+
+/* ── Footer action bar ── */
+.faculty-profile-editor__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border, #e2e8f0);
+  background: #fff;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.faculty-profile-editor__footer .button--soft:first-child {
+  margin-right: auto;
+}
+
+/* ── Preview panel ── */
+.faculty-profile-editor__preview-note {
+  margin: 0 0 1rem;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.faculty-profile-editor__preview section {
+  margin-bottom: 1rem;
+}
+
+.faculty-profile-editor__preview h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.faculty-profile-editor__preview-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) 1fr;
+  gap: 0.4rem 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 0.84rem;
+}
+
+.faculty-profile-editor__preview-row dt {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.faculty-profile-editor__preview-row dd {
+  margin: 0;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+/* ── Content area: ensure steps don't overflow horizontally ─────────────────── */
+.faculty-profile-editor__stack > * {
+  min-width: 0;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SCOPED OVERRIDES — Step component styles inside the editor
+   These rules apply ONLY within .faculty-profile-editor to polish the form
+   elements rendered by the shared Step components without affecting the
+   student wizard.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── CRITICAL: Force all form content to fill available width ─── */
+.faculty-profile-editor__content *,
+.faculty-profile-editor__content *::before,
+.faculty-profile-editor__content *::after {
+  box-sizing: border-box;
+}
+
+/* Every direct child of the stack must be full width */
+.faculty-profile-editor__stack > * {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* space-y containers and their children must be full width */
+.faculty-profile-editor .space-y-5,
+.faculty-profile-editor .space-y-4,
+.faculty-profile-editor .space-y-5 > *,
+.faculty-profile-editor .space-y-4 > * {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* field() wrapper divs inside space-y stacks must be block and full width */
+.faculty-profile-editor .space-y-4 > div,
+.faculty-profile-editor .space-y-5 > div {
+  display: block !important;
+  width: 100% !important;
+}
+
+/* ── Section cards ── */
+.faculty-profile-editor .rounded-2xl {
+  border-radius: 12px !important;
+  border-color: #e2e8f0 !important;
+  background: #fff !important;
+  padding: 1.25rem 1.5rem !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  width: 100% !important;
+}
+
+/* Nested sub-section cards (e.g. Local Guardian Details inside Parents) */
+.faculty-profile-editor .rounded-2xl .rounded-2xl {
+  background: #f8fafc !important;
+  box-shadow: none;
+  border-color: #e8edf5 !important;
+}
+
+/* ── Section titles inside cards ── */
+.faculty-profile-editor .rounded-2xl > h3,
+.faculty-profile-editor .space-y-5 > section > h3,
+.faculty-profile-editor .space-y-4 > h3,
+.faculty-profile-editor #profile-section-location > h3 {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  padding-bottom: 0.6rem !important;
+  margin-bottom: 1rem !important;
+  border-bottom-width: 1px !important;
+  border-bottom-color: #e8edf5 !important;
+}
+
+/* Career/SWOC large headings — scale down inside editor */
+.faculty-profile-editor h2.font-serif,
+.faculty-profile-editor h2.text-3xl,
+.faculty-profile-editor h2.sm\:text-4xl {
+  font-size: 1.15rem !important;
+  font-family: inherit !important;
+}
+
+.faculty-profile-editor h3.text-3xl {
+  font-size: 1.05rem !important;
+}
+
+.faculty-profile-editor label.text-3xl {
+  font-size: 1rem !important;
+}
+
+/* ── Form grids: enforce multi-col on desktop ── */
+.faculty-profile-editor .grid.grid-cols-1.sm\:grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 1rem 1.25rem !important;
+  width: 100% !important;
+}
+
+.faculty-profile-editor .grid.grid-cols-1.sm\:grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 1rem 1.25rem !important;
+  width: 100% !important;
+}
+
+/* Grid children must fill their cells */
+.faculty-profile-editor .grid > div {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* ── SWOC section: 2x2 grid for the 4 textareas ── */
+.faculty-profile-editor #profile-section-swoc .space-y-4 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 1.25rem !important;
+}
+
+.faculty-profile-editor #profile-section-swoc .space-y-4 > div {
+  margin-top: 0 !important;
+}
+
+/* ── Skills section: make textareas full-width and better spaced ── */
+.faculty-profile-editor #profile-section-skills .space-y-4 > div {
+  width: 100% !important;
+}
+
+/* ── Career fields section: full width ── */
+.faculty-profile-editor #profile-section-career-fields .space-y-4 > div {
+  width: 100% !important;
+}
+
+/* ── Labels ── */
+.faculty-profile-editor label.text-xs.font-semibold.uppercase,
+.faculty-profile-editor label.mb-1\.5.block {
+  display: block !important;
+  width: 100% !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: #475569 !important;
+  margin-bottom: 0.4rem !important;
+}
+
+/* Other label styles inside the editor */
+.faculty-profile-editor label.block.text-sm.font-semibold {
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: #475569 !important;
+  margin-bottom: 0.35rem !important;
+}
+
+/* ── Required asterisk ── */
+.faculty-profile-editor label span[style*="color: var(--danger)"] {
+  font-size: 0.85rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CRITICAL: Input/Select/Textarea WIDTH and STYLING
+   These must be width:100% and fill their parent containers.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.faculty-profile-editor input[type="text"],
+.faculty-profile-editor input[type="email"],
+.faculty-profile-editor input[type="tel"],
+.faculty-profile-editor input[type="url"],
+.faculty-profile-editor input[type="date"],
+.faculty-profile-editor input[type="number"],
+.faculty-profile-editor select {
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  border-radius: 8px !important;
+  border: 1px solid #d5dde8 !important;
+  background: #fff !important;
+  padding: 0.55rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  color: #1e293b !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  outline: none !important;
+}
+
+.faculty-profile-editor textarea {
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  border-radius: 8px !important;
+  border: 1px solid #d5dde8 !important;
+  background: #fff !important;
+  padding: 0.55rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  color: #1e293b !important;
+  min-height: 100px !important;
+  height: auto !important;
+  resize: vertical !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  outline: none !important;
+}
+
+.faculty-profile-editor input::placeholder,
+.faculty-profile-editor textarea::placeholder {
+  color: #94a3b8 !important;
+  font-weight: 400;
+}
+
+.faculty-profile-editor input:focus,
+.faculty-profile-editor select:focus,
+.faculty-profile-editor textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.faculty-profile-editor input:hover:not(:focus):not(:disabled),
+.faculty-profile-editor select:hover:not(:focus):not(:disabled),
+.faculty-profile-editor textarea:hover:not(:focus):not(:disabled) {
+  border-color: #94a3b8 !important;
+}
+
+.faculty-profile-editor input:disabled,
+.faculty-profile-editor select:disabled,
+.faculty-profile-editor textarea:disabled {
+  background: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Select dropdown arrow styling */
+.faculty-profile-editor select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3e%3cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.6rem center !important;
+  background-size: 1.1rem !important;
+  padding-right: 2.25rem !important;
+}
+
+/* ── Validation error on inputs ── */
+.faculty-profile-editor input[aria-invalid="true"],
+.faculty-profile-editor select[aria-invalid="true"],
+.faculty-profile-editor textarea.border-\[\#ef4444\] {
+  border-color: #ef4444 !important;
+}
+
+.faculty-profile-editor input[aria-invalid="true"]:focus,
+.faculty-profile-editor select[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ── SearchableSelect (custom dropdown trigger) ── */
+.faculty-profile-editor .space-y-1.relative {
+  width: 100% !important;
+}
+
+.faculty-profile-editor .space-y-1.relative > div[class*="cursor-pointer"] {
+  width: 100% !important;
+  border-radius: 8px !important;
+  min-height: 42px;
+  box-sizing: border-box !important;
+}
+
+/* ── flex-col gap-4 containers (used for multi-field groups like city+custom) ── */
+.faculty-profile-editor .flex.flex-col.gap-4 {
+  width: 100% !important;
+}
+
+/* ── space-y-1 containers (input + validation message) ── */
+.faculty-profile-editor .space-y-1 {
+  width: 100% !important;
+}
+
+/* ── File upload button area ── */
+.faculty-profile-editor input[type="file"] + label,
+.faculty-profile-editor label[for="passport-photo-upload"] {
+  border-radius: 8px !important;
+  min-height: 42px;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* ── Required fields note ── */
+.faculty-profile-editor .rounded-2xl > p.text-xs.font-medium {
+  font-size: 0.78rem !important;
+  color: #64748b !important;
+  margin-bottom: 1rem !important;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e8edf5;
+}
+
+/* ── Photo section compact styling ── */
+.faculty-profile-editor #profile-section-photo {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  width: 100% !important;
+}
+
+/* ── Repeated-record cards (projects, internships, academic records) ── */
+.faculty-profile-editor .space-y-5 > section {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  width: 100% !important;
+}
+
+/* ── Toggle / chip buttons (domains, non-tech areas) ── */
+.faculty-profile-editor .flex.flex-wrap.gap-2 {
+  width: 100% !important;
+}
+
+/* ── Add / Remove buttons inside the form ── */
+.faculty-profile-editor button[type="button"].text-sm {
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+/* ── Spacing between major form blocks ── */
+.faculty-profile-editor .space-y-5 > * + * {
+  margin-top: 1.25rem !important;
+}
+
+.faculty-profile-editor .space-y-4 > * + * {
+  margin-top: 1rem !important;
+}
+
+/* Override space-y-4 margin for SWOC grid (handled by grid gap instead) */
+.faculty-profile-editor #profile-section-swoc .space-y-4 > * + * {
+  margin-top: 0 !important;
+}
+
+/* ── Location details section card ── */
+.faculty-profile-editor #profile-section-location {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  width: 100% !important;
+}
+
+/* ── Searchable select dropdown panel ── */
+.faculty-profile-editor .absolute.z-50 {
+  border-radius: 10px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.08) !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* ── Career heading section ── */
+.faculty-profile-editor #profile-section-career {
+  width: 100% !important;
+}
+
+/* ── Semester cards in academic records ── */
+.faculty-profile-editor .grid.gap-3 {
+  width: 100% !important;
+}
+
+/* ── Internship/project nested containers ── */
+.faculty-profile-editor #profile-section-projects,
+.faculty-profile-editor #profile-section-internships,
+.faculty-profile-editor #profile-section-participation,
+.faculty-profile-editor #profile-section-organization,
+.faculty-profile-editor #profile-section-skill-programs,
+.faculty-profile-editor #profile-section-academics,
+.faculty-profile-editor #profile-section-past-education-root,
+.faculty-profile-editor #profile-section-cocurricular-participation {
+  width: 100% !important;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE — Faculty Profile Editor
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 960px) {
+  .faculty-profile-editor {
+    padding: 0;
+  }
+
+  .faculty-profile-editor__panel {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .faculty-profile-editor__body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .faculty-profile-editor__sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.5rem;
+    gap: 2px;
+  }
+
+  .faculty-profile-editor__sidebar::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .faculty-profile-editor__nav-item {
+    white-space: nowrap;
+    flex: 0 0 auto;
+    border-left: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 8px 8px 0 0;
+    padding: 0.5rem 0.65rem;
+  }
+
+  .faculty-profile-editor__nav-item.is-active {
+    border-bottom-color: #1d4ed8;
+    border-left-color: transparent;
+  }
+
+  .faculty-profile-editor__nav-item:hover {
+    border-left-color: transparent;
+    border-bottom-color: #cbd5e1;
+  }
+
+  .faculty-profile-editor__nav-label {
+    flex: none;
+  }
+
+  .faculty-profile-editor__content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .faculty-profile-editor__header {
+    padding: 0.75rem 1rem;
+  }
+
+  .faculty-profile-editor__avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+  }
+
+  .faculty-profile-editor__name {
+    font-size: 1rem;
+  }
+
+  .faculty-profile-editor__content {
+    padding: 0.875rem;
+  }
+
+  /* Collapse to 1-col on mobile */
+  .faculty-profile-editor .grid.grid-cols-1.sm\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .faculty-profile-editor .grid.grid-cols-1.sm\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* SWOC: collapse to 1-col on mobile */
+  .faculty-profile-editor #profile-section-swoc .space-y-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .faculty-profile-editor .rounded-2xl {
+    padding: 1rem !important;
+  }
+
+  .faculty-profile-editor__section-heading {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .faculty-profile-editor__footer {
+    padding: 0.6rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .faculty-profile-editor__meta > span {
+    font-size: 0.72rem;
+    padding: 0.1rem 0.4rem;
+  }
+
+  .faculty-profile-editor__section-nav-btn span {
+    display: none;
+  }
+}
+
 .faculty-remarks-form {
   display: grid;
   gap: 0.6rem;
@@ -4663,6 +5614,7 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
     width: fit-content;
   }
 }
+
 /* Faculty mentoring panel page */
 .faculty-mentoring-page {
   display: grid;
@@ -5089,19 +6041,19 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
   .admin-toolbar-block {
     padding: 1.25rem !important;
   }
-  
+
   .table-pagination {
     flex-direction: column !important;
     gap: 1.25rem !important;
     padding: 1.25rem !important;
   }
-  
+
   .table-pagination__button {
     width: 100% !important;
     height: 48px !important;
     margin: 0 !important;
   }
-  
+
   .table-pagination__label {
     text-align: center;
     order: -1;
@@ -5323,23 +6275,27 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
   border-radius: 12px;
   margin: 1rem 0;
 }
+
 .reports-empty-icon {
   font-size: 3.2rem;
   color: #94a3b8;
   margin-bottom: 1.25rem;
 }
+
 .reports-empty-title {
   font-weight: 600;
   color: #334155;
   margin-bottom: 0.35rem;
   font-size: 1.05rem;
 }
+
 .reports-empty-sub {
   font-size: 0.92rem;
   color: #64748b;
 }
 
 @media (max-width: 860px) {
+
   .kys-landing,
   .role-select-kys {
     height: auto !important;
@@ -5360,13 +6316,16 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
     height: 90px;
     margin-bottom: 1rem;
   }
+
   .kys-landing__logo-ring {
     width: 90px;
     height: 90px;
   }
+
   .kys-landing__card {
     padding: clamp(1rem, 2vw, 1.8rem);
   }
+
   .kys-landing__stats {
     margin-top: 1.2rem;
     padding-top: 1rem;
@@ -5380,6 +6339,7 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
     overflow-y: auto;
     overflow-x: hidden;
   }
+
   .kys-landing__main {
     padding: 1.2rem 1rem;
     align-items: flex-start;

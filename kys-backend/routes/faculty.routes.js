@@ -8,11 +8,15 @@ const {
   addMentoringMinute,
   getMenteeMentoringMinutes,
   facultyChatbot,
+  lockMenteeProfile,
+  unlockMenteeProfile,
+  updateMenteeProfileByFaculty,
 } = require('../controllers/faculty.controller');
 const { generateAIRemarks } = require('../controllers/faculty-ai.controller');
 const { verifyToken, roleRequired } = require('../middleware/auth');
 const { chatbotRateLimiter } = require('../middleware/rateLimiter');
-const { validateRequest } = require('../middleware/validate');
+const { validate, validateRequest } = require('../middleware/validate');
+const { studentProfileSchema } = require('../middleware/validation/student.validation');
 const { withRequestId } = require('../middleware/requestId');
 
 const router = express.Router();
@@ -45,6 +49,28 @@ router.get(
   '/me/mentees/:uid',
   [param('uid').isString().trim().notEmpty(), validateRequest],
   getMenteeByUid
+);
+
+router.put(
+  '/me/mentees/:uid/lock',
+  [param('uid').isString().trim().notEmpty(), validateRequest],
+  lockMenteeProfile
+);
+
+router.put(
+  '/me/mentees/:uid/unlock',
+  [param('uid').isString().trim().notEmpty(), validateRequest],
+  unlockMenteeProfile
+);
+
+router.put(
+  '/me/mentees/:uid/profile',
+  [
+    param('uid').isString().trim().notEmpty(),
+    validateRequest,
+    validate(studentProfileSchema)
+  ],
+  updateMenteeProfileByFaculty
 );
 
 router.post(
