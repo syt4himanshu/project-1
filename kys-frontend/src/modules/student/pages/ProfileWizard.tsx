@@ -93,11 +93,7 @@ export default function ProfileWizard() {
     }, [step])
 
     const handlePrevious = () => {
-        if (window.history.state?.wizardStep > 0) {
-            window.history.back()
-        } else {
-            prev()
-        }
+        prev()
     }
 
     if (loading) {
@@ -120,20 +116,20 @@ export default function ProfileWizard() {
 
     return (
         <div className="min-h-screen bg-[var(--bg-soft)] px-3 py-5 sm:px-4 sm:py-8 transition-colors duration-300">
-            <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--bg-soft)] shadow-[0_20px_45px_-24px_rgba(22,42,72,0.45)]">
-                <header className="border-t-[3px] border-[#f0b243] bg-white px-5 py-4 sm:px-8 sm:py-5 flex justify-between items-start gap-4">
+            <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-3xl bg-[var(--bg-soft)] shadow-[0_20px_45px_-24px_rgba(22,42,72,0.45)]" style={{ border: '1px solid var(--outer-border)' }}>
+                <header className="border-t-[3px] border-[#f0b243] bg-white px-5 py-4 sm:px-8 sm:py-5 flex justify-between items-start gap-4 dark:bg-slate-800">
                     <div className="flex-1 flex flex-col gap-3 sm:gap-4 min-w-0">
                       <img src="/logo.png" alt="Logo" className="h-16 sm:h-30 object-contain self-center object-center" />
                       <div>
-                        <h1 className="font-serif text-2xl font-bold text-[#0f172a] sm:text-3xl">
+                        <h1 className="font-serif text-2xl font-bold sm:text-3xl" style={{ color: 'var(--text)' }}>
                           Department of Computer Science Engineering
                         </h1>
-                        <h2 className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-[#1f355f] sm:text-sm">
+                        <h2 className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-[#1f355f] sm:text-sm dark:text-slate-400">
                           Student Mentoring and Career Counselling Form - KYS
                         </h2>
                       </div>
                     </div>
-                    <ThemeToggleButton className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-500 transition hover:bg-gray-100 mt-1" />
+                    <ThemeToggleButton className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-500 transition hover:bg-gray-100 mt-1 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-400 dark:hover:bg-slate-800" />
                 </header>
 
                 <div className="border-y border-[var(--border)] bg-[var(--panel)] px-5 py-5 sm:px-8 sm:py-6">
@@ -142,10 +138,13 @@ export default function ProfileWizard() {
                         <p className="text-xl font-semibold text-[var(--text)]">{progress}%</p>
                     </div>
 
-                    <div className="h-1.5 overflow-hidden rounded-full bg-[var(--border)]">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-[var(--border)]" aria-label={`Profile completion: ${progress}%`}>
                         <div
-                            className="h-full rounded-full bg-gradient-to-r from-[#203d68] to-[#df981e] transition-all duration-500"
-                            style={{ width: `${progress}%` }}
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                                width: `${progress}%`,
+                                background: 'linear-gradient(90deg, #203d68 0%, #df981e 100%)',
+                            }}
                         />
                     </div>
 
@@ -186,16 +185,16 @@ export default function ProfileWizard() {
                     )}
 
                     {showDraftBanner && draftRestoredAt && (
-                        <div className="mt-3 rounded-2xl border border-[#dbe5f2] bg-[#f7fbff] px-4 py-3 text-sm text-[#324a6b]">
+                        <div className="draft-banner mt-3 rounded-2xl border px-4 py-3 text-sm">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <p className="font-semibold">Recovered your unsaved draft.</p>
-                                    <p className="mt-1 text-xs text-[#62748d]">Last saved: {new Date(draftRestoredAt).toLocaleString()}</p>
+                                    <p className="draft-banner__meta mt-1 text-xs">Last saved: {new Date(draftRestoredAt).toLocaleString()}</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setShowDraftBanner(false)}
-                                    className="self-start rounded-lg px-3 py-1 text-xs font-semibold text-[#40618f] transition hover:bg-[#eaf2fb]"
+                                    className="draft-banner__dismiss self-start rounded-lg px-3 py-1 text-xs font-semibold transition"
                                 >
                                     Dismiss
                                 </button>

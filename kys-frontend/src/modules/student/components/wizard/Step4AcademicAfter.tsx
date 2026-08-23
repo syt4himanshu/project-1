@@ -50,7 +50,7 @@ export default function Step4AcademicAfter() {
                             {field('Academic Awards', input('text', (rec.academic_awards as string) || '', v => upd(sem, 'academic_awards', v), 'Awards received (if any)'))}
 
                             <div className="sm:col-span-2">
-                                {field('Backlog Subjects', input('text', (rec.backlog_subjects as string) || '', v => upd(sem, 'backlog_subjects', v), 'e.g. list subjects comma separated'))}
+                                {field('Backlog Subjects and Practical labs', input('text', (rec.backlog_subjects as string) || '', v => upd(sem, 'backlog_subjects', v), 'e.g. list subjects comma separated'))}
                             </div>
                         </div>
                         {sem === activeSem && (
@@ -62,7 +62,7 @@ export default function Step4AcademicAfter() {
                                             setActiveSem(prev => prev + 1)
                                             setTimeout(() => semCardRefs.current[activeSem + 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
                                         }} 
-                                        className="rounded-xl border border-[#3b8ed9] bg-white dark:bg-[#1e293b] px-4 py-2 text-sm font-semibold text-[#3b8ed9] transition hover:bg-[#f0f6ff] dark:hover:bg-[#243044]"
+                                        className="rounded-xl border border-[#3b8ed9] bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-[#3b8ed9] transition hover:bg-[#f0f6ff] dark:hover:bg-[#243044]"
                                     >
                                         Add Semester {activeSem + 1} →
                                     </button>

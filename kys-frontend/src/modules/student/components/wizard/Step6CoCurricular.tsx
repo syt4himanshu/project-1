@@ -100,7 +100,7 @@ export default function Step6CoCurricular() {
 
                 <div className="space-y-4">
                     {participations.map((participation, i) => (
-                        <div key={i} className="rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4">
+                        <div key={i} className="rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-slate-900 p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Activity {i + 1}</p>
                                 {participations.length > 1 && (
@@ -154,7 +154,7 @@ export default function Step6CoCurricular() {
 
                         <div className="space-y-4">
                             {organizations.map((org, i) => (
-                                <div key={i} className="rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4">
+                                <div key={i} className="rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-slate-900 p-4">
                                     <div className="mb-3 flex items-center justify-between">
                                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Activity {i + 1}</p>
                                         {organizations.length > 1 && (
@@ -210,7 +210,7 @@ export default function Step6CoCurricular() {
 
                         <div className="space-y-4">
                             {programs.map((program, i) => (
-                                <div key={i} className="rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-[#0f172a] p-4">
+                                <div key={i} className="rounded-xl border border-[#d4dcea] dark:border-[#334155] bg-white dark:bg-slate-900 p-4">
                                     <div className="mb-3 flex items-center justify-between">
                                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Program {i + 1}</p>
                                         {programs.length > 1 && (

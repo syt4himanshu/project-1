@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 const { sequelize, User, Student, Faculty, StudentPersonalInfo, MentoringMinute } = require('../models');
 const { splitFullName, buildFullName, serializeModel } = require('../utils/helpers');
 const { serializeStudent } = require('../utils/serializers');
-const { unpackText } = require('../utils/profileCodec');
+const { unpackText, decodePastEducationRecords } = require('../utils/profileCodec');
 
 const verifyPassword = (password, hash) => {
   if (hash.startsWith('$2b$') || hash.startsWith('$2a$')) {
@@ -230,7 +230,8 @@ const mapMissingFieldLabel = (fieldKey) => REPORT_MISSING_FIELD_LABELS[fieldKey]
 
 const getPastRecord = (student, examName) => {
   const records = Array.isArray(student?.past_education_records) ? student.past_education_records : [];
-  return records.map((record) => toPlain(record) || {}).find((record) => record.exam_name === examName) || {};
+  const decoded = decodePastEducationRecords(records.map((record) => toPlain(record) || {}));
+  return decoded.find((record) => record.exam_name === examName) || {};
 };
 
 const inferAdmissionType = (student) => {
@@ -238,9 +239,9 @@ const inferAdmissionType = (student) => {
   if (raw === 'hsc' || raw === 'diploma') return raw;
 
   const records = Array.isArray(student?.past_education_records) ? student.past_education_records : [];
-  const plainRecords = records.map((record) => toPlain(record) || {});
-  if (plainRecords.some((record) => record.exam_name === 'DIPLOMA')) return 'diploma';
-  if (plainRecords.some((record) => record.exam_name === 'HSSC' || record.exam_name === 'ENTRANCE_EXAM')) return 'hsc';
+  const decoded = decodePastEducationRecords(records.map((record) => toPlain(record) || {}));
+  if (decoded.some((record) => record.exam_name === 'DIPLOMA')) return 'diploma';
+  if (decoded.some((record) => record.exam_name === 'HSSC' || record.exam_name === 'ENTRANCE_EXAM')) return 'hsc';
   return '';
 };
 

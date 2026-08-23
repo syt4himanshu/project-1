@@ -4,7 +4,7 @@ import { State, City } from 'country-state-city'
 import { uploadProfilePhoto } from '../../api/student'
 import { useStudentProfileDraft } from '../../hooks/useStudentProfileWizard'
 import { FileText } from 'lucide-react'
-import { field, input, inputCls, select, searchableSelect, sectionCardCls, textareaCls } from './shared'
+import { field, input, select, searchableSelect, sectionCardCls, textareaCls } from './shared'
 
 export default function Step1Personal() {
     const { data, update, getFieldValidation, error } = useStudentProfileDraft()
@@ -286,7 +286,7 @@ export default function Step1Personal() {
                 
                 {(pi.photoUrl as string) ? (
                     <>
-                        <div className="mb-3 flex flex-col items-start gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3 sm:flex-row sm:items-center">
+                        <div className="mb-3 flex flex-col items-start gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3 sm:flex-row sm:items-center dark:border-[#334155] dark:bg-slate-800">
                             <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#d9e1ec] bg-slate-50 dark:border-[#334155] dark:bg-slate-800">
                                 {pi.photoPreviewUrl || pi.photo_preview_url ? (
                                     <img src={String(pi.photoPreviewUrl || pi.photo_preview_url)} alt="PDF Preview" className="h-full w-full object-cover" />
@@ -295,7 +295,7 @@ export default function Step1Personal() {
                                 )}
                             </div>
                             <div className="w-full min-w-0">
-                                <p className="text-sm font-medium text-[#32435f]">Current uploaded document</p>
+                                <p className="text-sm font-medium text-[#32435f] dark:text-gray-200">Current uploaded document</p>
                                 <a className="break-words text-sm text-[#2b5fa6] underline" href={String(pi.photoUrl)} target="_blank" rel="noreferrer">
                                     Open uploaded document
                                 </a>
@@ -317,7 +317,7 @@ export default function Step1Personal() {
                     />
                     <label 
                         htmlFor="passport-photo-upload"
-                        className={`${inputCls} m-0 flex cursor-pointer items-center`}
+                        className="w-full rounded-xl border border-[#cfd7e4] bg-white dark:bg-slate-800 dark:border-slate-700 m-0 flex cursor-pointer items-center shadow-sm"
                         style={{ padding: '0.375rem 1rem 0.375rem 0.375rem' }}
                     >
                         <div className={`mr-3 rounded-lg bg-[#1f355f] px-3 py-2 text-sm font-semibold text-white transition-opacity ${uploading ? 'opacity-50' : 'hover:opacity-90'}`}>
