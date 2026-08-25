@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { type ReactNode, useState, useRef, useEffect } from 'react'
 
 
@@ -16,12 +17,12 @@ export interface FieldValidationState {
 export const WizardStepProps = null as unknown as WizardStepProps
 
 export const inputCls =
-    'w-full rounded-xl border border-[#cfd7e4] bg-white dark:bg-[#1e293b] px-4 py-2.5 text-sm text-slate-900 dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition focus:border-[#3e5f93] focus:ring-2 focus:ring-[#3e5f93]/20'
+    'w-full rounded-xl border border-[#cfd7e4] bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition focus:border-[#3e5f93] focus:ring-2 focus:ring-[#3e5f93]/20'
 
 export const textareaCls =
-    'w-full rounded-xl border border-[#cfd7e4] bg-white dark:bg-[#1e293b] px-4 py-2.5 text-sm text-slate-900 dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition focus:border-[#3e5f93] focus:ring-2 focus:ring-[#3e5f93]/20'
+    'w-full rounded-xl border border-[#cfd7e4] bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition focus:border-[#3e5f93] focus:ring-2 focus:ring-[#3e5f93]/20'
 
-export const sectionCardCls = 'rounded-2xl border border-[#d6deea] dark:border-[#334155] bg-[#f7f9fc] dark:bg-[#1e293b] p-4 sm:p-5'
+export const sectionCardCls = 'rounded-2xl border border-[#d6deea] dark:border-[#334155] bg-[#f7f9fc] dark:bg-slate-800 p-4 sm:p-5'
 
 function withValidationClass(baseClass: string, validation?: FieldValidationState) {
     if (!validation?.error) return baseClass
@@ -157,7 +158,7 @@ export function SearchableSelectComponent({
     return (
         <div className="space-y-1 relative" ref={containerRef}>
             <div 
-                className={`${withValidationClass(inputCls, validation)} flex items-center justify-between cursor-pointer`}
+                className={`${withValidationClass(inputCls, validation)} wizard-search-trigger flex items-center justify-between cursor-pointer`}
                 onClick={() => {
                     setIsOpen(!isOpen)
                     if (!isOpen) setSearch('')
@@ -168,11 +169,11 @@ export function SearchableSelectComponent({
             </div>
             
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-[#1e293b] border border-[#cfd7e4] dark:border-[#334155] rounded-xl shadow-lg overflow-hidden">
-                    <div className="p-2 border-b border-[#cfd7e4] dark:border-[#334155] bg-white dark:bg-[#1e293b]">
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-[#cfd7e4] dark:border-[#334155] rounded-xl shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-[#cfd7e4] dark:border-[#334155] bg-white dark:bg-slate-800">
                         <input
                             type="text"
-                            className="w-full bg-[#f7f9fc] dark:bg-[#0f172a] rounded-lg px-3 py-2 text-sm outline-none text-slate-900 dark:text-white"
+                            className="wizard-search-input w-full rounded-lg px-3 py-2 text-sm outline-none"
                             placeholder="Search..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
@@ -182,7 +183,7 @@ export function SearchableSelectComponent({
                     </div>
                     <div className="p-1" style={{ maxHeight: '250px', overflowY: 'auto' }}>
                         <div
-                            className="px-3 py-2 text-sm cursor-pointer hover:bg-[#f0f6ff] dark:hover:bg-[#334155] rounded-lg text-slate-900 dark:text-white"
+                            className="wizard-search-option px-3 py-2 text-sm cursor-pointer rounded-lg"
                             onClick={() => {
                                 onChange('')
                                 setIsOpen(false)
@@ -193,7 +194,7 @@ export function SearchableSelectComponent({
                         {filtered.length > 0 ? filtered.map(o => (
                             <div
                                 key={o}
-                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-[#f0f6ff] dark:hover:bg-[#334155] rounded-lg text-slate-900 dark:text-white ${value === o ? 'bg-[#f0f6ff] dark:bg-[#334155] font-medium' : ''}`}
+                                className={`wizard-search-option px-3 py-2 text-sm cursor-pointer rounded-lg ${value === o ? 'font-medium' : ''}`}
                                 onClick={() => {
                                     onChange(o)
                                     setIsOpen(false)

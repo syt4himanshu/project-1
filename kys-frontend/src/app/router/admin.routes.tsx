@@ -36,6 +36,8 @@ const AdminReportsPageLazy = lazy(async () => {
   return { default: module.AdminReportsPage }
 })
 
+const ClassificationsPage = lazy(() => import('../../pages/admin/ClassificationsPage'))
+
 const PageLoader = ({ message = 'Loading...' }: { message?: string }) => (
   <div className="route-loader">
     <div className="route-loader__spinner" />
@@ -102,6 +104,14 @@ export const adminRoutes: RouteObject = {
               element: (
                 <Suspense fallback={<PageLoader message="Loading reports..." />}>
                   <AdminReportsPageLazy />
+                </Suspense>
+              ),
+            },
+            {
+              path: 'classifications',
+              element: (
+                <Suspense fallback={<PageLoader message="Loading classifications..." />}>
+                  <ClassificationsPage />
                 </Suspense>
               ),
             },

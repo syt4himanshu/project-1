@@ -1,7 +1,7 @@
-const cloudinary = require('cloudinary').v2;
-const { invalidateMenteesCache } = require('./facultyMenteesCache');
-const logger = require('./logger');
-const { ensureStudentPersonalInfo, isControlledProfileError } = require('./studentPersonalInfo');
+const cloudinary = require("cloudinary").v2;
+const { invalidateMenteesCache } = require("./facultyMenteesCache");
+const logger = require("./logger");
+const { StudentPersonalInfo } = require("../models");
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -10,22 +10,29 @@ cloudinary.config({
 });
 
 const ensureCloudinaryConfigured = () =>
-  Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+  Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET,
+  );
 
 const validateStudentPhotoFile = (file) => {
-  if (!file) return 'No file provided';
-  if (file.mimetype !== 'application/pdf') return 'Only PDF files are allowed';
-  if (file.size > 1 * 1024 * 1024) return 'File too large. Max size is 1MB';
+  if (!file) return "No file provided";
+  if (file.mimetype !== "application/pdf") return "Only PDF files are allowed";
+  if (file.size > 1 * 1024 * 1024) return "File too large. Max size is 1MB";
   return null;
 };
 
-const deleteOldStudentPhotoSafely = async (previousPublicId, currentPublicId) => {
+const deleteOldStudentPhotoSafely = async (
+  previousPublicId,
+  currentPublicId,
+) => {
   if (!previousPublicId || previousPublicId === currentPublicId) return;
 
   try {
     await cloudinary.uploader.destroy(previousPublicId, { invalidate: true });
   } catch (error) {
-    console.error('Cloudinary cleanup failed', {
+    console.error("Cloudinary cleanup failed", {
       oldPublicId: previousPublicId,
       error: error.message || error,
     });
@@ -46,51 +53,42 @@ const uploadStudentPhotoForRecord = async (student, file) => {
     return {
       ok: false,
       status: 500,
-      error: 'Cloudinary credentials are missing on the server',
+      error: "Cloudinary credentials are missing on the server",
     };
   }
 
   let personalInfo = student?.personal_info;
   if (!personalInfo) {
     try {
-      personalInfo = await ensureStudentPersonalInfo(student?.id);
+      // Photo upload is allowed while the multi-step personal profile is still a draft.
+      personalInfo = await StudentPersonalInfo.create({
+        student_id: student?.id,
+      });
       student.personal_info = personalInfo;
       logger.info({
-        message: 'student_personal_info row auto-created for photo upload',
+        message: "student_personal_info draft row created for photo upload",
         studentId: student?.id,
       });
     } catch (error) {
       logger.warn({
-        message: 'Failed to ensure student_personal_info before photo upload',
+        message: "Failed to ensure student_personal_info before photo upload",
         studentId: student?.id,
         error: error.message,
         code: error.code,
       });
 
-      if (isControlledProfileError(error)) {
-        return {
-          ok: false,
-          status: error.statusCode || 400,
-          error: {
-            message: error.message,
-            code: error.code,
-            details: error.details || [],
-          },
-        };
-      }
-
       return {
         ok: false,
         status: 500,
         error: {
-          message: 'Failed to prepare student personal profile for upload.',
-          code: 'STUDENT_PERSONAL_INFO_SETUP_FAILED',
+          message: "Failed to prepare student personal profile for upload.",
+          code: "STUDENT_PERSONAL_INFO_SETUP_FAILED",
         },
       };
     }
   }
 
-  const previousPublicId = personalInfo.photo_public_id || '';
+  const previousPublicId = personalInfo.photo_public_id || "";
   let uploadResult = null;
 
   try {
@@ -100,17 +98,23 @@ const uploadStudentPhotoForRecord = async (student, file) => {
       mimetype: file.mimetype,
       size: file.size,
       bufferLength: file.buffer?.length,
-      firstBytes: file.buffer?.subarray(0, 20).toString('hex')
+      firstBytes: file.buffer?.subarray(0, 20).toString("hex"),
     });
 
     // Step 1: Verify actual PDF magic bytes
-    const hex = file.buffer?.subarray(0, 5).toString('hex');
-    if (hex !== '255044462d') { // %PDF-
-      throw new Error(`File is not a valid PDF document (missing PDF signature, got ${hex}).`);
+    const hex = file.buffer?.subarray(0, 5).toString("hex");
+    if (hex !== "255044462d") {
+      // %PDF-
+      throw new Error(
+        `File is not a valid PDF document (missing PDF signature, got ${hex}).`,
+      );
     }
 
     // Use default image resource type for PDF rendering
-    const uploadOptions = { folder: 'students', upload_preset: 'student_images_kys' };
+    const uploadOptions = {
+      folder: "students",
+      upload_preset: "student_images_kys",
+    };
     console.log("Upload Options:", uploadOptions);
 
     uploadResult = await new Promise((resolve, reject) => {
@@ -122,9 +126,9 @@ const uploadStudentPhotoForRecord = async (student, file) => {
             return reject(error);
           }
           resolve(result);
-        }
+        },
       );
-      const { Readable } = require('stream');
+      const { Readable } = require("stream");
       Readable.from(file.buffer).pipe(stream);
     });
 
@@ -138,30 +142,47 @@ const uploadStudentPhotoForRecord = async (student, file) => {
       format: uploadResult.format,
       bytes: uploadResult.bytes,
       original_filename: uploadResult.original_filename,
-      version: uploadResult.version
+      version: uploadResult.version,
     });
 
-    if (!uploadResult || !uploadResult.public_id || !uploadResult.secure_url || uploadResult.resource_type !== 'image' || !(uploadResult.bytes > 0)) {
-      throw new Error('Cloudinary returned an invalid or incomplete response for an image asset.');
+    if (
+      !uploadResult ||
+      !uploadResult.public_id ||
+      !uploadResult.secure_url ||
+      uploadResult.resource_type !== "image" ||
+      !(uploadResult.bytes > 0)
+    ) {
+      throw new Error(
+        "Cloudinary returned an invalid or incomplete response for an image asset.",
+      );
     }
 
     // Generate preview URL (page 1 as JPG)
     const previewUrl = cloudinary.url(uploadResult.public_id, {
       secure: true,
-      format: 'jpg',
+      format: "jpg",
       type: uploadResult.type,
-      resource_type: 'image'
+      resource_type: "image",
     });
     console.log("Generated preview URL:", previewUrl);
 
     // Step 3: Verify the Cloudinary Asset
     try {
-      const assetDetails = await cloudinary.api.resource(uploadResult.public_id, { resource_type: 'image' });
-      if (!assetDetails || assetDetails.resource_type !== 'image' || !(assetDetails.bytes > 0)) {
-        throw new Error('Asset verification failed in Cloudinary.');
+      const assetDetails = await cloudinary.api.resource(
+        uploadResult.public_id,
+        { resource_type: "image" },
+      );
+      if (
+        !assetDetails ||
+        assetDetails.resource_type !== "image" ||
+        !(assetDetails.bytes > 0)
+      ) {
+        throw new Error("Asset verification failed in Cloudinary.");
       }
     } catch (verifyError) {
-      throw new Error(`Asset verification error: ${verifyError.message || verifyError}`);
+      throw new Error(
+        `Asset verification error: ${verifyError.message || verifyError}`,
+      );
     }
 
     personalInfo.photo_url = uploadResult.secure_url;
@@ -177,7 +198,7 @@ const uploadStudentPhotoForRecord = async (student, file) => {
     return {
       ok: true,
       data: {
-        message: 'Upload successful',
+        message: "Upload successful",
         photoUrl: uploadResult.secure_url,
         photo_public_id: personalInfo.photo_public_id,
         photo_preview_url: personalInfo.photo_preview_url,
@@ -192,9 +213,11 @@ const uploadStudentPhotoForRecord = async (student, file) => {
     // Rollback: Clean up newly uploaded photo if DB save fails
     if (uploadResult?.public_id) {
       try {
-        await cloudinary.uploader.destroy(uploadResult.public_id, { invalidate: true });
+        await cloudinary.uploader.destroy(uploadResult.public_id, {
+          invalidate: true,
+        });
       } catch (cleanupError) {
-        console.error('[UPLOAD] Rollback cleanup failed (non-blocking):', {
+        console.error("[UPLOAD] Rollback cleanup failed (non-blocking):", {
           newPublicId: uploadResult.public_id,
           error: cleanupError.message || cleanupError,
         });
@@ -202,14 +225,15 @@ const uploadStudentPhotoForRecord = async (student, file) => {
     }
 
     logger.error({
-      message: '[UPLOAD] Cloudinary upload error',
+      message: "[UPLOAD] Cloudinary upload error",
       studentId: student?.id,
       error: uploadError.message || uploadError,
     });
     return {
       ok: false,
       status: 500,
-      error: uploadError.message || JSON.stringify(uploadError) || 'Upload failed',
+      error:
+        uploadError.message || JSON.stringify(uploadError) || "Upload failed",
     };
   }
 };

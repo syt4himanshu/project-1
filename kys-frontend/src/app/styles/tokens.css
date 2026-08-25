@@ -5,6 +5,7 @@
   --text: #1e2d4e;
   --text-muted: #64748b;
   --border: #dbe4f1;
+  --outer-border: #dbe4f1;
   --primary: #1d4ed8;
   --primary-soft: #dbeafe;
   --danger: #b91c1c;
@@ -25,14 +26,16 @@
   --text: #f1f5f9;
   --text-muted: #94a3b8;
   --border: #334155;
+  --outer-border: rgba(148, 163, 184, 0.28);
   --primary: #3b82f6;
   --primary-soft: #1e3a8a;
   --danger: #ef4444;
 }
 
-/* 
-   FORCE DARK MODE ON ALL HARDCODED HEX CLASSES 
-   This is an aggressive override system to handle static utility CSS.
+/*
+  Shared dark tokens.
+  Keep these conservative so route-level components can control their own
+  surfaces without being overridden by generic utility selectors.
 */
 
 html.dark body { 
@@ -40,41 +43,92 @@ html.dark body {
   color: var(--text) !important;
 }
 
-/* Backgrounds */
-.dark .bg-white, 
-.dark .bg-\[white\],
-.dark .bg-\[\#ffffff\],
-.dark .bg-\[\#f7f9fc\], 
-.dark .bg-\[\#f5f7fb\], 
-.dark .bg-\[\#f8fafd\], 
-.dark .bg-\[\#eef2f7\],
-.dark .bg-\[\#edf2f8\],
-.dark .bg-\[\#f3f6fb\],
-.dark .bg-\[\#f8fafc\],
-.dark .bg-\[\#fafcff\] {
+.draft-banner {
+  border-color: #bfdbfe;
+  background-color: #eff6ff;
+  color: #1e3a8a;
+}
+
+.draft-banner__meta {
+  color: rgba(30, 64, 175, 0.7);
+}
+
+.draft-banner__dismiss {
+  color: #1e40af;
+}
+
+.draft-banner__dismiss:hover {
+  background-color: #dbeafe;
+}
+
+html.dark .draft-banner {
+  border-color: #334155;
+  background-color: #1e293b;
+  color: #cbd5e1;
+}
+
+html.dark .draft-banner__meta,
+html.dark .draft-banner__dismiss {
+  color: #94a3b8;
+}
+
+html.dark .draft-banner__dismiss:hover {
+  background-color: #334155;
+}
+
+.wizard-search-input {
+  background-color: #f7f9fc;
+  color: #0f172a;
+}
+
+.wizard-search-trigger {
+  color: #0f172a;
+}
+
+.wizard-search-option {
+  color: #0f172a;
+}
+
+.wizard-search-option:hover,
+.wizard-search-option.font-medium {
+  background-color: #f0f6ff;
+}
+
+html.dark .wizard-search-input {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+html.dark .wizard-search-trigger {
+  color: #f1f5f9;
+}
+
+html.dark .wizard-search-option {
+  color: #f1f5f9;
+}
+
+html.dark .wizard-search-option:hover,
+html.dark .wizard-search-option.font-medium {
+  background-color: #334155;
+}
+
+/* Tailwind v4 does not emit class-based dark utilities in this build. */
+html.dark .bg-white,
+html.dark .dark\:bg-slate-800,
+html.dark .dark\:bg-slate-900 {
   background-color: var(--panel) !important;
 }
 
-/* Secondary Backgrounds (Inner Cards) */
-.dark .bg-gray-50,
-.dark .bg-\[\#f8fafc\],
-.dark .bg-\[\#f9fafb\],
-.dark .bg-\[\#eef3fa\] {
-  background-color: var(--bg-soft) !important;
+html.dark .bg-\[\#f7f9fc\],
+html.dark .bg-\[\#eef3fa\] {
+  background-color: var(--panel) !important;
 }
 
-/* Borders */
-.dark .border,
-.dark .border-gray-100,
-.dark .border-gray-200,
-.dark .border-gray-300,
-.dark .border-\[\#d6deea\],
-.dark .border-\[\#d4dcea\],
-.dark .border-\[\#cfd7e4\],
-.dark .border-\[\#ccd5e4\],
-.dark .border-\[\#d7deea\],
-.dark .border-\[\#d8dfeb\],
-.dark .border-\[\#dde5f1\] {
+html.dark .border-gray-200,
+html.dark .border-\[\#cfd7e4\],
+html.dark .border-\[\#d6deea\],
+html.dark .border-\[\#d4dcea\],
+html.dark .border-\[\#d9e1ec\] {
   border-color: var(--border) !important;
 }
 
@@ -111,6 +165,15 @@ html.dark body {
   border-color: var(--border) !important;
 }
 
+.dark .student-dashboard [data-dashboard-border="soft"] {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+.dark .student-dashboard [data-dashboard-border="soft"].border-green-100,
+.dark .student-dashboard [data-dashboard-border="soft"].dark\:border-green-900\/30 {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
 /* Input Overrides */
 .dark input, 
 .dark textarea, 
@@ -130,7 +193,13 @@ html.dark body {
   color: var(--text) !important;
 }
 
-.dark label, .dark p, .dark span {
+.dark label {
+  color: var(--text-muted);
+}
+
+.dark p.text-muted,
+.dark span.text-muted,
+.dark .text-muted {
   color: var(--text-muted);
 }
 
