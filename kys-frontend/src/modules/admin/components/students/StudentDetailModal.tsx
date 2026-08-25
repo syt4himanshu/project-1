@@ -5,6 +5,8 @@ import { normalizeForDisplay } from '../../api'
 import { extractStudentPhotoUrl } from '../../../../shared/utils/studentPhoto'
 import { sanitizeDisplayValue } from '../../../../shared/utils/render'
 import { useAdminStudentDetailQuery, useAdminStudentMentoringMinutesQuery } from '../../hooks'
+import { classificationApi } from '../../../../services/classificationApi'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 interface StudentDetailModalProps {
   studentId: number | null
@@ -132,11 +134,27 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
   const contentRef = useRef<HTMLDivElement | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [remarksOpen, setRemarksOpen] = useState(false)
+  const [plansOpen, setPlansOpen] = useState(false)
 
   const detailQuery = useAdminStudentDetailQuery(studentId)
   const student = detailQuery.data
   const minutesQuery = useAdminStudentMentoringMinutesQuery(remarksOpen ? studentId : null)
   const minutes = useMemo<MentoringMinute[]>(() => (minutesQuery.data as MentoringMinute[] | undefined) ?? [], [minutesQuery.data])
+
+  const plansQuery = useQuery({
+    queryKey: ['adminSupportPlans', studentId],
+    queryFn: () => classificationApi.getSupportPlans(studentId as number),
+    enabled: plansOpen && !!studentId
+  })
+  const supportPlans = plansQuery.data ?? []
+
+  const queryClient = useQueryClient()
+  const updatePlanMutation = useMutation({
+    mutationFn: classificationApi.updateSupportPlan,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminSupportPlans', studentId] })
+    }
+  })
 
   const personalInfo = useMemo(() => student?.personalInfo ?? {}, [student?.personalInfo])
   const studentPhotoUrl = useMemo(() => extractStudentPhotoUrl({ personal_info: personalInfo }), [personalInfo])
@@ -311,13 +329,22 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
       footer={(
         <>
           {student && (
-            <button
-              type="button"
-              className="button button--soft mr-auto"
-              onClick={() => setRemarksOpen(true)}
-            >
-              View Previous Mentoring Remarks
-            </button>
+            <div className="flex gap-2 mr-auto">
+              <button
+                type="button"
+                className="button button--soft"
+                onClick={() => setRemarksOpen(true)}
+              >
+                View Previous Mentoring Remarks
+              </button>
+              <button
+                type="button"
+                className="button button--soft"
+                onClick={() => setPlansOpen(true)}
+              >
+                View Support Plans
+              </button>
+            </div>
           )}
           <button type="button" className="button button--ghost" onClick={onClose}>
             Close
@@ -740,6 +767,78 @@ export function StudentDetailModal({ studentId, onClose }: StudentDetailModalPro
                       <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{m.action || 'None'}</span>
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={plansOpen}
+        onClose={() => setPlansOpen(false)}
+        title="Student Support Plans"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {plansQuery.isPending ? (
+            <p className="text-sm text-gray-500">Loading support plans...</p>
+          ) : plansQuery.isError ? (
+            <p className="text-sm text-red-500">Failed to load support plans.</p>
+          ) : supportPlans.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">No support plans recorded yet.</p>
+          ) : (
+            <div className="max-h-[60vh] overflow-y-auto pr-2" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {supportPlans.map((plan) => (
+                <div key={plan.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <div>
+                      <span style={{ 
+                        display: 'inline-block', 
+                        padding: '4px 10px', 
+                        borderRadius: '20px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 600, 
+                        marginBottom: '8px',
+                        background: plan.type === 'advanced' ? '#dcfce7' : '#fee2e2',
+                        color: plan.type === 'advanced' ? '#166534' : '#991b1b'
+                      }}>
+                        {plan.type === 'advanced' ? 'Advanced Learner' : 'Slow Learner'}
+                      </span>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
+                        {plan.mechanism}
+                      </h4>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'right' }}>
+                      <div>Scheduled: {formatDate(plan.scheduledAt)}</div>
+                      <div style={{ marginTop: '4px', textTransform: 'capitalize', fontWeight: 500, color: plan.status === 'completed' ? '#059669' : plan.status === 'pending' ? '#d97706' : '#64748b' }}>
+                        <select
+                          value={plan.status}
+                          disabled={updatePlanMutation.isPending}
+                          onChange={(e) => updatePlanMutation.mutate({ planId: plan.id, data: { status: e.target.value as any } })}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid currentColor',
+                            borderRadius: '4px',
+                            padding: '2px 4px',
+                            color: 'inherit',
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="pending" style={{ color: '#000' }}>Pending</option>
+                          <option value="completed" style={{ color: '#000' }}>Completed</option>
+                          <option value="cancelled" style={{ color: '#000' }}>Cancelled</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  {plan.notes && (
+                    <div style={{ background: 'white', padding: '12px', borderRadius: '6px', border: '1px solid #f1f5f9', fontSize: '0.9rem', color: '#475569', whiteSpace: 'pre-wrap' }}>
+                      <strong style={{ display: 'block', marginBottom: '4px', color: '#334155', fontSize: '0.8rem', textTransform: 'uppercase' }}>Additional Notes</strong>
+                      {plan.notes}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

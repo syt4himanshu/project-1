@@ -13,6 +13,8 @@ const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
 const facultyRoutes = require('./routes/faculty.routes');
 const { studentsRouter, studentRouter, apiStudentsRouter } = require('./routes/student.routes');
+const classificationRoutes = require('./src/routes/classificationRoutes');
+
 
 const { extractTokenIdentityOptional } = require('./middleware/auth');
 const { performHealthCheck } = require('./utils/healthCheck');
@@ -103,6 +105,7 @@ app.get('/api/metrics/timing', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/admin/classifications', classificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/students', studentsRouter);
 app.use('/api/students', apiStudentsRouter);

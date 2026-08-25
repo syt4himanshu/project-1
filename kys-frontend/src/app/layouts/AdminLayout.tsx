@@ -9,6 +9,7 @@ const ADMIN_TABS = [
   { to: '/admin/students', label: 'Students', icon: 'person_book' },
   { to: '/admin/allocation', label: 'Allocation', icon: 'assignment_ind' },
   { to: '/admin/reports', label: 'Reports', icon: 'assessment' },
+  { to: '/admin/classifications', label: 'Learner Class', icon: 'groups' },
 ] as const
 
 export default function AdminLayout() {

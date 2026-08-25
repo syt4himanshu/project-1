@@ -14,6 +14,7 @@ class PostAdmissionAcademicRecord extends Model {
         college_rank: { type: DataTypes.STRING(100), allowNull: true },
         academic_awards: { type: DataTypes.STRING(255), allowNull: true },
         backlog_count: { type: DataTypes.INTEGER, allowNull: true },
+        mse_marks: { type: DataTypes.FLOAT, allowNull: true },
       },
       {
         sequelize,

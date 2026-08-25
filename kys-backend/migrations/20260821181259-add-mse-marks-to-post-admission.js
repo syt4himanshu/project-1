@@ -1,0 +1,1 @@
+module.exports = { up: async (q, S) => q.addColumn('post_admission_academic_record', 'mse_marks', { type: S.FLOAT, allowNull: true }), down: async (q, S) => q.removeColumn('post_admission_academic_record', 'mse_marks') };

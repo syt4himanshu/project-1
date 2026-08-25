@@ -1,4 +1,4 @@
-const { Op } = require('sequelize');
+const { Op } = require("sequelize");
 const {
   sequelize,
   Student,
@@ -14,42 +14,52 @@ const {
   SWOC,
   MentoringMinute,
   Faculty,
-} = require('../models');
+} = require("../models");
 const {
   splitFullName,
   parseDate,
   serializeModel,
   validatePastEducationPayload,
   validatePostAdmissionRecords,
-} = require('../utils/helpers');
-const { serializeStudent, serializeStudentSummary } = require('../utils/serializers');
-const { sendResponse } = require('../utils/responseWrapper');
-const { encodeStudentProfilePayload, decodeStudentProfilePayload } = require('../utils/profileCodec');
-const { uploadStudentPhotoForRecord } = require('../utils/studentPhotoUpload');
-const { ensureStudentPersonalInfo, isControlledProfileError } = require('../utils/studentPersonalInfo');
-const { applyStudentProfileUpdate } = require('../utils/studentProfileUpdate');
+} = require("../utils/helpers");
+const {
+  serializeStudent,
+  serializeStudentSummary,
+} = require("../utils/serializers");
+const { sendResponse } = require("../utils/responseWrapper");
+const {
+  encodeStudentProfilePayload,
+  decodeStudentProfilePayload,
+} = require("../utils/profileCodec");
+const { uploadStudentPhotoForRecord } = require("../utils/studentPhotoUpload");
+const {
+  ensureStudentPersonalInfo,
+  isControlledProfileError,
+} = require("../utils/studentPersonalInfo");
+const { applyStudentProfileUpdate } = require("../utils/studentProfileUpdate");
 
 const includeAll = [
-  'personal_info',
-  'past_education_records',
-  'post_admission_records',
-  'projects',
-  'internships',
-  'cocurricular_participations',
-  'cocurricular_organizations',
-  'career_objective',
-  'skills',
-  'swoc',
+  "personal_info",
+  "past_education_records",
+  "post_admission_records",
+  "projects",
+  "internships",
+  "cocurricular_participations",
+  "cocurricular_organizations",
+  "career_objective",
+  "skills",
+  "swoc",
 ];
 
 const buildStudentSearchWhere = (query = {}) => {
   const where = {};
   if (query.semester) where.semester = query.semester;
   if (query.section) where.section = query.section;
-  if (query.year_of_admission) where.year_of_admission = query.year_of_admission;
+  if (query.year_of_admission)
+    where.year_of_admission = query.year_of_admission;
   if (query.uid) where.uid = query.uid;
 
-  const search = String(query.search || query.name || '').trim();
+  const search = String(query.search || query.name || "").trim();
   if (search) {
     where[Op.or] = [
       { uid: { [Op.iLike]: `%${search}%` } },
@@ -62,45 +72,81 @@ const buildStudentSearchWhere = (query = {}) => {
   return where;
 };
 
-const buildStudentIncludes = ({ summary = false, domain = '', careerGoal = '' } = {}) => {
-  const trimmedDomain = String(domain || '').trim();
-  const trimmedCareerGoal = String(careerGoal || '').trim();
+const buildStudentIncludes = ({
+  summary = false,
+  domain = "",
+  careerGoal = "",
+} = {}) => {
+  const trimmedDomain = String(domain || "").trim();
+  const trimmedCareerGoal = String(careerGoal || "").trim();
 
   return [
-    { model: Faculty, as: 'mentor', attributes: ['id', 'first_name', 'last_name', 'email'], required: false },
-    !summary ? { model: StudentPersonalInfo, as: 'personal_info', required: false } : null,
-    !summary ? { model: PastEducation, as: 'past_education_records', required: false } : null,
-    !summary ? { model: PostAdmissionAcademicRecord, as: 'post_admission_records', required: false } : null,
-    !summary ? { model: Project, as: 'projects', required: false } : null,
-    !summary ? { model: Internship, as: 'internships', required: false } : null,
-    !summary ? { model: CoCurricularParticipation, as: 'cocurricular_participations', required: false } : null,
-    !summary ? { model: CoCurricularOrganization, as: 'cocurricular_organizations', required: false } : null,
+    {
+      model: Faculty,
+      as: "mentor",
+      attributes: ["id", "first_name", "last_name", "email"],
+      required: false,
+    },
+    !summary
+      ? { model: StudentPersonalInfo, as: "personal_info", required: false }
+      : null,
+    !summary
+      ? { model: PastEducation, as: "past_education_records", required: false }
+      : null,
+    !summary
+      ? {
+          model: PostAdmissionAcademicRecord,
+          as: "post_admission_records",
+          required: false,
+        }
+      : null,
+    !summary ? { model: Project, as: "projects", required: false } : null,
+    !summary ? { model: Internship, as: "internships", required: false } : null,
+    !summary
+      ? {
+          model: CoCurricularParticipation,
+          as: "cocurricular_participations",
+          required: false,
+        }
+      : null,
+    !summary
+      ? {
+          model: CoCurricularOrganization,
+          as: "cocurricular_organizations",
+          required: false,
+        }
+      : null,
     {
       model: CareerObjective,
-      as: 'career_objective',
+      as: "career_objective",
       required: Boolean(trimmedCareerGoal),
-      ...(trimmedCareerGoal ? { where: { career_goal: trimmedCareerGoal } } : {}),
+      ...(trimmedCareerGoal
+        ? { where: { career_goal: trimmedCareerGoal } }
+        : {}),
     },
     {
       model: Skills,
-      as: 'skills',
+      as: "skills",
       required: Boolean(trimmedDomain),
       ...(trimmedDomain
         ? {
-          where: {
-            domains_of_interest: { [Op.iLike]: `%${trimmedDomain}%` },
-          },
-        }
+            where: {
+              domains_of_interest: { [Op.iLike]: `%${trimmedDomain}%` },
+            },
+          }
         : {}),
     },
-    !summary ? { model: SWOC, as: 'swoc', required: false } : null,
+    !summary ? { model: SWOC, as: "swoc", required: false } : null,
   ].filter(Boolean);
 };
 
 const parseDatesInPayload = (payload) => {
-  if (!payload || typeof payload !== 'object') return payload;
+  if (!payload || typeof payload !== "object") return payload;
   Object.entries(payload).forEach(([key, value]) => {
-    if ((key.includes('date') || key.includes('dob')) && !['year_of_passing', 'year_of_admission'].includes(key)) {
+    if (
+      (key.includes("date") || key.includes("dob")) &&
+      !["year_of_passing", "year_of_admission"].includes(key)
+    ) {
       payload[key] = parseDate(value);
     }
   });
@@ -108,16 +154,25 @@ const parseDatesInPayload = (payload) => {
 };
 
 const stripManagedPhotoFields = (payload) => {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload))
+    return payload;
   const sanitized = { ...payload };
   delete sanitized.photoUrl;
   delete sanitized.photo_public_id;
   return sanitized;
 };
 
-const syncRelatedRecords = async (model, studentId, currentRecords, incoming, tx) => {
+const syncRelatedRecords = async (
+  model,
+  studentId,
+  currentRecords,
+  incoming,
+  tx,
+) => {
   const existingById = new Map((currentRecords || []).map((r) => [r.id, r]));
-  const incomingIds = new Set((incoming || []).map((r) => r.id).filter(Boolean));
+  const incomingIds = new Set(
+    (incoming || []).map((r) => r.id).filter(Boolean),
+  );
 
   for (const record of currentRecords || []) {
     if (!incomingIds.has(record.id)) {
@@ -135,16 +190,26 @@ const syncRelatedRecords = async (model, studentId, currentRecords, incoming, tx
     } else {
       delete recordData.id;
       delete recordData.student_id;
-      await model.create({ ...recordData, student_id: studentId }, { transaction: tx });
+      await model.create(
+        { ...recordData, student_id: studentId },
+        { transaction: tx },
+      );
     }
   }
 };
 
 const getStudentsMe = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
+    const student = await Student.findOne({
+      where: { user_id: req.currentUser.id },
+      include: includeAll,
+    });
     if (!student) {
-      return sendResponse(res, { success: false, status: 404, error: 'Profile not found' });
+      return sendResponse(res, {
+        success: false,
+        status: 404,
+        error: "Profile not found",
+      });
     }
 
     return sendResponse(res, {
@@ -153,21 +218,35 @@ const getStudentsMe = async (req, res, next) => {
         id: student.id,
         uid: student.uid,
         updated_at: student.updatedAt,
-        full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+        full_name: [student.first_name, student.middle_name, student.last_name]
+          .filter(Boolean)
+          .join(" "),
         semester: student.semester,
         section: student.section,
         year_of_admission: student.year_of_admission,
         is_profile_locked: Boolean(student.is_profile_locked),
         profile_locked_at: student.profile_locked_at || null,
         profile_locked_by: student.profile_locked_by || null,
-        personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
-        past_education_records: (student.past_education_records || []).map(serializeModel),
-        post_admission_records: (student.post_admission_records || []).map(serializeModel),
+        personal_info: student.personal_info
+          ? serializeModel(student.personal_info)
+          : {},
+        past_education_records: (student.past_education_records || []).map(
+          serializeModel,
+        ),
+        post_admission_records: (student.post_admission_records || []).map(
+          serializeModel,
+        ),
         projects: (student.projects || []).map(serializeModel),
         internships: (student.internships || []).map(serializeModel),
-        cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
-        cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
-        career_objective: student.career_objective ? serializeModel(student.career_objective) : {},
+        cocurricular_participations: (
+          student.cocurricular_participations || []
+        ).map(serializeModel),
+        cocurricular_organizations: (
+          student.cocurricular_organizations || []
+        ).map(serializeModel),
+        career_objective: student.career_objective
+          ? serializeModel(student.career_objective)
+          : {},
         skills: student.skills ? serializeModel(student.skills) : {},
         swoc: student.swoc ? serializeModel(student.swoc) : {},
       }),
@@ -179,9 +258,16 @@ const getStudentsMe = async (req, res, next) => {
 
 const putStudentsMe = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
+    const student = await Student.findOne({
+      where: { user_id: req.currentUser.id },
+      include: includeAll,
+    });
     if (!student) {
-      return sendResponse(res, { success: false, status: 404, error: 'Profile not found' });
+      return sendResponse(res, {
+        success: false,
+        status: 404,
+        error: "Profile not found",
+      });
     }
 
     if (student.is_profile_locked) {
@@ -189,8 +275,9 @@ const putStudentsMe = async (req, res, next) => {
         success: false,
         status: 403,
         error: {
-          code: 'PROFILE_LOCKED',
-          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+          code: "PROFILE_LOCKED",
+          message:
+            "Your profile is locked by your faculty mentor and cannot be edited.",
         },
       });
     }
@@ -198,12 +285,12 @@ const putStudentsMe = async (req, res, next) => {
     const rawData = req.body || {};
     const data = encodeStudentProfilePayload(rawData);
 
-    const names = splitFullName(rawData.full_name || '');
+    const names = splitFullName(rawData.full_name || "");
     student.first_name = names.first_name;
     student.middle_name = names.middle_name;
     student.last_name = names.last_name;
 
-    ['semester', 'section', 'year_of_admission'].forEach((field) => {
+    ["semester", "section", "year_of_admission"].forEach((field) => {
       if (field in data) student[field] = data[field];
     });
 
@@ -212,7 +299,9 @@ const putStudentsMe = async (req, res, next) => {
       await student.save({ transaction: tx });
 
       if (data.personal_info) {
-        const payload = parseDatesInPayload(stripManagedPhotoFields({ ...data.personal_info }));
+        const payload = parseDatesInPayload(
+          stripManagedPhotoFields({ ...data.personal_info }),
+        );
         delete payload.id;
         delete payload.student_id;
 
@@ -220,33 +309,55 @@ const putStudentsMe = async (req, res, next) => {
           if (student.personal_info) {
             await student.personal_info.update(payload, { transaction: tx });
           } else {
-            student.personal_info = await ensureStudentPersonalInfo(student.id);
+            student.personal_info = await StudentPersonalInfo.create(
+              { student_id: student.id },
+              { transaction: tx },
+            );
             await student.personal_info.update(payload, { transaction: tx });
           }
         }
       }
 
-      const pastEducationPayload = 'past_education_records' in rawData
-        ? (rawData.past_education_records || [])
-        : (student.past_education_records || []).map(serializeModel);
+      const pastEducationPayload =
+        "past_education_records" in rawData
+          ? rawData.past_education_records || []
+          : (student.past_education_records || []).map(serializeModel);
       const peValidation = validatePastEducationPayload(pastEducationPayload);
       if (!peValidation.valid) {
         await tx.rollback();
-        return sendResponse(res, { success: false, status: 400, error: peValidation.error });
+        return sendResponse(res, {
+          success: false,
+          status: 400,
+          error: peValidation.error,
+        });
       }
 
-      const postAdmissionPayload = 'post_admission_records' in rawData
-        ? (rawData.post_admission_records || [])
-        : (student.post_admission_records || []).map(serializeModel);
-      const paValidation = validatePostAdmissionRecords(Number(student.semester || 0), postAdmissionPayload);
+      const postAdmissionPayload =
+        "post_admission_records" in rawData
+          ? rawData.post_admission_records || []
+          : (student.post_admission_records || []).map(serializeModel);
+      const paValidation = validatePostAdmissionRecords(
+        Number(student.semester || 0),
+        postAdmissionPayload,
+      );
       if (!paValidation.valid) {
         await tx.rollback();
-        return sendResponse(res, { success: false, status: 400, error: paValidation.error });
+        return sendResponse(res, {
+          success: false,
+          status: 400,
+          error: paValidation.error,
+        });
       }
 
-      if ('past_education_records' in rawData) {
-        const completePastEducation = (data.past_education_records || []).filter(
-          (r) => r.exam_name && r.percentage !== null && r.percentage !== "" && r.year_of_passing !== null
+      if ("past_education_records" in rawData) {
+        const completePastEducation = (
+          data.past_education_records || []
+        ).filter(
+          (r) =>
+            r.exam_name &&
+            r.percentage !== null &&
+            r.percentage !== "" &&
+            r.year_of_passing !== null,
         );
         await syncRelatedRecords(
           PastEducation,
@@ -256,7 +367,7 @@ const putStudentsMe = async (req, res, next) => {
           tx,
         );
       }
-      if ('post_admission_records' in rawData) {
+      if ("post_admission_records" in rawData) {
         await syncRelatedRecords(
           PostAdmissionAcademicRecord,
           student.id,
@@ -265,13 +376,25 @@ const putStudentsMe = async (req, res, next) => {
           tx,
         );
       }
-      if ('projects' in rawData) {
-        await syncRelatedRecords(Project, student.id, student.projects, data.projects || [], tx);
+      if ("projects" in rawData) {
+        await syncRelatedRecords(
+          Project,
+          student.id,
+          student.projects,
+          data.projects || [],
+          tx,
+        );
       }
-      if ('internships' in rawData) {
-        await syncRelatedRecords(Internship, student.id, student.internships, data.internships || [], tx);
+      if ("internships" in rawData) {
+        await syncRelatedRecords(
+          Internship,
+          student.id,
+          student.internships,
+          data.internships || [],
+          tx,
+        );
       }
-      if ('cocurricular_participations' in rawData) {
+      if ("cocurricular_participations" in rawData) {
         await syncRelatedRecords(
           CoCurricularParticipation,
           student.id,
@@ -280,7 +403,7 @@ const putStudentsMe = async (req, res, next) => {
           tx,
         );
       }
-      if ('cocurricular_organizations' in rawData) {
+      if ("cocurricular_organizations" in rawData) {
         await syncRelatedRecords(
           CoCurricularOrganization,
           student.id,
@@ -291,9 +414,9 @@ const putStudentsMe = async (req, res, next) => {
       }
 
       const singleRels = [
-        ['career_objective', CareerObjective],
-        ['skills', Skills],
-        ['swoc', SWOC],
+        ["career_objective", CareerObjective],
+        ["skills", Skills],
+        ["swoc", SWOC],
       ];
 
       for (const [key, model] of singleRels) {
@@ -306,21 +429,28 @@ const putStudentsMe = async (req, res, next) => {
         if (student[key]) {
           await student[key].update(clean, { transaction: tx });
         } else {
-          await model.create({ ...clean, student_id: student.id }, { transaction: tx });
+          await model.create(
+            { ...clean, student_id: student.id },
+            { transaction: tx },
+          );
         }
       }
 
       await tx.commit();
       return sendResponse(res, {
         success: true,
-        data: { message: 'Profile updated successfully.' },
+        data: { message: "Profile updated successfully." },
       });
     } catch (_error) {
       await tx.rollback();
-      const status = _error?.statusCode && Number.isInteger(_error.statusCode) ? _error.statusCode : 500;
-      const errorMessage = typeof _error?.message === 'string' && _error.message.trim()
-        ? _error.message
-        : 'Failed to update profile';
+      const status =
+        _error?.statusCode && Number.isInteger(_error.statusCode)
+          ? _error.statusCode
+          : 500;
+      const errorMessage =
+        typeof _error?.message === "string" && _error.message.trim()
+          ? _error.message
+          : "Failed to update profile";
       return sendResponse(res, { success: false, status, error: errorMessage });
     }
   } catch (error) {
@@ -330,15 +460,15 @@ const putStudentsMe = async (req, res, next) => {
 
 const getStudentMe = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
+    const student = await Student.findOne({
+      where: { user_id: req.currentUser.id },
+      include: includeAll,
+    });
     if (!student) {
-      return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
-    }
-
-    if (!student.personal_info) {
-      // Defensive fallback: direct lookup avoids occasional null association from large include graph.
-      student.personal_info = await StudentPersonalInfo.findOne({
-        where: { student_id: student.id },
+      return sendResponse(res, {
+        success: false,
+        status: 404,
+        error: "Student profile not found",
       });
     }
 
@@ -359,21 +489,35 @@ const getStudentMe = async (req, res, next) => {
       first_name: student.first_name,
       middle_name: student.middle_name,
       last_name: student.last_name,
-      full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+      full_name: [student.first_name, student.middle_name, student.last_name]
+        .filter(Boolean)
+        .join(" "),
       semester: student.semester,
       section: student.section,
       year_of_admission: student.year_of_admission,
       is_profile_locked: Boolean(student.is_profile_locked),
       profile_locked_at: student.profile_locked_at || null,
       profile_locked_by: student.profile_locked_by || null,
-      personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
-      past_education_records: (student.past_education_records || []).map(serializeModel),
-      post_admission_records: (student.post_admission_records || []).map(serializeModel),
+      personal_info: student.personal_info
+        ? serializeModel(student.personal_info)
+        : {},
+      past_education_records: (student.past_education_records || []).map(
+        serializeModel,
+      ),
+      post_admission_records: (student.post_admission_records || []).map(
+        serializeModel,
+      ),
       projects: (student.projects || []).map(serializeModel),
       internships: (student.internships || []).map(serializeModel),
-      cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
-      cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
-      career_objective: student.career_objective ? serializeModel(student.career_objective) : {},
+      cocurricular_participations: (
+        student.cocurricular_participations || []
+      ).map(serializeModel),
+      cocurricular_organizations: (
+        student.cocurricular_organizations || []
+      ).map(serializeModel),
+      career_objective: student.career_objective
+        ? serializeModel(student.career_objective)
+        : {},
       skills: student.skills ? serializeModel(student.skills) : {},
       swoc: student.swoc ? serializeModel(student.swoc) : {},
     });
@@ -389,9 +533,16 @@ const getStudentMe = async (req, res, next) => {
 
 const putStudentMe = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
+    const student = await Student.findOne({
+      where: { user_id: req.currentUser.id },
+      include: includeAll,
+    });
     if (!student) {
-      return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+      return sendResponse(res, {
+        success: false,
+        status: 404,
+        error: "Student profile not found",
+      });
     }
 
     if (student.is_profile_locked) {
@@ -399,31 +550,54 @@ const putStudentMe = async (req, res, next) => {
         success: false,
         status: 403,
         error: {
-          code: 'PROFILE_LOCKED',
-          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+          code: "PROFILE_LOCKED",
+          message:
+            "Your profile is locked by your faculty mentor and cannot be edited.",
         },
+      });
+    }
+
+    const rawData = req.body || {};
+    const data = encodeStudentProfilePayload(rawData);
+    if (!Object.keys(data).length) {
+      return sendResponse(res, {
+        success: false,
+        status: 400,
+        error: "No data provided",
       });
     }
 
     const tx = await sequelize.transaction();
     try {
-      const updateResult = await applyStudentProfileUpdate(student, req.body || {}, tx);
+      const updateResult = await applyStudentProfileUpdate(
+        student,
+        req.body || {},
+        tx,
+      );
       if (!updateResult.ok) {
         await tx.rollback();
-        return sendResponse(res, { success: false, status: updateResult.status || 400, error: updateResult.error });
+        return sendResponse(res, {
+          success: false,
+          status: updateResult.status || 400,
+          error: updateResult.error,
+        });
       }
 
       await tx.commit();
       return sendResponse(res, {
         success: true,
-        data: { message: 'Student profile updated successfully' },
+        data: { message: "Student profile updated successfully" },
       });
     } catch (_error) {
       await tx.rollback();
-      const status = _error?.statusCode && Number.isInteger(_error.statusCode) ? _error.statusCode : 500;
-      const errorMessage = typeof _error?.message === 'string' && _error.message.trim()
-        ? _error.message
-        : 'Failed to update profile';
+      const status =
+        _error?.statusCode && Number.isInteger(_error.statusCode)
+          ? _error.statusCode
+          : 500;
+      const errorMessage =
+        typeof _error?.message === "string" && _error.message.trim()
+          ? _error.message
+          : "Failed to update profile";
       return sendResponse(res, { success: false, status, error: errorMessage });
     }
   } catch (error) {
@@ -433,9 +607,16 @@ const putStudentMe = async (req, res, next) => {
 
 const uploadStudentPhoto = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: ['personal_info'] });
+    const student = await Student.findOne({
+      where: { user_id: req.currentUser.id },
+      include: ["personal_info"],
+    });
     if (!student) {
-      return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+      return sendResponse(res, {
+        success: false,
+        status: 404,
+        error: "Student profile not found",
+      });
     }
 
     if (student.is_profile_locked) {
@@ -443,8 +624,9 @@ const uploadStudentPhoto = async (req, res, next) => {
         success: false,
         status: 403,
         error: {
-          code: 'PROFILE_LOCKED',
-          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+          code: "PROFILE_LOCKED",
+          message:
+            "Your profile is locked by your faculty mentor and cannot be edited.",
         },
       });
     }
@@ -463,7 +645,7 @@ const uploadStudentPhoto = async (req, res, next) => {
       data: result.data,
     });
   } catch (error) {
-    console.error('[UPLOAD] Unexpected error:', error);
+    console.error("[UPLOAD] Unexpected error:", error);
     return next(error);
   }
 };
@@ -472,21 +654,38 @@ const uploadStudentPhotoByPortal = async (req, res, next) => {
   try {
     const studentId = Number(req.params.id);
     if (!studentId) {
-      return sendResponse(res, { success: false, status: 400, error: 'Invalid student id' });
+      return sendResponse(res, {
+        success: false,
+        status: 400,
+        error: "Invalid student id",
+      });
     }
 
     const where = { id: studentId };
-    if (req.currentUser.role === 'faculty') {
-      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+    if (req.currentUser.role === "faculty") {
+      const faculty = await Faculty.findOne({
+        where: { user_id: req.currentUser.id },
+      });
       if (!faculty) {
-        return sendResponse(res, { success: false, status: 404, error: 'Faculty profile not found' });
+        return sendResponse(res, {
+          success: false,
+          status: 404,
+          error: "Faculty profile not found",
+        });
       }
       where.mentor_id = faculty.id;
     }
 
-    const student = await Student.findOne({ where, include: ['personal_info'] });
+    const student = await Student.findOne({
+      where,
+      include: ["personal_info"],
+    });
     if (!student) {
-      return sendResponse(res, { success: false, status: 404, error: 'Student not found' });
+      return sendResponse(res, {
+        success: false,
+        status: 404,
+        error: "Student not found",
+      });
     }
 
     const result = await uploadStudentPhotoForRecord(student, req.file);
@@ -509,12 +708,18 @@ const uploadStudentPhotoByPortal = async (req, res, next) => {
 
 const getStudentMentor = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ where: { user_id: req.currentUser.id } });
-    if (!student) return res.status(404).json({ error: 'Student profile not found' });
-    if (!student.mentor_id) return res.status(404).json({ error: 'No mentor assigned to this student' });
+    const student = await Student.findOne({
+      where: { user_id: req.currentUser.id },
+    });
+    if (!student)
+      return res.status(404).json({ error: "Student profile not found" });
+    if (!student.mentor_id)
+      return res
+        .status(404)
+        .json({ error: "No mentor assigned to this student" });
 
     const mentor = await Faculty.findByPk(student.mentor_id);
-    if (!mentor) return res.status(404).json({ error: 'Mentor not found' });
+    if (!mentor) return res.status(404).json({ error: "Mentor not found" });
 
     return res.status(200).json({
       id: mentor.id,
@@ -524,7 +729,7 @@ const getStudentMentor = async (req, res, next) => {
       full_name:
         mentor.first_name && mentor.last_name
           ? `${mentor.first_name} ${mentor.last_name}`
-          : 'Unknown',
+          : "Unknown",
       contact_number: mentor.contact_number,
     });
   } catch (error) {
@@ -534,8 +739,11 @@ const getStudentMentor = async (req, res, next) => {
 
 const getStudentMentoringMinutes = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ where: { user_id: req.currentUser.id } });
-    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+    const student = await Student.findOne({
+      where: { user_id: req.currentUser.id },
+    });
+    if (!student)
+      return res.status(404).json({ error: "Student profile not found" });
 
     // Optimized: Use include to avoid N+1 query
     let minutes;
@@ -543,56 +751,70 @@ const getStudentMentoringMinutes = async (req, res, next) => {
       minutes = await MentoringMinute.findAll({
         where: { student_id: student.id },
         attributes: [
-          'id',
-          'faculty_id',
-          'faculty_name_snapshot',
-          'faculty_email_snapshot',
-          'semester',
-          'date',
-          'remarks',
-          'mentor_remarks',
-          'issues',
-          'suggestion',
-          'action',
+          "id",
+          "faculty_id",
+          "faculty_name_snapshot",
+          "faculty_email_snapshot",
+          "semester",
+          "date",
+          "remarks",
+          "mentor_remarks",
+          "issues",
+          "suggestion",
+          "action",
         ],
         include: [
           {
             model: Faculty,
-            as: 'faculty',
-            attributes: ['id', 'email', 'first_name', 'last_name'],
+            as: "faculty",
+            attributes: ["id", "email", "first_name", "last_name"],
           },
         ],
-        order: [['date', 'DESC']],
+        order: [["date", "DESC"]],
       });
     } catch (queryError) {
-      const message = String(queryError?.message || '');
-      if (/faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(message)) {
+      const message = String(queryError?.message || "");
+      if (
+        /faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(
+          message,
+        )
+      ) {
         minutes = await MentoringMinute.findAll({
           where: { student_id: student.id },
-          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'mentor_remarks', 'issues', 'suggestion', 'action'],
+          attributes: [
+            "id",
+            "faculty_id",
+            "semester",
+            "date",
+            "remarks",
+            "mentor_remarks",
+            "issues",
+            "suggestion",
+            "action",
+          ],
           include: [
             {
               model: Faculty,
-              as: 'faculty',
-              attributes: ['id', 'email', 'first_name', 'last_name'],
+              as: "faculty",
+              attributes: ["id", "email", "first_name", "last_name"],
             },
           ],
-          order: [['date', 'DESC']],
+          order: [["date", "DESC"]],
         });
       } else {
         throw queryError;
       }
     }
 
-    const result = minutes.map(m => ({
+    const result = minutes.map((m) => ({
       id: m.id,
       faculty_email: m.faculty?.email || m.faculty_email_snapshot || null,
       faculty_name:
         (m.faculty
-          ? `${m.faculty.first_name || ''} ${m.faculty.last_name || ''}`.trim()
-          : '') ||
+          ? `${m.faculty.first_name || ""} ${m.faculty.last_name || ""}`.trim()
+          : "") ||
         m.faculty_name_snapshot ||
-        'Former Faculty',
+        "Former Faculty",
       semester: m.semester,
       date: m.date,
       remarks: m.remarks,
@@ -611,16 +833,22 @@ const getStudentMentoringMinutes = async (req, res, next) => {
 const getStudentMentoringMinutesById = async (req, res, next) => {
   try {
     const studentId = Number(req.params.id);
-    if (!studentId) return res.status(400).json({ error: 'Invalid student id' });
+    if (!studentId)
+      return res.status(400).json({ error: "Invalid student id" });
 
     const student = await Student.findByPk(studentId);
-    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+    if (!student)
+      return res.status(404).json({ error: "Student profile not found" });
 
     // Optional: if faculty is requesting, ensure the student belongs to them
-    if (req.currentUser.role === 'faculty') {
-      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+    if (req.currentUser.role === "faculty") {
+      const faculty = await Faculty.findOne({
+        where: { user_id: req.currentUser.id },
+      });
       if (!faculty || student.mentor_id !== faculty.id) {
-        return res.status(403).json({ error: 'Not authorized to view this student' });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to view this student" });
       }
     }
 
@@ -629,41 +857,55 @@ const getStudentMentoringMinutesById = async (req, res, next) => {
       minutes = await MentoringMinute.findAll({
         where: { student_id: student.id },
         attributes: [
-          'id',
-          'faculty_id',
-          'faculty_name_snapshot',
-          'faculty_email_snapshot',
-          'semester',
-          'date',
-          'remarks',
-          'mentor_remarks',
-          'issues',
-          'suggestion',
-          'action',
+          "id",
+          "faculty_id",
+          "faculty_name_snapshot",
+          "faculty_email_snapshot",
+          "semester",
+          "date",
+          "remarks",
+          "mentor_remarks",
+          "issues",
+          "suggestion",
+          "action",
         ],
         include: [
           {
             model: Faculty,
-            as: 'faculty',
-            attributes: ['id', 'email', 'first_name', 'last_name'],
+            as: "faculty",
+            attributes: ["id", "email", "first_name", "last_name"],
           },
         ],
-        order: [['date', 'DESC']],
+        order: [["date", "DESC"]],
       });
     } catch (queryError) {
-      const message = String(queryError?.message || '');
-      if (/faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(message)) {
+      const message = String(queryError?.message || "");
+      if (
+        /faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(
+          message,
+        )
+      ) {
         minutes = await MentoringMinute.findAll({
           where: { student_id: student.id },
-          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'mentor_remarks', 'issues', 'suggestion', 'action'],
+          attributes: [
+            "id",
+            "faculty_id",
+            "semester",
+            "date",
+            "remarks",
+            "mentor_remarks",
+            "issues",
+            "suggestion",
+            "action",
+          ],
           include: [
             {
               model: Faculty,
-              as: 'faculty',
-              attributes: ['id', 'email', 'first_name', 'last_name'],
+              as: "faculty",
+              attributes: ["id", "email", "first_name", "last_name"],
             },
           ],
-          order: [['date', 'DESC']],
+          order: [["date", "DESC"]],
         });
       } else {
         throw queryError;
@@ -675,10 +917,10 @@ const getStudentMentoringMinutesById = async (req, res, next) => {
       faculty_email: m.faculty?.email || m.faculty_email_snapshot || null,
       faculty_name:
         (m.faculty
-          ? `${m.faculty.first_name || ''} ${m.faculty.last_name || ''}`.trim()
-          : '') ||
+          ? `${m.faculty.first_name || ""} ${m.faculty.last_name || ""}`.trim()
+          : "") ||
         m.faculty_name_snapshot ||
-        'Former Faculty',
+        "Former Faculty",
       semester: m.semester,
       date: m.date,
       remarks: m.remarks,
@@ -694,15 +936,17 @@ const getStudentMentoringMinutesById = async (req, res, next) => {
   }
 };
 
-
 const searchStudents = async (req, res, next) => {
   try {
     const where = buildStudentSearchWhere(req.query);
-    const summary = String(req.query.view || '').toLowerCase() === 'summary';
+    const summary = String(req.query.view || "").toLowerCase() === "summary";
 
-    if (req.currentUser.role === 'faculty') {
-      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
-      if (!faculty) return res.status(404).json({ error: 'Faculty profile not found' });
+    if (req.currentUser.role === "faculty") {
+      const faculty = await Faculty.findOne({
+        where: { user_id: req.currentUser.id },
+      });
+      if (!faculty)
+        return res.status(404).json({ error: "Faculty profile not found" });
       where.mentor_id = faculty.id;
     }
 
@@ -713,12 +957,18 @@ const searchStudents = async (req, res, next) => {
         domain: req.query.domain,
         careerGoal: req.query.careerGoal,
       }),
-      order: [['id', 'ASC']],
+      order: [["id", "ASC"]],
     });
-    const includeIds = req.currentUser.role === 'admin';
+    const includeIds = req.currentUser.role === "admin";
     return res
       .status(200)
-      .json(students.map((s) => (summary ? serializeStudentSummary(s) : serializeStudent(s, { includeIds }))));
+      .json(
+        students.map((s) =>
+          summary
+            ? serializeStudentSummary(s)
+            : serializeStudent(s, { includeIds }),
+        ),
+      );
   } catch (error) {
     return next(error);
   }
@@ -727,12 +977,16 @@ const searchStudents = async (req, res, next) => {
 const getStudentById = async (req, res, next) => {
   try {
     const studentId = Number(req.params.id);
-    if (!studentId) return res.status(400).json({ error: 'Invalid student id' });
+    if (!studentId)
+      return res.status(400).json({ error: "Invalid student id" });
 
     const where = { id: studentId };
-    if (req.currentUser.role === 'faculty') {
-      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
-      if (!faculty) return res.status(404).json({ error: 'Faculty profile not found' });
+    if (req.currentUser.role === "faculty") {
+      const faculty = await Faculty.findOne({
+        where: { user_id: req.currentUser.id },
+      });
+      if (!faculty)
+        return res.status(404).json({ error: "Faculty profile not found" });
       where.mentor_id = faculty.id;
     }
 
@@ -740,9 +994,11 @@ const getStudentById = async (req, res, next) => {
       where,
       include: buildStudentIncludes({ summary: false }),
     });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!student) return res.status(404).json({ error: "Student not found" });
 
-    return res.status(200).json(serializeStudent(student, { includeIds: true }));
+    return res
+      .status(200)
+      .json(serializeStudent(student, { includeIds: true }));
   } catch (error) {
     return next(error);
   }
@@ -752,7 +1008,11 @@ const updateStudentMentorByAdmin = async (req, res, next) => {
   try {
     const student = await Student.findByPk(Number(req.params.id));
     if (!student) {
-      return sendResponse(res, { success: false, status: 404, error: 'Student not found' });
+      return sendResponse(res, {
+        success: false,
+        status: 404,
+        error: "Student not found",
+      });
     }
 
     const data = req.body || {};
@@ -762,7 +1022,11 @@ const updateStudentMentorByAdmin = async (req, res, next) => {
     } else {
       const faculty = await Faculty.findByPk(Number(data.mentor_id));
       if (!faculty) {
-        return sendResponse(res, { success: false, status: 404, error: 'Faculty not found' });
+        return sendResponse(res, {
+          success: false,
+          status: 404,
+          error: "Faculty not found",
+        });
       }
       student.mentor_id = Number(data.mentor_id);
     }
@@ -771,10 +1035,14 @@ const updateStudentMentorByAdmin = async (req, res, next) => {
       await student.save();
       return sendResponse(res, {
         success: true,
-        data: { message: 'Student updated successfully' },
+        data: { message: "Student updated successfully" },
       });
     } catch (_error) {
-      return sendResponse(res, { success: false, status: 500, error: 'Database error' });
+      return sendResponse(res, {
+        success: false,
+        status: 500,
+        error: "Database error",
+      });
     }
   } catch (error) {
     return next(error);

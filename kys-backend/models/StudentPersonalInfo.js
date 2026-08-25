@@ -1,4 +1,4 @@
-const { DataTypes, Model } = require('sequelize');
+const { DataTypes, Model } = require("sequelize");
 
 class StudentPersonalInfo extends Model {
   static initModel(sequelize) {
@@ -6,23 +6,29 @@ class StudentPersonalInfo extends Model {
       {
         id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
         student_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
-        mobile_no: { type: DataTypes.STRING(20), allowNull: false },
-        personal_email: { type: DataTypes.STRING(255), allowNull: false },
-        college_email: { type: DataTypes.STRING(255), allowNull: false },
-        linked_in_id: { type: DataTypes.STRING(255), allowNull: false },
-        permanent_address: { type: DataTypes.TEXT, allowNull: false },
-        dob: { type: DataTypes.DATEONLY, allowNull: false },
-        gender: { type: DataTypes.STRING(10), allowNull: false },
-        father_name: { type: DataTypes.STRING(120), allowNull: false },
-        father_mobile_no: { type: DataTypes.STRING(20), allowNull: false },
+        mobile_no: { type: DataTypes.STRING(20), allowNull: true },
+        personal_email: { type: DataTypes.STRING(255), allowNull: true },
+        college_email: { type: DataTypes.STRING(255), allowNull: true },
+        linked_in_id: { type: DataTypes.STRING(255), allowNull: true },
+        permanent_address: { type: DataTypes.TEXT, allowNull: true },
+        dob: { type: DataTypes.DATEONLY, allowNull: true },
+        gender: { type: DataTypes.STRING(10), allowNull: true },
+        father_name: { type: DataTypes.STRING(120), allowNull: true },
+        father_mobile_no: { type: DataTypes.STRING(20), allowNull: true },
         father_email: { type: DataTypes.STRING(255), allowNull: true },
-        father_occupation: { type: DataTypes.STRING(255), allowNull: false },
-        mother_name: { type: DataTypes.STRING(120), allowNull: false },
-        mother_mobile_no: { type: DataTypes.STRING(20), allowNull: false },
+        father_occupation: { type: DataTypes.STRING(255), allowNull: true },
+        mother_name: { type: DataTypes.STRING(120), allowNull: true },
+        mother_mobile_no: { type: DataTypes.STRING(20), allowNull: true },
         mother_email: { type: DataTypes.STRING(255), allowNull: true },
-        mother_occupation: { type: DataTypes.STRING(255), allowNull: false },
-        emergency_contact_name: { type: DataTypes.STRING(120), allowNull: false },
-        emergency_contact_number: { type: DataTypes.STRING(20), allowNull: false },
+        mother_occupation: { type: DataTypes.STRING(255), allowNull: true },
+        emergency_contact_name: {
+          type: DataTypes.STRING(120),
+          allowNull: true,
+        },
+        emergency_contact_number: {
+          type: DataTypes.STRING(20),
+          allowNull: true,
+        },
         blood_group: { type: DataTypes.STRING(5), allowNull: true },
         category: { type: DataTypes.STRING(100), allowNull: true },
         aadhar_number: { type: DataTypes.STRING(14), allowNull: true },
@@ -38,15 +44,23 @@ class StudentPersonalInfo extends Model {
         city: { type: DataTypes.STRING(120), allowNull: true },
         state: { type: DataTypes.STRING(120), allowNull: true },
         pincode: { type: DataTypes.STRING(6), allowNull: true },
-        digipin: { 
-          type: DataTypes.STRING(10), 
+        digipin: {
+          type: DataTypes.STRING(10),
           allowNull: true,
           set(value) {
-            this.setDataValue('digipin', typeof value === 'string' ? value.replace(/\s+/g, '') : value);
-          }
+            this.setDataValue(
+              "digipin",
+              typeof value === "string" ? value.replace(/\s+/g, "") : value,
+            );
+          },
         },
       },
-      { sequelize, modelName: 'StudentPersonalInfo', tableName: 'student_personal_info', timestamps: false },
+      {
+        sequelize,
+        modelName: "StudentPersonalInfo",
+        tableName: "student_personal_info",
+        timestamps: false,
+      },
     );
   }
 }
