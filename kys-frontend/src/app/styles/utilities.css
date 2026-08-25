@@ -6374,6 +6374,7 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+<<<<<<< Updated upstream
 
 .dark .toast {
   background: var(--panel);
@@ -6389,3 +6390,5 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
 .dark .toast__close {
   color: #94a3b8;
 }
+=======
+>>>>>>> Stashed changes
