@@ -707,7 +707,7 @@ export default function Step1Personal() {
                 className={`mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] ${photoError ? "text-[#dc2626]" : "text-[#5f6f86]"
                   }`}
               >
-                Profile Photo *
+                Profile Photo <span className="ml-1" style={{ color: 'var(--danger)' }}>*</span>
               </label>
 
               {hasPhoto ? (
