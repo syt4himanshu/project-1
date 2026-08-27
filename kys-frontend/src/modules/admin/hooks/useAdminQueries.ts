@@ -500,12 +500,12 @@ export function useAdminReportGeneralQuery() {
   })
 }
 
-export function useAdminReportIncompleteQuery(year: number | undefined) {
+export function useAdminReportIncompleteQuery(semester: number | undefined, section: string | undefined) {
   const { token } = useAuth()
 
   return useQuery({
-    queryKey: adminQueryKeys.reportIncomplete(year),
-    queryFn: () => adminApi.listIncompleteProfiles({ token: ensureToken(token), year }),
+    queryKey: adminQueryKeys.reportIncomplete(semester, section),
+    queryFn: () => adminApi.listIncompleteProfiles({ token: ensureToken(token), semester, section }),
     enabled: Boolean(token),
     staleTime: 20_000,
     placeholderData: keepPreviousData,
@@ -561,7 +561,8 @@ export function useExportIncompleteReportsMutation() {
 
   return useMutation({
     mutationKey: ['admin', 'mutation', 'report-export-incomplete'],
-    mutationFn: ({ year }: { year?: number }) => adminApi.exportIncompleteReports({ token: ensureToken(token), year }),
+    mutationFn: ({ semester, section }: { semester?: number; section?: string }) =>
+      adminApi.exportIncompleteReports({ token: ensureToken(token), semester, section }),
     onSuccess: (file) => {
       downloadExportedFile(file.blob, file.filename)
       toast.success('Exported incomplete profiles report.')

@@ -85,6 +85,7 @@ describe('admin normalizers', () => {
       uid: 'U004',
       year_of_admission: '2022',
       missing_fields: 'phone,email,address',
+      missing_field_count: '3',
     })
 
     expect(row).toEqual({
@@ -93,7 +94,51 @@ describe('admin normalizers', () => {
       uid: 'U004',
       yearOfAdmission: 2022,
       missingFields: ['phone', 'email', 'address'],
+      missingFieldCount: 3,
     })
+  })
+
+  it('normalizes incomplete profile with missing_field_count from backend', () => {
+    const row = normalizeIncompleteProfile({
+      id: '5',
+      name: 'Priya',
+      uid: 'U005',
+      year_of_admission: '2023',
+      missing_fields: ['Profile Photo', 'WhatsApp Mobile No.'],
+      missing_field_count: 2,
+    })
+
+    expect(row.missingFields).toEqual(['Profile Photo', 'WhatsApp Mobile No.'])
+    expect(row.missingFieldCount).toBe(2)
+  })
+
+  it('falls back to missingFields.length when missing_field_count is absent (backward compat)', () => {
+    const row = normalizeIncompleteProfile({
+      id: '6',
+      name: 'Raj',
+      uid: 'U006',
+      year_of_admission: '2022',
+      missing_fields: ['Profile Photo', 'MIS UID', 'Career Goal'],
+      // missing_field_count intentionally absent
+    })
+
+    // Count must equal the number of fields in the array — never computed separately
+    expect(row.missingFieldCount).toBe(row.missingFields.length)
+    expect(row.missingFieldCount).toBe(3)
+  })
+
+  it('missingFieldCount is 0 when no fields are missing', () => {
+    const row = normalizeIncompleteProfile({
+      id: '7',
+      name: 'Deepa',
+      uid: 'U007',
+      year_of_admission: '2024',
+      missing_fields: [],
+      missing_field_count: 0,
+    })
+
+    expect(row.missingFields).toEqual([])
+    expect(row.missingFieldCount).toBe(0)
   })
 
   it('trims and preserves report filter values', () => {
@@ -129,6 +174,7 @@ describe('admin normalizers', () => {
       minSgpa: '7.5',
       maxSgpa: '9',
       minBacklogs: '1',
+      careerGoal: '',
     })
   })
 })

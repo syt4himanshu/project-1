@@ -471,10 +471,14 @@ async function listGeneralReport({ token }: AdminApiRequestOptions): Promise<Adm
 }
 
 async function listIncompleteProfiles(
-  { token, year }: AdminApiRequestOptions & { year?: number },
+  { token, semester, section }: AdminApiRequestOptions & { semester?: number; section?: string },
 ): Promise<AdminIncompleteProfile[]> {
-  const path = year
-    ? `${ENDPOINTS.admin.reports.incomplete}?year=${encodeURIComponent(String(year))}`
+  const params = new URLSearchParams()
+  if (semester != null) params.set('semester', String(semester))
+  if (section) params.set('section', section)
+  const qs = params.toString()
+  const path = qs
+    ? `${ENDPOINTS.admin.reports.incomplete}?${qs}`
     : ENDPOINTS.admin.reports.incomplete
 
   const payload = await requestJson<AdminIncompleteProfileApiResponse[]>(path, {
@@ -537,10 +541,14 @@ async function exportBacklogReports({ token }: AdminApiRequestOptions): Promise<
 }
 
 async function exportIncompleteReports(
-  { token, year }: AdminApiRequestOptions & { year?: number },
+  { token, semester, section }: AdminApiRequestOptions & { semester?: number; section?: string },
 ): Promise<AdminExportedFile> {
-  const path = year
-    ? `${ENDPOINTS.admin.reports.exportIncomplete}?year=${encodeURIComponent(String(year))}`
+  const params = new URLSearchParams()
+  if (semester != null) params.set('semester', String(semester))
+  if (section) params.set('section', section)
+  const qs = params.toString()
+  const path = qs
+    ? `${ENDPOINTS.admin.reports.exportIncomplete}?${qs}`
     : ENDPOINTS.admin.reports.exportIncomplete
 
   return exportCsv({

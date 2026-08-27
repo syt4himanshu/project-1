@@ -411,6 +411,12 @@ export function normalizeIncompleteProfile(raw: AdminIncompleteProfileApiRespons
     uid: normalizeSanitizedText(raw.uid, 'UNKNOWN_UID'),
     yearOfAdmission: toNullableNumber(raw.year_of_admission),
     missingFields,
+    // Backend sends missing_field_count = missingFields.length; fall back to
+    // the local array length so the count is always consistent even if an older
+    // backend version omits the field.
+    missingFieldCount: raw.missing_field_count != null
+      ? toNumber(raw.missing_field_count, missingFields.length)
+      : missingFields.length,
   }
 }
 

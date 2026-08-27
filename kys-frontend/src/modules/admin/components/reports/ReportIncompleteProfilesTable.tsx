@@ -7,11 +7,8 @@ import {
   useExportIncompleteReportsMutation,
 } from '../../hooks'
 
-function currentYearOptions() {
-  const startYear = 2018
-  const endYear = 2040
-  return Array.from({ length: endYear - startYear + 1 }, (_, index) => endYear - index)
-}
+const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8] as const
+const SECTIONS = ['A', 'B'] as const
 
 function getInitials(name: string): string {
   const clean = sanitizeDisplayValue(name)
@@ -23,12 +20,18 @@ function getInitials(name: string): string {
 }
 
 export function ReportIncompleteProfilesTable() {
-  const [yearFilter, setYearFilter] = useState<string>('')
+  const [semesterFilter, setSemesterFilter] = useState<string>('')
+  const [sectionFilter, setSectionFilter] = useState<string>('')
   const [viewingProfile, setViewingProfile] = useState<AdminIncompleteProfile | null>(null)
 
-  const parsedYear = yearFilter ? Number(yearFilter) : undefined
-  const incompleteQuery = useAdminReportIncompleteQuery(parsedYear)
+  const parsedSemester = semesterFilter ? Number(semesterFilter) : undefined
+  const parsedSection = sectionFilter || undefined
+
+  const incompleteQuery = useAdminReportIncompleteQuery(parsedSemester, parsedSection)
   const exportMutation = useExportIncompleteReportsMutation()
+
+  // Changing either filter resets pagination to page 1 by remounting the data view.
+  const dataViewKey = `${semesterFilter}-${sectionFilter}`
 
   const columns = useMemo<TableColumn<AdminIncompleteProfile>[]>(
     () => [
@@ -43,10 +46,15 @@ export function ReportIncompleteProfilesTable() {
             {row.missingFields.length > 2
               ? `${row.missingFields.length} fields missing`
               : row.missingFields.length > 0
-              ? row.missingFields.map((value) => sanitizeDisplayValue(value)).join(', ')
-              : 'N/A'}
+                ? row.missingFields.map((value) => sanitizeDisplayValue(value)).join(', ')
+                : 'N/A'}
           </span>
         ),
+      },
+      {
+        id: 'missing_count',
+        header: 'Required Fields Not Filled',
+        cell: (row) => row.missingFieldCount,
       },
       {
         id: 'actions',
@@ -73,7 +81,7 @@ export function ReportIncompleteProfilesTable() {
     return (
       <div className="mobile-card">
         <div className="mobile-card__header">
-          <div className="mobile-card__avatar" >
+          <div className="mobile-card__avatar">
             {getInitials(row.name)}
           </div>
           <div className="mobile-card__info">
@@ -125,7 +133,6 @@ export function ReportIncompleteProfilesTable() {
             </button>
           </div>
         )}
-
       </div>
     )
   }
@@ -136,17 +143,33 @@ export function ReportIncompleteProfilesTable() {
         <h3>Incomplete Profiles</h3>
 
         <div className="reports-card__controls">
-          <label className="admin-field reports-inline-field" htmlFor="incomplete-year">
-            <span>Year</span>
+          <label className="admin-field reports-inline-field" htmlFor="incomplete-semester">
+            <span>Semester</span>
             <select
-              id="incomplete-year"
-              value={yearFilter}
-              onChange={(event) => setYearFilter(event.target.value)}
+              id="incomplete-semester"
+              value={semesterFilter}
+              onChange={(event) => setSemesterFilter(event.target.value)}
             >
-              <option value="">All years</option>
-              {currentYearOptions().map((year) => (
-                <option key={year} value={year}>
-                  {year}
+              <option value="">All Semesters</option>
+              {SEMESTERS.map((sem) => (
+                <option key={sem} value={sem}>
+                  Semester {sem}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="admin-field reports-inline-field" htmlFor="incomplete-section">
+            <span>Section</span>
+            <select
+              id="incomplete-section"
+              value={sectionFilter}
+              onChange={(event) => setSectionFilter(event.target.value)}
+            >
+              <option value="">All Sections</option>
+              {SECTIONS.map((sec) => (
+                <option key={sec} value={sec}>
+                  {sec}
                 </option>
               ))}
             </select>
@@ -155,7 +178,7 @@ export function ReportIncompleteProfilesTable() {
           <button
             type="button"
             className="button button--ghost"
-            onClick={() => void exportMutation.mutateAsync({ year: parsedYear })}
+            onClick={() => void exportMutation.mutateAsync({ semester: parsedSemester, section: parsedSection })}
             disabled={exportMutation.isPending}
           >
             {exportMutation.isPending ? 'Exporting...' : 'Export Incomplete CSV'}
@@ -173,6 +196,7 @@ export function ReportIncompleteProfilesTable() {
         />
       ) : (
         <ResponsiveDataView
+          key={dataViewKey}
           columns={columns}
           data={incompleteQuery.data ?? []}
           keyExtractor={(row) => row.id}

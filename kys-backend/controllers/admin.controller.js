@@ -224,6 +224,7 @@ const REPORT_MISSING_FIELD_LABELS = {
   'career_objective.clarity_preparedness': 'Clarity and Preparedness Level',
   'career_objective.interested_in_campus_placement': 'Interested in Campus Placement?',
   'skills.domains_of_interest': 'Domains of Interest',
+  'personal_info.photo_url': 'Profile Photo',
 };
 
 const mapMissingFieldLabel = (fieldKey) => REPORT_MISSING_FIELD_LABELS[fieldKey] || fieldKey;
@@ -293,7 +294,7 @@ const getMissingRequiredFields = (student) => {
     if (!isMeaningfulValue(diploma.percentage)) missingFields.push('past_education_records.diploma.percentage');
     if (!isMeaningfulValue(diploma.year_of_passing)) missingFields.push('past_education_records.diploma.year_of_passing');
   }
-  
+
   const currentSem = Number(student.semester || 8);
   const postAdmissionRecords = Array.isArray(student.post_admission_records) ? student.post_admission_records : [];
   for (let sem = 1; sem < currentSem; sem++) {
@@ -311,6 +312,14 @@ const getMissingRequiredFields = (student) => {
   if (!isMeaningfulValue(miniProject.domain) || miniProject.domain === 'Other') missingFields.push('projects.mini.domain');
   if (!isMeaningfulValue(majorProject.title)) missingFields.push('projects.major.title');
   if (!isMeaningfulValue(majorProject.domain) || majorProject.domain === 'Other') missingFields.push('projects.major.domain');
+
+  // Profile photo is required. The authoritative DB field is photo_url on the
+  // student_personal_info row (written by the upload endpoint). Any non-empty
+  // value there means a valid photo has been uploaded.
+  const personalInfo = toPlain(student.personal_info) || {};
+  if (!isMeaningfulValue(personalInfo.photo_url)) {
+    missingFields.push('personal_info.photo_url');
+  }
 
   return Array.from(new Set(missingFields)).map(mapMissingFieldLabel);
 };
@@ -576,7 +585,8 @@ const reportsGeneral = async (req, res, next) => {
 const reportsIncomplete = async (req, res, next) => {
   try {
     const where = {};
-    if (req.query.year) where.year_of_admission = Number(req.query.year);
+    if (req.query.semester) where.semester = Number(req.query.semester);
+    if (req.query.section) where.section = req.query.section;
 
     const students = await Student.findAll({
       where,
@@ -594,6 +604,7 @@ const reportsIncomplete = async (req, res, next) => {
           uid: s.uid,
           year_of_admission: s.year_of_admission,
           missing_fields: missingFields,
+          missing_field_count: missingFields.length,
         };
       })
       .filter((r) => r.missing_fields.length > 0);
@@ -664,7 +675,8 @@ const exportBacklogs = async (_req, res, next) => {
 const exportIncomplete = async (req, res, next) => {
   try {
     const where = {};
-    if (req.query.year) where.year_of_admission = Number(req.query.year);
+    if (req.query.semester) where.semester = Number(req.query.semester);
+    if (req.query.section) where.section = req.query.section;
 
     const students = await Student.findAll({
       where,
@@ -682,6 +694,7 @@ const exportIncomplete = async (req, res, next) => {
           name: [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(' '),
           year_of_admission: s.year_of_admission,
           missing_fields: missingFields.join('; '),
+          required_fields_not_filled: missingFields.length,
         };
       })
       .filter(Boolean);

@@ -417,6 +417,7 @@ export interface AdminIncompleteProfile {
   uid: string
   yearOfAdmission: number | null
   missingFields: string[]
+  missingFieldCount: number
 }
 
 export interface AdminExportedFile {
@@ -476,6 +477,7 @@ export interface AdminIncompleteProfileApiResponse {
   uid?: unknown
   year_of_admission?: unknown
   missing_fields?: unknown
+  missing_field_count?: unknown
 }
 
 export interface AdminAutoAllocationSummaryItem {

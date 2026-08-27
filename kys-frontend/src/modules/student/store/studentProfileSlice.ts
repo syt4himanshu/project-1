@@ -96,6 +96,28 @@ export function deriveDraftKey(state: RootState): string {
   return `kys_student_profile_draft_${identity}`
 }
 
+/**
+ * Returns true when the student profile data contains a valid uploaded photo.
+ * Covers all representations used by the application:
+ *   - pi.photoUrl       (set immediately after upload via the upload endpoint response)
+ *   - pi.photo_url      (returned by the server GET endpoint from the DB column)
+ *   - pi.photoPreviewUrl / pi.photo_preview_url  (preview URL stored alongside the photo)
+ *
+ * An existing student whose saved profile has any of these set is considered to already
+ * have a photo and will not be blocked.
+ *
+ * Exported so unit tests can verify all four representations directly.
+ */
+export function hasStudentPhoto(data: Record<string, unknown>): boolean {
+  const pi = (data.personal_info as Record<string, unknown>) || {}
+  return (
+    Boolean(pi.photoUrl) ||
+    Boolean(pi.photo_url) ||
+    Boolean(pi.photoPreviewUrl) ||
+    Boolean(pi.photo_preview_url)
+  )
+}
+
 function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
   const pi = (data.personal_info as Record<string, unknown>) || {}
   const past = (data.past_education_records as Record<string, unknown>[]) || []
@@ -128,7 +150,7 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     if (isBlank(pi.city) || pi.city === 'Other') missing.push('City')
     if (isBlank(pi.pincode)) missing.push('Pincode')
     if (isBlank(pi.permanent_address)) missing.push('Permanent Address')
-    
+
     // Parents Info (formerly step 1)
     if (isBlank(pi.father_name)) missing.push("Father's Name")
     if (isBlank(pi.father_mobile_no)) missing.push("Father's WhatsApp Mobile No.")
@@ -136,6 +158,8 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     if (isBlank(pi.mother_name)) missing.push("Mother's Name")
     if (isBlank(pi.mother_mobile_no)) missing.push("Mother's WhatsApp Mobile No.")
     if (isBlank(pi.mother_occupation)) missing.push("Mother's Occupation")
+    // Photo is required for new submissions. Existing saved photos on any known field satisfy this.
+    if (!hasStudentPhoto(data)) missing.push('Profile Photo')
     return missing
   }
 
@@ -198,7 +222,7 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     if (isBlank(miniProject.domain) || miniProject.domain === 'Other') missing.push('Mini Project Domain')
     if (isBlank(majorProject.title)) missing.push('Major Project Title')
     if (isBlank(majorProject.domain) || majorProject.domain === 'Other') missing.push('Major Project Domain')
-    
+
     return missing
   }
 
@@ -457,6 +481,20 @@ export const submitStudentProfile = createAsyncThunk<
       return rejectWithValue(validation.errors[0] || 'Validation failed.')
     }
 
+    // Photo is required for final submission. This is a second-layer guard; the
+    // per-step check in getMissingRequiredFields already enforces it on step 0.
+    // Re-checking here ensures the final submit cannot be bypassed (e.g., via direct
+    // API call or if the student clears the photo between steps).
+    if (!hasStudentPhoto(state.data)) {
+      const photoMsg = 'Please fill required fields: Profile Photo'
+      dispatch(enqueueToast({
+        title: 'Error',
+        message: 'A profile photo is required before submitting.',
+        intent: 'error',
+      }))
+      return rejectWithValue(photoMsg)
+    }
+
     try {
       const finalData = { ...state.data }
       if (finalData.past_education_records) {
@@ -511,7 +549,7 @@ const studentProfileSlice = createSlice({
           state.data[key] = value
         }
       }
-      
+
       if (state.error && state.error.startsWith('Please fill required fields:')) {
         const missing = getMissingRequiredFields(state.step, state.data)
         if (missing.length === 0) {

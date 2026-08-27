@@ -106,6 +106,102 @@ describe('admin report exports', () => {
     expect(body).toContain('personal_info');
   });
 
+  // TEST 6: CSV export contains the required_fields_not_filled column
+  it('export incomplete CSV contains required_fields_not_filled column header', async () => {
+    const res = await fetch(`${baseUrl}/api/admin/reports/export/incomplete`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    // Column header must be present (toCsv wraps headers in double-quotes)
+    expect(body).toContain('"required_fields_not_filled"');
+  });
+
+  // TEST 6: count in CSV equals the number of missing_fields entries for the same row
+  it('export incomplete CSV required_fields_not_filled count is consistent with missing_fields', async () => {
+    const res = await fetch(`${baseUrl}/api/admin/reports/export/incomplete`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    expect(res.status).toBe(200);
+    const csvText = await res.text();
+
+    // Parse the CSV manually: split into lines, extract headers, find seeded student row
+    const lines = csvText.trim().split('\n');
+    expect(lines.length).toBeGreaterThan(1);
+
+    // Un-quote a CSV cell
+    const unquote = (cell: string) => cell.replace(/^"|"$/g, '').replace(/""/g, '"');
+    const headers = lines[0].split(',').map(unquote);
+
+    const missingFieldsIdx = headers.indexOf('missing_fields');
+    const countIdx = headers.indexOf('required_fields_not_filled');
+    const uidIdx = headers.indexOf('uid');
+
+    expect(missingFieldsIdx).toBeGreaterThan(-1);
+    expect(countIdx).toBeGreaterThan(-1);
+    expect(uidIdx).toBeGreaterThan(-1);
+
+    // Find the row for our seeded student
+    const seededRow = lines.slice(1).find((line) => line.includes(seededUid));
+    expect(seededRow).toBeTruthy();
+
+    const cells = seededRow!.split(',').map(unquote);
+    const missingFieldsValue = cells[missingFieldsIdx];
+    const countValue = Number(cells[countIdx]);
+
+    // Count must equal the number of semicolon-separated missing field entries
+    const fieldCount = missingFieldsValue
+      .split(';')
+      .map((f) => f.trim())
+      .filter(Boolean).length;
+
+    expect(countValue).toBe(fieldCount);
+    expect(countValue).toBeGreaterThan(0);
+  });
+
+  // TEST 2: student without a photo appears in the JSON incomplete report with "Profile Photo" missing
+  it('incomplete report JSON includes Profile Photo as a missing field for students without a photo', async () => {
+    const res = await fetch(`${baseUrl}/api/admin/reports/incomplete`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    // The seeded student has no photo_url — Profile Photo must appear in missing_fields
+    const seededRow = body.find((row: { uid: string }) => row.uid === seededUid);
+    expect(seededRow).toBeTruthy();
+    expect(seededRow.missing_fields).toContain('Profile Photo');
+  });
+
+  // TEST 7: JSON incomplete report returns missing_field_count equal to missing_fields.length
+  it('incomplete report JSON missing_field_count equals missing_fields array length', async () => {
+    const res = await fetch(`${baseUrl}/api/admin/reports/incomplete`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    const seededRow = body.find((row: { uid: string }) => row.uid === seededUid);
+    expect(seededRow).toBeTruthy();
+    // The single source of truth: count must always equal the array length
+    expect(seededRow.missing_field_count).toBe(seededRow.missing_fields.length);
+  });
+
+  // TEST 2 (CSV): Profile Photo appears in the CSV export for a student without a photo
+  it('export incomplete CSV contains Profile Photo for student without a photo', async () => {
+    const res = await fetch(`${baseUrl}/api/admin/reports/export/incomplete`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('Profile Photo');
+  });
+
   it('backlog list excludes placeholder-only backlog subjects', async () => {
     const res = await fetch(`${baseUrl}/api/admin/reports/backlogs`, {
       headers: { Authorization: `Bearer ${adminToken}` },

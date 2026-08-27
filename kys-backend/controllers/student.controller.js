@@ -405,6 +405,28 @@ const putStudentMe = async (req, res, next) => {
       });
     }
 
+    // Photo is required for final profile submission.
+    // This guard fires ONLY when the request asserts final completion
+    // (declaration_accepted === true).  Regular draft/autosave calls never set
+    // this flag, so existing profiles and partial saves are never affected.
+    //
+    // Backward-compatibility: if the student already has a photo_url saved in
+    // their personal_info row, the guard passes immediately — no re-upload needed.
+    const isDeclarationSubmit = req.body && req.body.declaration_accepted === true;
+    if (isDeclarationSubmit) {
+      const savedPhotoUrl = student.personal_info && student.personal_info.photo_url;
+      if (!savedPhotoUrl) {
+        return sendResponse(res, {
+          success: false,
+          status: 422,
+          error: {
+            code: 'PHOTO_REQUIRED',
+            message: 'A profile photo is required before submitting your profile.',
+          },
+        });
+      }
+    }
+
     const tx = await sequelize.transaction();
     try {
       const updateResult = await applyStudentProfileUpdate(student, req.body || {}, tx);

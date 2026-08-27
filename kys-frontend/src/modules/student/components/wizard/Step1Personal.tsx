@@ -26,8 +26,8 @@ export default function Step1Personal() {
     const semester = value ? Number(value.replace("Semester ", "")) : null;
     const filteredRecords = semester
       ? postAdmissionRecords.filter(
-          (record) => Number(record.semester) < semester,
-        )
+        (record) => Number(record.semester) < semester,
+      )
       : postAdmissionRecords;
 
     update({
@@ -530,8 +530,8 @@ export default function Step1Personal() {
               );
               const cityList = stateObj
                 ? City.getCitiesOfState("IN", stateObj.isoCode).map(
-                    (c) => c.name,
-                  )
+                  (c) => c.name,
+                )
                 : [];
               const isCustom =
                 (pi.city as string) && !cityList.includes(pi.city as string);
@@ -640,18 +640,17 @@ export default function Step1Personal() {
               }
               rows={4}
               placeholder="Street, City, State, PIN"
-              className={`${textareaCls} ${
-                getValidation(
-                  "Permanent Address",
-                  "personal_info.permanent_address",
-                ).error &&
-                getValidation(
-                  "Permanent Address",
-                  "personal_info.permanent_address",
-                ).touched
+              className={`${textareaCls} ${getValidation(
+                "Permanent Address",
+                "personal_info.permanent_address",
+              ).error &&
+                  getValidation(
+                    "Permanent Address",
+                    "personal_info.permanent_address",
+                  ).touched
                   ? "border-[#ef4444] focus:border-[#dc2626] focus:ring-[#ef4444]/20"
                   : ""
-              }`}
+                }`}
             />
             {getValidation(
               "Permanent Address",
@@ -686,91 +685,125 @@ export default function Step1Personal() {
       </div>
 
       <div id="profile-section-photo">
-        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">
-          Passport Size Photo *
-        </label>
+        {/* Derive whether the photo validation error should be shown.
+            The "Please fill required fields: ..." error string (set by the slice on
+            Next/Submit) is the trigger — same mechanism used by getValidation() above. */}
+        {(() => {
+          const hasPhoto = Boolean(
+            pi.photoUrl || pi.photo_url || pi.photoPreviewUrl || pi.photo_preview_url,
+          );
+          const missingFields =
+            error && error.startsWith("Please fill required fields: ")
+              ? error.replace("Please fill required fields: ", "").split(", ")
+              : [];
+          const photoError =
+            !hasPhoto && missingFields.includes("Profile Photo")
+              ? "Profile photo is required."
+              : null;
 
-        {(pi.photoUrl as string) ? (
-          <>
-            <div className="mb-3 flex flex-col items-start gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3 sm:flex-row sm:items-center">
-              <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#d9e1ec] bg-slate-50 dark:border-[#334155] dark:bg-slate-800">
-                {pi.photoPreviewUrl || pi.photo_preview_url ? (
-                  <img
-                    src={String(pi.photoPreviewUrl || pi.photo_preview_url)}
-                    alt="PDF Preview"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <FileText className="h-10 w-10 text-slate-400" />
-                )}
-              </div>
-              <div className="w-full min-w-0">
-                <p className="text-sm font-medium text-[#32435f]">
-                  Current uploaded document
+          return (
+            <>
+              <label
+                className={`mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] ${photoError ? "text-[#dc2626]" : "text-[#5f6f86]"
+                  }`}
+              >
+                Profile Photo *
+              </label>
+
+              {hasPhoto ? (
+                <>
+                  <div className="mb-3 flex flex-col items-start gap-3 rounded-2xl border border-[#d9e1ec] bg-white p-3 sm:flex-row sm:items-center">
+                    <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#d9e1ec] bg-slate-50 dark:border-[#334155] dark:bg-slate-800">
+                      {pi.photoPreviewUrl || pi.photo_preview_url ? (
+                        <img
+                          src={String(pi.photoPreviewUrl || pi.photo_preview_url)}
+                          alt="PDF Preview"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <FileText className="h-10 w-10 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="w-full min-w-0">
+                      <p className="text-sm font-medium text-[#32435f]">
+                        Current uploaded document
+                      </p>
+                      <a
+                        className="break-words text-sm text-[#2b5fa6] underline"
+                        href={String(pi.photoUrl || pi.photo_url)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open uploaded document
+                      </a>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="mb-2 text-sm text-[#7a879c]">
+                  No document uploaded yet.
                 </p>
-                <a
-                  className="break-words text-sm text-[#2b5fa6] underline"
-                  href={String(pi.photoUrl)}
-                  target="_blank"
-                  rel="noreferrer"
+              )}
+
+              <div>
+                <input
+                  type="file"
+                  id="passport-photo-upload"
+                  accept="application/pdf"
+                  onChange={handlePhotoUpload}
+                  disabled={uploading}
+                  style={{ display: "none" }}
+                />
+                <label
+                  htmlFor="passport-photo-upload"
+                  className={`${inputCls} m-0 flex cursor-pointer items-center ${photoError
+                      ? "border-[#ef4444] focus-within:border-[#dc2626] focus-within:ring-[#ef4444]/20"
+                      : ""
+                    }`}
+                  style={{ padding: "0.375rem 1rem 0.375rem 0.375rem" }}
                 >
-                  Open uploaded document
-                </a>
+                  <div
+                    className={`mr-3 rounded-lg bg-[#1f355f] px-3 py-2 text-sm font-semibold text-white transition-opacity ${uploading ? "opacity-50" : "hover:opacity-90"
+                      }`}
+                  >
+                    {hasPhoto ? "Choose Another File" : "Choose File"}
+                  </div>
+                  <span className="truncate text-sm text-slate-500 dark:text-slate-400">
+                    {uploading ? "Uploading..." : "No file chosen"}
+                  </span>
+                </label>
               </div>
-            </div>
-          </>
-        ) : (
-          <p className="mb-2 text-sm text-[#7a879c]">
-            No document uploaded yet.
-          </p>
-        )}
 
-        <div>
-          <input
-            type="file"
-            id="passport-photo-upload"
-            accept="application/pdf"
-            onChange={handlePhotoUpload}
-            disabled={uploading}
-            style={{ display: "none" }}
-          />
-          <label
-            htmlFor="passport-photo-upload"
-            className={`${inputCls} m-0 flex cursor-pointer items-center`}
-            style={{ padding: "0.375rem 1rem 0.375rem 0.375rem" }}
-          >
-            <div
-              className={`mr-3 rounded-lg bg-[#1f355f] px-3 py-2 text-sm font-semibold text-white transition-opacity ${
-                uploading ? "opacity-50" : "hover:opacity-90"
-              }`}
-            >
-              {(pi.photoUrl as string) ? "Choose Another File" : "Choose File"}
-            </div>
-            <span className="truncate text-sm text-slate-500 dark:text-slate-400">
-              {uploading ? "Uploading..." : "No file chosen"}
-            </span>
-          </label>
-        </div>
+              {/* Field-level validation error — shown when Next/Submit is clicked without a photo */}
+              {photoError && (
+                <p className="mt-1 text-xs font-medium text-[#dc2626]">
+                  {photoError}
+                </p>
+              )}
 
-        {uploadMsg && (
-          <p
-            className="mt-2 text-sm font-semibold"
-            style={{
-              color: uploadMsg.includes("successfully")
-                ? "#10b981"
-                : uploadMsg.includes("Uploading")
-                ? "#8796ac"
-                : "#ef4444",
-            }}
-          >
-            {uploadMsg}
-          </p>
-        )}
+              {/* Upload status message — separate from validation, shown after user interaction */}
+              {uploadMsg && (
+                <p
+                  className="mt-2 text-sm font-semibold"
+                  style={{
+                    color: uploadMsg.includes("successfully")
+                      ? "#10b981"
+                      : uploadMsg.includes("Uploading")
+                        ? "#8796ac"
+                        : "#ef4444",
+                  }}
+                >
+                  {uploadMsg}
+                </p>
+              )}
 
-        <div className="mt-2 flex flex-col gap-0.5 text-xs text-[#8796ac]">
-          <p>Supported formats: PDF</p>
-          <p>Maximum file size: 1 MB</p>
-        </div>
+              <div className="mt-2 flex flex-col gap-0.5 text-xs text-[#8796ac]">
+                <p>Supported formats: PDF</p>
+                <p>Maximum file size: 1 MB</p>
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
   );

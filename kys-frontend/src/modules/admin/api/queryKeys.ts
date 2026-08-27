@@ -30,5 +30,6 @@ export const adminQueryKeys = {
   reportSemesterDistribution: () => [...ADMIN_REPORTS_ROOT, 'semester-distribution'] as const,
   reportBacklogs: () => [...ADMIN_REPORTS_ROOT, 'backlogs'] as const,
   reportGeneral: () => [...ADMIN_REPORTS_ROOT, 'general'] as const,
-  reportIncomplete: (year: number | undefined) => [...ADMIN_REPORTS_ROOT, 'incomplete', year ?? 'all'] as const,
+  reportIncomplete: (semester: number | undefined, section: string | undefined) =>
+    [...ADMIN_REPORTS_ROOT, 'incomplete', semester ?? 'all', section ?? 'all'] as const,
 }
