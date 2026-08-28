@@ -37,12 +37,33 @@ export function LandingPage() {
           <p className="kys-landing__eyebrow">WELCOME TO</p>
           <h1 className="kys-landing__title">Know Your Student System</h1>
           <p className="kys-landing__description">
-            Streamline student monitoring, enhance class organization, and manage students and faculty with a unified portal.
+            Empowering Mentorship, Strengthening Student Success.
           </p>
 
-          <button type="button" className="kys-landing__cta" onClick={() => navigate('/roles')}>
-            Get Started
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1.8rem', alignItems: 'center' }}>
+            <button type="button" className="kys-landing__cta" style={{ marginTop: 0 }} onClick={() => navigate('/roles')}>
+              Get Started &rarr;
+            </button>
+            <button 
+              type="button" 
+              onClick={() => navigate('/developers')}
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(173, 198, 255, 0.2)',
+                borderRadius: '12px',
+                padding: '0.9rem 2rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                color: '#c6dbff',
+                cursor: 'pointer',
+                transition: 'background 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+            >
+              Developer Team
+            </button>
+          </div>
 
           <div className="kys-landing__stats">
             <div className="kys-landing__stat">
@@ -58,9 +79,6 @@ export function LandingPage() {
       </div>
       
       <div className="kys-landing__footer">
-        <button className="kys-landing__footer-btn" onClick={() => navigate('/developers')}>
-          Developer Team
-        </button>
         <p className="kys-landing__footer-text">© Know Your Student System</p>
       </div>
     </section>

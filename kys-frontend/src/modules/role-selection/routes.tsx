@@ -10,7 +10,7 @@ type RoleCard = {
   icon: LucideIcon
   accentClass: string
   title: string
-  description: string
+  subtitle: string
 }
 
 const ROLE_CARDS: RoleCard[] = [
@@ -19,21 +19,21 @@ const ROLE_CARDS: RoleCard[] = [
     icon: ShieldCheck,
     accentClass: 'role-select-kys__badge--admin',
     title: 'Administrator',
-    description: 'Comprehensive system management with full access to user administration, system settings, and advanced analytics.',
+    subtitle: 'Manage & Monitor'
   },
   {
     role: 'student',
     icon: GraduationCap,
     accentClass: 'role-select-kys__badge--student',
     title: 'Mentee',
-    description: 'Streamline your acadamic journey with our comprehensive system. Form Submission, Mentoring, and more.',
+    subtitle: 'Connect & Grow'
   },
   {
     role: 'faculty',
     icon: Users,
     accentClass: 'role-select-kys__badge--teacher',
     title: 'Mentor',
-    description: 'Manage your classes, track mentee performance, create assessments, and communicate with mentees and parents.',
+    subtitle: 'Guide & Empower'
   },
 ]
 
@@ -83,14 +83,16 @@ export function RoleSelectionPage() {
             key={card.role}
             type="button"
             className="role-select-kys__card"
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2.5rem 1.5rem', minHeight: '180px' }}
             onClick={() => navigate(`/login?role=${card.role}`)}
           >
             <div className={`role-select-kys__badge ${card.accentClass}`}>
-              <card.icon size={24} strokeWidth={2} />
+              <card.icon size={28} strokeWidth={2} />
             </div>
             <h2 className="role-select-kys__card-title">{card.title}</h2>
-            <p className="role-select-kys__card-text">{card.description}</p>
+            <p style={{ margin: '0.4rem 0 0', fontSize: '0.92rem', color: '#cbd5e1', opacity: 0.9 }}>
+              {card.subtitle}
+            </p>
           </button>
         ))}
         </div>
