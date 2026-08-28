@@ -72,15 +72,10 @@ export default function Step1Personal() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validImageTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/jpg",
-      "image/webp",
-    ];
+    const isPdfFile = file.type === "application/pdf" && /\.pdf$/i.test(file.name);
 
-    if (!validImageTypes.includes(file.type)) {
-      setUploadMsg("Please upload a valid image file.");
+    if (!isPdfFile) {
+      setUploadMsg("Please upload a valid PDF file.");
       e.target.value = "";
       return;
     }
@@ -92,8 +87,15 @@ export default function Step1Personal() {
     }
 
     setUploading(true);
-    setUploadMsg("Uploading photo...");
+    setUploadMsg("Uploading PDF...");
     try {
+      const fileHeader = await file.slice(0, 5).arrayBuffer();
+      const pdfSignature = new TextDecoder().decode(fileHeader);
+      if (pdfSignature !== "%PDF-") {
+        setUploadMsg("Please upload a valid PDF file.");
+        return;
+      }
+
       if (uploadPhoto) {
         const response = await uploadPhoto(file);
         update({
@@ -117,7 +119,7 @@ export default function Step1Personal() {
           },
         });
       }
-      setUploadMsg("Photo uploaded successfully.");
+      setUploadMsg("PDF uploaded successfully.");
     } catch (error) {
       console.error("[UPLOAD] Upload failed:", error);
       setUploadMsg("Failed to upload photo. You can try again later.");
@@ -777,7 +779,7 @@ export default function Step1Personal() {
               )}
 
               <div className="mt-2 flex flex-col gap-0.5 text-xs text-[#8796ac]">
-                <p>Supported formats: JPG, JPEG, PNG, WEBP</p>
+                <p>Supported format: PDF</p>
                 <p>Maximum file size: 1 MB</p>
               </div>
             </>
