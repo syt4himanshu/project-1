@@ -6357,3 +6357,21 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+.dark .toast {
+  background: var(--panel);
+  border-color: var(--border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+.dark .toast__title {
+  color: #f1f5f9;
+}
+
+.dark .toast__message {
+  color: #cbd5e1;
+}
+
+.dark .toast__close {
+  color: #94a3b8;
+}

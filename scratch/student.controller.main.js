@@ -1,0 +1,819 @@
+const { Op } = require('sequelize');
+const {
+  sequelize,
+  Student,
+  StudentPersonalInfo,
+  PastEducation,
+  PostAdmissionAcademicRecord,
+  Project,
+  Internship,
+  CoCurricularParticipation,
+  CoCurricularOrganization,
+  CareerObjective,
+  Skills,
+  SWOC,
+  MentoringMinute,
+  Faculty,
+} = require('../models');
+const {
+  splitFullName,
+  parseDate,
+  serializeModel,
+  validatePastEducationPayload,
+  validatePostAdmissionRecords,
+} = require('../utils/helpers');
+const { serializeStudent, serializeStudentSummary } = require('../utils/serializers');
+const { sendResponse } = require('../utils/responseWrapper');
+const { encodeStudentProfilePayload, decodeStudentProfilePayload } = require('../utils/profileCodec');
+const { uploadStudentPhotoForRecord } = require('../utils/studentPhotoUpload');
+const { ensureStudentPersonalInfo, isControlledProfileError } = require('../utils/studentPersonalInfo');
+const { applyStudentProfileUpdate } = require('../utils/studentProfileUpdate');
+
+const includeAll = [
+  'personal_info',
+  'past_education_records',
+  'post_admission_records',
+  'projects',
+  'internships',
+  'cocurricular_participations',
+  'cocurricular_organizations',
+  'career_objective',
+  'skills',
+  'swoc',
+];
+
+const buildStudentSearchWhere = (query = {}) => {
+  const where = {};
+  if (query.semester) where.semester = query.semester;
+  if (query.section) where.section = query.section;
+  if (query.year_of_admission) where.year_of_admission = query.year_of_admission;
+  if (query.uid) where.uid = query.uid;
+
+  const search = String(query.search || query.name || '').trim();
+  if (search) {
+    where[Op.or] = [
+      { uid: { [Op.iLike]: `%${search}%` } },
+      { first_name: { [Op.iLike]: `%${search}%` } },
+      { middle_name: { [Op.iLike]: `%${search}%` } },
+      { last_name: { [Op.iLike]: `%${search}%` } },
+    ];
+  }
+
+  return where;
+};
+
+const buildStudentIncludes = ({ summary = false, domain = '', careerGoal = '' } = {}) => {
+  const trimmedDomain = String(domain || '').trim();
+  const trimmedCareerGoal = String(careerGoal || '').trim();
+
+  return [
+    { model: Faculty, as: 'mentor', attributes: ['id', 'first_name', 'last_name', 'email'], required: false },
+    !summary ? { model: StudentPersonalInfo, as: 'personal_info', required: false } : null,
+    !summary ? { model: PastEducation, as: 'past_education_records', required: false } : null,
+    !summary ? { model: PostAdmissionAcademicRecord, as: 'post_admission_records', required: false } : null,
+    !summary ? { model: Project, as: 'projects', required: false } : null,
+    !summary ? { model: Internship, as: 'internships', required: false } : null,
+    !summary ? { model: CoCurricularParticipation, as: 'cocurricular_participations', required: false } : null,
+    !summary ? { model: CoCurricularOrganization, as: 'cocurricular_organizations', required: false } : null,
+    {
+      model: CareerObjective,
+      as: 'career_objective',
+      required: Boolean(trimmedCareerGoal),
+      ...(trimmedCareerGoal ? { where: { career_goal: trimmedCareerGoal } } : {}),
+    },
+    {
+      model: Skills,
+      as: 'skills',
+      required: Boolean(trimmedDomain),
+      ...(trimmedDomain
+        ? {
+          where: {
+            domains_of_interest: { [Op.iLike]: `%${trimmedDomain}%` },
+          },
+        }
+        : {}),
+    },
+    !summary ? { model: SWOC, as: 'swoc', required: false } : null,
+  ].filter(Boolean);
+};
+
+const parseDatesInPayload = (payload) => {
+  if (!payload || typeof payload !== 'object') return payload;
+  Object.entries(payload).forEach(([key, value]) => {
+    if ((key.includes('date') || key.includes('dob')) && !['year_of_passing', 'year_of_admission'].includes(key)) {
+      payload[key] = parseDate(value);
+    }
+  });
+  return payload;
+};
+
+const stripManagedPhotoFields = (payload) => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  const sanitized = { ...payload };
+  delete sanitized.photoUrl;
+  delete sanitized.photo_public_id;
+  return sanitized;
+};
+
+const syncRelatedRecords = async (model, studentId, currentRecords, incoming, tx) => {
+  const existingById = new Map((currentRecords || []).map((r) => [r.id, r]));
+  const incomingIds = new Set((incoming || []).map((r) => r.id).filter(Boolean));
+
+  for (const record of currentRecords || []) {
+    if (!incomingIds.has(record.id)) {
+      await record.destroy({ transaction: tx });
+    }
+  }
+
+  for (const recordDataRaw of incoming || []) {
+    const recordData = parseDatesInPayload({ ...recordDataRaw });
+    if (recordData.id && existingById.has(recordData.id)) {
+      const existing = existingById.get(recordData.id);
+      delete recordData.id;
+      delete recordData.student_id;
+      await existing.update(recordData, { transaction: tx });
+    } else {
+      delete recordData.id;
+      delete recordData.student_id;
+      await model.create({ ...recordData, student_id: studentId }, { transaction: tx });
+    }
+  }
+};
+
+const getStudentsMe = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Profile not found' });
+    }
+
+    return sendResponse(res, {
+      success: true,
+      data: decodeStudentProfilePayload({
+        id: student.id,
+        uid: student.uid,
+        updated_at: student.updatedAt,
+        full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+        semester: student.semester,
+        section: student.section,
+        year_of_admission: student.year_of_admission,
+        is_profile_locked: Boolean(student.is_profile_locked),
+        profile_locked_at: student.profile_locked_at || null,
+        profile_locked_by: student.profile_locked_by || null,
+        personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
+        past_education_records: (student.past_education_records || []).map(serializeModel),
+        post_admission_records: (student.post_admission_records || []).map(serializeModel),
+        projects: (student.projects || []).map(serializeModel),
+        internships: (student.internships || []).map(serializeModel),
+        cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
+        cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
+        career_objective: student.career_objective ? serializeModel(student.career_objective) : {},
+        skills: student.skills ? serializeModel(student.skills) : {},
+        swoc: student.swoc ? serializeModel(student.swoc) : {},
+      }),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const putStudentsMe = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Profile not found' });
+    }
+
+    if (student.is_profile_locked) {
+      return sendResponse(res, {
+        success: false,
+        status: 403,
+        error: {
+          code: 'PROFILE_LOCKED',
+          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+        },
+      });
+    }
+
+    const rawData = req.body || {};
+    const data = encodeStudentProfilePayload(rawData);
+
+    const names = splitFullName(rawData.full_name || '');
+    student.first_name = names.first_name;
+    student.middle_name = names.middle_name;
+    student.last_name = names.last_name;
+
+    ['semester', 'section', 'year_of_admission'].forEach((field) => {
+      if (field in data) student[field] = data[field];
+    });
+
+    const tx = await sequelize.transaction();
+    try {
+      await student.save({ transaction: tx });
+
+      if (data.personal_info) {
+        const payload = parseDatesInPayload(stripManagedPhotoFields({ ...data.personal_info }));
+        delete payload.id;
+        delete payload.student_id;
+
+        if (Object.keys(payload).length) {
+          if (student.personal_info) {
+            await student.personal_info.update(payload, { transaction: tx });
+          } else {
+            student.personal_info = await ensureStudentPersonalInfo(student.id);
+            await student.personal_info.update(payload, { transaction: tx });
+          }
+        }
+      }
+
+      const pastEducationPayload = 'past_education_records' in rawData
+        ? (rawData.past_education_records || [])
+        : (student.past_education_records || []).map(serializeModel);
+      const peValidation = validatePastEducationPayload(pastEducationPayload);
+      if (!peValidation.valid) {
+        await tx.rollback();
+        return sendResponse(res, { success: false, status: 400, error: peValidation.error });
+      }
+
+      const postAdmissionPayload = 'post_admission_records' in rawData
+        ? (rawData.post_admission_records || [])
+        : (student.post_admission_records || []).map(serializeModel);
+      const paValidation = validatePostAdmissionRecords(Number(student.semester || 0), postAdmissionPayload);
+      if (!paValidation.valid) {
+        await tx.rollback();
+        return sendResponse(res, { success: false, status: 400, error: paValidation.error });
+      }
+
+      if ('past_education_records' in rawData) {
+        const completePastEducation = (data.past_education_records || []).filter(
+          (r) => r.exam_name && r.percentage !== null && r.percentage !== "" && r.year_of_passing !== null
+        );
+        await syncRelatedRecords(
+          PastEducation,
+          student.id,
+          student.past_education_records,
+          completePastEducation,
+          tx,
+        );
+      }
+      if ('post_admission_records' in rawData) {
+        await syncRelatedRecords(
+          PostAdmissionAcademicRecord,
+          student.id,
+          student.post_admission_records,
+          data.post_admission_records || [],
+          tx,
+        );
+      }
+      if ('projects' in rawData) {
+        await syncRelatedRecords(Project, student.id, student.projects, data.projects || [], tx);
+      }
+      if ('internships' in rawData) {
+        await syncRelatedRecords(Internship, student.id, student.internships, data.internships || [], tx);
+      }
+      if ('cocurricular_participations' in rawData) {
+        await syncRelatedRecords(
+          CoCurricularParticipation,
+          student.id,
+          student.cocurricular_participations,
+          data.cocurricular_participations || [],
+          tx,
+        );
+      }
+      if ('cocurricular_organizations' in rawData) {
+        await syncRelatedRecords(
+          CoCurricularOrganization,
+          student.id,
+          student.cocurricular_organizations,
+          data.cocurricular_organizations || [],
+          tx,
+        );
+      }
+
+      const singleRels = [
+        ['career_objective', CareerObjective],
+        ['skills', Skills],
+        ['swoc', SWOC],
+      ];
+
+      for (const [key, model] of singleRels) {
+        const payload = data[key];
+        if (!payload) continue;
+        const clean = { ...payload };
+        delete clean.id;
+        delete clean.student_id;
+
+        if (student[key]) {
+          await student[key].update(clean, { transaction: tx });
+        } else {
+          await model.create({ ...clean, student_id: student.id }, { transaction: tx });
+        }
+      }
+
+      await tx.commit();
+      return sendResponse(res, {
+        success: true,
+        data: { message: 'Profile updated successfully.' },
+      });
+    } catch (_error) {
+      await tx.rollback();
+      const status = _error?.statusCode && Number.isInteger(_error.statusCode) ? _error.statusCode : 500;
+      const errorMessage = typeof _error?.message === 'string' && _error.message.trim()
+        ? _error.message
+        : 'Failed to update profile';
+      return sendResponse(res, { success: false, status, error: errorMessage });
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getStudentMe = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+    }
+
+    if (!student.personal_info) {
+      // Defensive fallback: direct lookup avoids occasional null association from large include graph.
+      student.personal_info = await StudentPersonalInfo.findOne({
+        where: { student_id: student.id },
+      });
+    }
+
+    if (!student.personal_info) {
+      try {
+        student.personal_info = await ensureStudentPersonalInfo(student.id);
+      } catch (_error) {
+        // Proceed with null personal_info so students with incomplete profiles can still view profile
+      }
+    }
+
+    const serializedPersonalInfo = serializeModel(student.personal_info);
+
+    const responseData = decodeStudentProfilePayload({
+      id: student.id,
+      uid: student.uid,
+      updated_at: student.updatedAt,
+      first_name: student.first_name,
+      middle_name: student.middle_name,
+      last_name: student.last_name,
+      full_name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
+      semester: student.semester,
+      section: student.section,
+      year_of_admission: student.year_of_admission,
+      is_profile_locked: Boolean(student.is_profile_locked),
+      profile_locked_at: student.profile_locked_at || null,
+      profile_locked_by: student.profile_locked_by || null,
+      personal_info: student.personal_info ? serializeModel(student.personal_info) : {},
+      past_education_records: (student.past_education_records || []).map(serializeModel),
+      post_admission_records: (student.post_admission_records || []).map(serializeModel),
+      projects: (student.projects || []).map(serializeModel),
+      internships: (student.internships || []).map(serializeModel),
+      cocurricular_participations: (student.cocurricular_participations || []).map(serializeModel),
+      cocurricular_organizations: (student.cocurricular_organizations || []).map(serializeModel),
+      career_objective: student.career_objective ? serializeModel(student.career_objective) : {},
+      skills: student.skills ? serializeModel(student.skills) : {},
+      swoc: student.swoc ? serializeModel(student.swoc) : {},
+    });
+
+    return sendResponse(res, {
+      success: true,
+      data: responseData,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const putStudentMe = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: includeAll });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+    }
+
+    if (student.is_profile_locked) {
+      return sendResponse(res, {
+        success: false,
+        status: 403,
+        error: {
+          code: 'PROFILE_LOCKED',
+          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+        },
+      });
+    }
+
+    // Photo is required for final profile submission.
+    // This guard fires ONLY when the request asserts final completion
+    // (declaration_accepted === true).  Regular draft/autosave calls never set
+    // this flag, so existing profiles and partial saves are never affected.
+    //
+    // Backward-compatibility: if the student already has a photo_url saved in
+    // their personal_info row, the guard passes immediately — no re-upload needed.
+    const isDeclarationSubmit = req.body && req.body.declaration_accepted === true;
+    if (isDeclarationSubmit) {
+      const savedPhotoUrl = student.personal_info && student.personal_info.photo_url;
+      if (!savedPhotoUrl) {
+        return sendResponse(res, {
+          success: false,
+          status: 422,
+          error: {
+            code: 'PHOTO_REQUIRED',
+            message: 'A profile photo is required before submitting your profile.',
+          },
+        });
+      }
+    }
+
+    const tx = await sequelize.transaction();
+    try {
+      const updateResult = await applyStudentProfileUpdate(student, req.body || {}, tx);
+      if (!updateResult.ok) {
+        await tx.rollback();
+        return sendResponse(res, { success: false, status: updateResult.status || 400, error: updateResult.error });
+      }
+
+      await tx.commit();
+      return sendResponse(res, {
+        success: true,
+        data: { message: 'Student profile updated successfully' },
+      });
+    } catch (_error) {
+      await tx.rollback();
+      const status = _error?.statusCode && Number.isInteger(_error.statusCode) ? _error.statusCode : 500;
+      const errorMessage = typeof _error?.message === 'string' && _error.message.trim()
+        ? _error.message
+        : 'Failed to update profile';
+      return sendResponse(res, { success: false, status, error: errorMessage });
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const uploadStudentPhoto = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ where: { user_id: req.currentUser.id }, include: ['personal_info'] });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student profile not found' });
+    }
+
+    if (student.is_profile_locked) {
+      return sendResponse(res, {
+        success: false,
+        status: 403,
+        error: {
+          code: 'PROFILE_LOCKED',
+          message: 'Your profile is locked by your faculty mentor and cannot be edited.',
+        },
+      });
+    }
+
+    const result = await uploadStudentPhotoForRecord(student, req.file);
+    if (!result.ok) {
+      return sendResponse(res, {
+        success: false,
+        status: result.status,
+        error: result.error,
+      });
+    }
+
+    return sendResponse(res, {
+      success: true,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error('[UPLOAD] Unexpected error:', error);
+    return next(error);
+  }
+};
+
+const uploadStudentPhotoByPortal = async (req, res, next) => {
+  try {
+    const studentId = Number(req.params.id);
+    if (!studentId) {
+      return sendResponse(res, { success: false, status: 400, error: 'Invalid student id' });
+    }
+
+    const where = { id: studentId };
+    if (req.currentUser.role === 'faculty') {
+      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+      if (!faculty) {
+        return sendResponse(res, { success: false, status: 404, error: 'Faculty profile not found' });
+      }
+      where.mentor_id = faculty.id;
+    }
+
+    const student = await Student.findOne({ where, include: ['personal_info'] });
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student not found' });
+    }
+
+    const result = await uploadStudentPhotoForRecord(student, req.file);
+    if (!result.ok) {
+      return sendResponse(res, {
+        success: false,
+        status: result.status,
+        error: result.error,
+      });
+    }
+
+    return sendResponse(res, {
+      success: true,
+      data: result.data,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getStudentMentor = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ where: { user_id: req.currentUser.id } });
+    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+    if (!student.mentor_id) return res.status(404).json({ error: 'No mentor assigned to this student' });
+
+    const mentor = await Faculty.findByPk(student.mentor_id);
+    if (!mentor) return res.status(404).json({ error: 'Mentor not found' });
+
+    return res.status(200).json({
+      id: mentor.id,
+      email: mentor.email,
+      first_name: mentor.first_name,
+      last_name: mentor.last_name,
+      full_name:
+        mentor.first_name && mentor.last_name
+          ? `${mentor.first_name} ${mentor.last_name}`
+          : 'Unknown',
+      contact_number: mentor.contact_number,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getStudentMentoringMinutes = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ where: { user_id: req.currentUser.id } });
+    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+
+    // Optimized: Use include to avoid N+1 query
+    let minutes;
+    try {
+      minutes = await MentoringMinute.findAll({
+        where: { student_id: student.id },
+        attributes: [
+          'id',
+          'faculty_id',
+          'faculty_name_snapshot',
+          'faculty_email_snapshot',
+          'semester',
+          'date',
+          'remarks',
+          'mentor_remarks',
+          'issues',
+          'suggestion',
+          'action',
+        ],
+        include: [
+          {
+            model: Faculty,
+            as: 'faculty',
+            attributes: ['id', 'email', 'first_name', 'last_name'],
+          },
+        ],
+        order: [['date', 'DESC']],
+      });
+    } catch (queryError) {
+      const message = String(queryError?.message || '');
+      if (/faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(message)) {
+        minutes = await MentoringMinute.findAll({
+          where: { student_id: student.id },
+          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'mentor_remarks', 'issues', 'suggestion', 'action'],
+          include: [
+            {
+              model: Faculty,
+              as: 'faculty',
+              attributes: ['id', 'email', 'first_name', 'last_name'],
+            },
+          ],
+          order: [['date', 'DESC']],
+        });
+      } else {
+        throw queryError;
+      }
+    }
+
+    const result = minutes.map(m => ({
+      id: m.id,
+      faculty_email: m.faculty?.email || m.faculty_email_snapshot || null,
+      faculty_name:
+        (m.faculty
+          ? `${m.faculty.first_name || ''} ${m.faculty.last_name || ''}`.trim()
+          : '') ||
+        m.faculty_name_snapshot ||
+        'Former Faculty',
+      semester: m.semester,
+      date: m.date,
+      remarks: m.remarks,
+      mentor_remarks: m.mentor_remarks,
+      issues: m.issues,
+      suggestion: m.suggestion,
+      action: m.action,
+    }));
+
+    return res.status(200).json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getStudentMentoringMinutesById = async (req, res, next) => {
+  try {
+    const studentId = Number(req.params.id);
+    if (!studentId) return res.status(400).json({ error: 'Invalid student id' });
+
+    const student = await Student.findByPk(studentId);
+    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+
+    // Optional: if faculty is requesting, ensure the student belongs to them
+    if (req.currentUser.role === 'faculty') {
+      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+      if (!faculty || student.mentor_id !== faculty.id) {
+        return res.status(403).json({ error: 'Not authorized to view this student' });
+      }
+    }
+
+    let minutes;
+    try {
+      minutes = await MentoringMinute.findAll({
+        where: { student_id: student.id },
+        attributes: [
+          'id',
+          'faculty_id',
+          'faculty_name_snapshot',
+          'faculty_email_snapshot',
+          'semester',
+          'date',
+          'remarks',
+          'mentor_remarks',
+          'issues',
+          'suggestion',
+          'action',
+        ],
+        include: [
+          {
+            model: Faculty,
+            as: 'faculty',
+            attributes: ['id', 'email', 'first_name', 'last_name'],
+          },
+        ],
+        order: [['date', 'DESC']],
+      });
+    } catch (queryError) {
+      const message = String(queryError?.message || '');
+      if (/faculty_name_snapshot|faculty_email_snapshot|column .* does not exist/i.test(message)) {
+        minutes = await MentoringMinute.findAll({
+          where: { student_id: student.id },
+          attributes: ['id', 'faculty_id', 'semester', 'date', 'remarks', 'mentor_remarks', 'issues', 'suggestion', 'action'],
+          include: [
+            {
+              model: Faculty,
+              as: 'faculty',
+              attributes: ['id', 'email', 'first_name', 'last_name'],
+            },
+          ],
+          order: [['date', 'DESC']],
+        });
+      } else {
+        throw queryError;
+      }
+    }
+
+    const result = minutes.map((m) => ({
+      id: m.id,
+      faculty_email: m.faculty?.email || m.faculty_email_snapshot || null,
+      faculty_name:
+        (m.faculty
+          ? `${m.faculty.first_name || ''} ${m.faculty.last_name || ''}`.trim()
+          : '') ||
+        m.faculty_name_snapshot ||
+        'Former Faculty',
+      semester: m.semester,
+      date: m.date,
+      remarks: m.remarks,
+      mentor_remarks: m.mentor_remarks,
+      issues: m.issues,
+      suggestion: m.suggestion,
+      action: m.action,
+    }));
+
+    return res.status(200).json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+
+const searchStudents = async (req, res, next) => {
+  try {
+    const where = buildStudentSearchWhere(req.query);
+    const summary = String(req.query.view || '').toLowerCase() === 'summary';
+
+    if (req.currentUser.role === 'faculty') {
+      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+      if (!faculty) return res.status(404).json({ error: 'Faculty profile not found' });
+      where.mentor_id = faculty.id;
+    }
+
+    const students = await Student.findAll({
+      where,
+      include: buildStudentIncludes({
+        summary,
+        domain: req.query.domain,
+        careerGoal: req.query.careerGoal,
+      }),
+      order: [['id', 'ASC']],
+    });
+    const includeIds = req.currentUser.role === 'admin';
+    return res
+      .status(200)
+      .json(students.map((s) => (summary ? serializeStudentSummary(s) : serializeStudent(s, { includeIds }))));
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getStudentById = async (req, res, next) => {
+  try {
+    const studentId = Number(req.params.id);
+    if (!studentId) return res.status(400).json({ error: 'Invalid student id' });
+
+    const where = { id: studentId };
+    if (req.currentUser.role === 'faculty') {
+      const faculty = await Faculty.findOne({ where: { user_id: req.currentUser.id } });
+      if (!faculty) return res.status(404).json({ error: 'Faculty profile not found' });
+      where.mentor_id = faculty.id;
+    }
+
+    const student = await Student.findOne({
+      where,
+      include: buildStudentIncludes({ summary: false }),
+    });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    return res.status(200).json(serializeStudent(student, { includeIds: true }));
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const updateStudentMentorByAdmin = async (req, res, next) => {
+  try {
+    const student = await Student.findByPk(Number(req.params.id));
+    if (!student) {
+      return sendResponse(res, { success: false, status: 404, error: 'Student not found' });
+    }
+
+    const data = req.body || {};
+
+    if (data.mentor_id === null) {
+      student.mentor_id = null;
+    } else {
+      const faculty = await Faculty.findByPk(Number(data.mentor_id));
+      if (!faculty) {
+        return sendResponse(res, { success: false, status: 404, error: 'Faculty not found' });
+      }
+      student.mentor_id = Number(data.mentor_id);
+    }
+
+    try {
+      await student.save();
+      return sendResponse(res, {
+        success: true,
+        data: { message: 'Student updated successfully' },
+      });
+    } catch (_error) {
+      return sendResponse(res, { success: false, status: 500, error: 'Database error' });
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
+module.exports = {
+  getStudentsMe,
+  putStudentsMe,
+  getStudentMe,
+  putStudentMe,
+  uploadStudentPhoto,
+  getStudentMentor,
+  getStudentMentoringMinutes,
+  getStudentMentoringMinutesById,
+  searchStudents,
+  getStudentById,
+  updateStudentMentorByAdmin,
+  uploadStudentPhotoByPortal,
+};

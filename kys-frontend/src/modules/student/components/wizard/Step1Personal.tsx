@@ -72,6 +72,19 @@ export default function Step1Personal() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const validImageTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "image/webp",
+    ];
+
+    if (!validImageTypes.includes(file.type)) {
+      setUploadMsg("Please upload a valid image file.");
+      e.target.value = "";
+      return;
+    }
+
     if (file.size > 1 * 1024 * 1024) {
       setUploadMsg("File size must be less than 1MB.");
       e.target.value = "";
@@ -798,7 +811,7 @@ export default function Step1Personal() {
               )}
 
               <div className="mt-2 flex flex-col gap-0.5 text-xs text-[#8796ac]">
-                <p>Supported formats: PDF</p>
+                <p>Supported formats: JPG, JPEG, PNG, WEBP</p>
                 <p>Maximum file size: 1 MB</p>
               </div>
             </>
