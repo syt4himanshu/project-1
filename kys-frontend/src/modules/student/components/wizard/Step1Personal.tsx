@@ -477,40 +477,6 @@ export default function Step1Personal() {
         </div>
       </section>
 
-      <section id="profile-section-emergency" className={sectionCardCls}>
-        <h3 className="mb-4 border-b border-[#c9d6ea] pb-2 text-2xl font-semibold text-[#223b60]">
-          Emergency Contact
-        </h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-          {field(
-            "Emergency Contact Person *",
-            input(
-              "text",
-              (pi.emergency_contact_name as string) || "",
-              (v) => upd("emergency_contact_name", v),
-              "Enter contact person name",
-              getValidation(
-                "Emergency Contact Person",
-                "personal_info.emergency_contact_name",
-              ),
-            ),
-          )}
-          {field(
-            "Emergency Contact Mobile *",
-            input(
-              "tel",
-              (pi.emergency_contact_number as string) || "",
-              (v) => upd("emergency_contact_number", v),
-              "e.g. 9876543210",
-              getValidation(
-                "Emergency Contact Mobile",
-                "personal_info.emergency_contact_number",
-              ),
-            ),
-          )}
-        </div>
-      </section>
-
       <div id="profile-section-location" className="space-y-4">
         <h3 className="mb-4 border-b border-[#c9d6ea] pb-2 text-2xl font-semibold text-[#223b60]">
           Location Details

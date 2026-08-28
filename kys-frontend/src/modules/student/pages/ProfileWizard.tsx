@@ -11,6 +11,7 @@ import { useStudentProfileWizard } from '../hooks/useStudentProfileWizard'
 import { StudentProfileDraftProvider } from '../components/StudentProfileDraftProvider'
 import { ThemeToggleButton } from '../../../shared/ui/theme-toggle'
 import { useToast } from '../../../app/providers/toast-context'
+import { useTheme } from '../../../app/providers/ThemeProvider'
 
 const STEPS = [
     'Student Personal Information',
@@ -33,6 +34,7 @@ const STEP_SUBTEXT = [
 export default function ProfileWizard() {
     const navigate = useNavigate()
     const toast = useToast()
+    const { theme } = useTheme()
     const dispatch = useDispatch()
     const {
         step,
@@ -51,6 +53,7 @@ export default function ProfileWizard() {
         submit,
         clearForm,
     } = useStudentProfileWizard()
+    const isDark = theme === 'dark'
     const [showDraftBanner, setShowDraftBanner] = useState(false)
 
     useEffect(() => {
@@ -94,11 +97,9 @@ export default function ProfileWizard() {
     }, [step])
 
     const handlePrevious = () => {
-        if (window.history.state?.wizardStep > 0) {
-            window.history.back()
-        } else {
-            prev()
-        }
+        if (step === 0) return
+        prev()
+        window.history.replaceState({ wizardStep: step - 1 }, '')
     }
 
     if (loading) {
@@ -181,16 +182,24 @@ export default function ProfileWizard() {
                     )}
 
                     {!isLocked && showDraftBanner && draftRestoredAt && (
-                        <div className="mt-3 rounded-2xl border border-[#dbe5f2] bg-[#f7fbff] px-4 py-3 text-sm text-[#324a6b]">
+                        <div
+                            className="mt-3 rounded-2xl border px-4 py-3 text-sm"
+                            style={{
+                                backgroundColor: isDark ? '#1e293b' : '#f7fbff',
+                                borderColor: isDark ? '#334155' : '#dbe5f2',
+                                color: isDark ? '#e2e8f0' : '#324a6b',
+                            }}
+                        >
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <p className="font-semibold">Recovered your unsaved draft.</p>
-                                    <p className="mt-1 text-xs text-[#62748d]">Last saved: {new Date(draftRestoredAt).toLocaleString()}</p>
+                                    <p className="mt-1 text-xs" style={{ color: isDark ? '#94a3b8' : '#62748d' }}>Last saved: {new Date(draftRestoredAt).toLocaleString()}</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setShowDraftBanner(false)}
-                                    className="self-start rounded-lg px-3 py-1 text-xs font-semibold text-[#40618f] transition hover:bg-[#eaf2fb]"
+                                    className="self-start rounded-lg px-3 py-1 text-xs font-semibold transition hover:bg-[#eaf2fb]"
+                                    style={{ color: isDark ? '#bfdbfe' : '#40618f' }}
                                 >
                                     Dismiss
                                 </button>

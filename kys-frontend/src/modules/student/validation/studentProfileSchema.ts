@@ -6,7 +6,7 @@ const text500 = Joi.string().trim().max(500).allow('', null)
 const phoneNumber = Joi.string()
   .trim()
   .allow('', null)
-      .pattern(/^(?:\+91[\s-]?)?[6-9]\d{9}$/)
+  .pattern(/^\d{10}$/)
   .messages({
     'string.pattern.base': '{#label} must be a valid 10 digit phone number',
   })
@@ -87,8 +87,6 @@ const studentProfileSchema = Joi.object({
     guardian_name: Joi.string().trim().max(120).allow('', null),
     guardian_mobile: phoneNumber,
     guardian_email: optionalEmail,
-    emergency_contact_name: Joi.string().trim().max(120).allow('', null),
-    emergency_contact_number: phoneNumber,
   }).unknown(true),
 
   past_education_records: Joi.array().items(Joi.object({

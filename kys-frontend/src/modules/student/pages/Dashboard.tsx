@@ -8,6 +8,7 @@ import { extractStudentPhotoUrl } from '../../../shared/utils/studentPhoto'
 import { isDraftResetMarked } from '../utils/studentProfileDraft'
 import { extractHighlights } from '../utils/remarkHighlights'
 import { ThemeToggleButton } from '../../../shared/ui/theme-toggle'
+import { useTheme } from '../../../app/providers/ThemeProvider'
 
 interface MentoringMinute {
     id: number
@@ -59,7 +60,9 @@ function initials(name: string) {
 
 export default function Dashboard() {
     const { token, user, logout } = useAuth()
+    const { theme } = useTheme()
     const navigate = useNavigate()
+    const isDark = theme === 'dark'
 
     const [profile, setProfile] = useState<StudentProfile | null>(null)
     const [minutes, setMinutes] = useState<MentoringMinute[]>([])
@@ -142,11 +145,23 @@ export default function Dashboard() {
     }, [profile, resetMarked])
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] text-[var(--text)] transition-colors duration-300">
-            <header className="bg-gradient-to-r from-[#0f2746] to-[#223f6a] shadow-lg">
+        <div
+            className="min-h-screen border transition-colors duration-300"
+            style={{
+                backgroundColor: isDark ? '#0f172a' : '#f5f7fb',
+                borderColor: isDark ? '#334155' : '#e5e7eb',
+                color: isDark ? '#f1f5f9' : '#1e2d4e',
+            }}
+        >
+            <header
+                className="shadow-lg"
+                style={{
+                    background: 'linear-gradient(90deg, #0f2746, #223f6a)',
+                }}
+            >
                 <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#f0c36b]/30 bg-[#0b1d36] text-[#f0c36b]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl border text-[#f0c36b]" style={{ borderColor: isDark ? 'rgba(240,195,107,.3)' : '#dbe4f1', backgroundColor: isDark ? '#0b1d36' : '#ffffff' }}>
                             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M12 3 2 8l10 5 10-5-10-5Z" />
                                 <path d="M4 11v5.5L12 21l8-4.5V11" />
@@ -174,7 +189,8 @@ export default function Dashboard() {
 
                         <button
                             onClick={() => setShowLogoutModal(true)}
-                            className="rounded-full border border-[#ff9b96]/40 bg-[#7a2020]/20 px-4 py-2 text-sm font-medium text-[#ffd5d3] transition hover:bg-[#7a2020]/35"
+                            className="rounded-full border px-4 py-2 text-sm font-medium transition hover:opacity-80"
+                            style={{ borderColor: '#e7a09c', backgroundColor: isDark ? 'rgba(122,32,32,.2)' : '#fff2f1', color: isDark ? '#ffd5d3' : '#a12622' }}
                         >
                             Logout
                         </button>
@@ -182,7 +198,7 @@ export default function Dashboard() {
                 </div>
             </header>
 
-            <section className="border-b-2 border-[#f0c36b] bg-gradient-to-r from-[#1d365d] to-[#40567a]">
+            <section className="border-b-2 border-[#f0c36b]" style={{ background: 'linear-gradient(90deg, #1d365d, #40567a)' }}>
                 <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
                     <div className="space-y-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#b9c6dc]">Welcome Back</p>
@@ -193,7 +209,7 @@ export default function Dashboard() {
                             Manage your profile, track mentoring sessions and monitor progress.
                         </p>
                     </div>
-                    <div className="ml-0 flex h-24 w-24 overflow-hidden items-center justify-center rounded-full border-4 border-[#f0c36b]/60 bg-[#102846] text-2xl font-bold text-white shadow-xl md:ml-6">
+                    <div className="ml-0 flex h-24 w-24 overflow-hidden items-center justify-center rounded-full border-4 border-[#f0c36b]/60 text-2xl font-bold shadow-xl md:ml-6" style={{ backgroundColor: isDark ? '#102846' : '#e8eef8', color: isDark ? '#ffffff' : '#1e2d4e' }}>
                         <PhotoAvatar
                             url={studentPhotoUrl}
                             alt="Profile"
@@ -218,18 +234,18 @@ export default function Dashboard() {
                 )}
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <section className="rounded-3xl border border-[var(--border)] bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-6 shadow-sm">
+                    <section className="rounded-3xl border p-6 shadow-sm" style={{ backgroundColor: isDark ? '#111c34' : '#ffffff', borderColor: isDark ? '#334155' : '#dbe4f1' }}>
                         <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#4f6ea1]">Profile</p>
-                        <h2 className="font-serif text-3xl font-semibold text-[var(--text)]">
+                        <h2 className="font-serif text-3xl font-semibold" style={{ color: isDark ? '#f1f5f9' : '#1e2d4e' }}>
                             {profile?.is_profile_locked ? 'View Profile' : 'Update Profile'}
                         </h2>
-                        <p className="mt-1 text-sm text-[var(--text-muted)]">
+                        <p className="mt-1 text-sm" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
                             {profile?.is_profile_locked
                                 ? 'View your academic and personal details (Editing locked by mentor)'
                                 : 'Keep your academic and personal details current'}
                         </p>
 
-                        <div className="mt-6 rounded-2xl border border-[var(--border)] bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] p-4">
+                        <div className="mt-6 rounded-2xl border p-4" style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#dbe4f1' }}>
                             <div className="flex items-center gap-3">
                                 <div className="flex h-12 w-12 shrink-0 overflow-hidden items-center justify-center rounded-full bg-[#e8eef8] text-sm font-bold text-[#2f4d7a]">
                                     <PhotoAvatar
@@ -239,7 +255,7 @@ export default function Dashboard() {
                                         fallback={initials(studentName)}
                                     />
                                 </div>
-                                <p className="text-sm text-[#6a758a]">
+                                <p className="text-sm" style={{ color: isDark ? '#cbd5e1' : '#6a758a' }}>
                                     Profile information is synced from your student form details.
                                 </p>
                             </div>
@@ -269,12 +285,12 @@ export default function Dashboard() {
                         </button>
                     </section>
 
-                    <section className="rounded-3xl border border-[var(--border)] bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-6 shadow-sm">
+                    <section className="rounded-3xl border p-6 shadow-sm" style={{ backgroundColor: isDark ? '#111c34' : '#ffffff', borderColor: isDark ? '#334155' : '#dbe4f1' }}>
                         <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#a37200]">Mentor</p>
-                        <h2 className="font-serif text-3xl font-semibold text-[var(--text)]">Mentor Information</h2>
-                        <p className="mt-1 text-sm text-[var(--text-muted)]">Your assigned faculty mentor details</p>
+                        <h2 className="font-serif text-3xl font-semibold" style={{ color: isDark ? '#f1f5f9' : '#1e2d4e' }}>Mentor Information</h2>
+                        <p className="mt-1 text-sm" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>Your assigned faculty mentor details</p>
 
-                        <div className="mt-6 rounded-2xl border border-[var(--border)] bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] p-4">
+                        <div className="mt-6 rounded-2xl border p-4" style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#dbe4f1' }}>
                             {loadingMentor ? (
                                 <div className="flex items-center justify-center py-10">
                                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#22456f] border-t-transparent" />
@@ -288,19 +304,19 @@ export default function Dashboard() {
                                             {initials(mentor.full_name)}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="truncate text-lg font-semibold text-[var(--text)]">{mentor.full_name}</p>
+                                            <p className="truncate text-lg font-semibold" style={{ color: isDark ? '#f1f5f9' : '#1e2d4e' }}>{mentor.full_name}</p>
                                             <p className="truncate text-sm text-[#64748b]">{mentor.email}</p>
                                         </div>
                                     </div>
 
                                     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                        <div className="rounded-xl border bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-3">
+                                        <div className="rounded-xl border p-3" style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', borderColor: isDark ? '#334155' : '#dbe4f1' }}>
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#61748f]">Email</p>
-                                            <p className="mt-1 break-all text-sm text-[#253248]">{mentor.email}</p>
+                                            <p className="mt-1 break-all text-sm" style={{ color: isDark ? '#cbd5e1' : '#253248' }}>{mentor.email}</p>
                                         </div>
-                                        <div className="rounded-xl border bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-3">
+                                        <div className="rounded-xl border p-3" style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', borderColor: isDark ? '#334155' : '#dbe4f1' }}>
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#61748f]">Phone</p>
-                                            <p className="mt-1 text-sm text-[#253248]">{mentor.contact_number || 'N/A'}</p>
+                                            <p className="mt-1 text-sm" style={{ color: isDark ? '#cbd5e1' : '#253248' }}>{mentor.contact_number || 'N/A'}</p>
                                         </div>
                                     </div>
                                 </>
@@ -308,12 +324,12 @@ export default function Dashboard() {
                         </div>
                     </section>
 
-                    <section className="rounded-3xl border border-[var(--border)] bg-gray-50 dark:bg-[#0f172a] border border-gray-200 dark:border-[#334155] p-6 shadow-sm lg:col-span-2">
+                    <section className="rounded-3xl border p-6 shadow-sm lg:col-span-2" style={{ backgroundColor: isDark ? '#111c34' : '#ffffff', borderColor: isDark ? '#334155' : '#dbe4f1' }}>
                         <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#3f78dc]">Mentoring</p>
-                        <h2 className="font-serif text-3xl font-semibold text-[var(--text)]">Mentoring Remarks</h2>
-                        <p className="mt-1 text-sm text-[var(--text-muted)]">Feedback and suggestions from your mentors</p>
+                        <h2 className="font-serif text-3xl font-semibold" style={{ color: isDark ? '#f1f5f9' : '#1e2d4e' }}>Mentoring Remarks</h2>
+                        <p className="mt-1 text-sm" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>Feedback and suggestions from your mentors</p>
 
-                        <div className="mt-6 rounded-2xl border border-[var(--border)] bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] p-4 sm:p-5">
+                        <div className="mt-6 rounded-2xl border p-4 sm:p-5" style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#dbe4f1' }}>
                             {loadingMinutes ? (
                                 <div className="flex items-center justify-center py-14">
                                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#22456f] border-t-transparent" />
@@ -330,27 +346,33 @@ export default function Dashboard() {
                                   {minutes.map(m => {
                                       const highlights = extractHighlights([m.remarks, m.mentor_remarks].filter(Boolean).join(' '))
                                       return (
-                                      <article key={m.id} className="rounded-2xl border border-[#e2e8f2] bg-[#fafcff] p-4">
+                                      <article key={m.id} className="rounded-2xl border p-4" style={{ backgroundColor: isDark ? '#17243b' : '#fafcff', borderColor: isDark ? '#3b4d68' : '#e2e8f2' }}>
                                           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                              <p className="font-semibold text-[#20324e]">{m.faculty_name}</p>
+                                              <p className="font-semibold" style={{ color: isDark ? '#f1f5f9' : '#20324e' }}>{m.faculty_name}</p>
                                               <div className="flex items-center gap-2">
-                                                  <span className="rounded-full bg-[#e9f0ff] px-2 py-1 text-xs font-semibold text-[#2c4f85]">
+                                                  <span className="rounded-full px-2 py-1 text-xs font-semibold" style={{ backgroundColor: isDark ? '#263c67' : '#e9f0ff', color: isDark ? '#bfdbfe' : '#2c4f85' }}>
                                                       Sem {m.semester}
                                                   </span>
-                                                  <span className="text-xs text-[#6e7e95]">{formatDate(m.date)}</span>
+                                                  <span className="text-xs" style={{ color: isDark ? '#94a3b8' : '#6e7e95' }}>{formatDate(m.date)}</span>
                                               </div>
                                           </div>
                                           
                                           {highlights.length > 0 && (
-                                              <div className="mb-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 p-3">
+                                              <div
+                                                  className="mb-4 rounded-xl border p-3"
+                                                  style={{
+                                                      backgroundColor: isDark ? 'rgba(20, 83, 45, 0.2)' : '#ecfdf3',
+                                                      borderColor: isDark ? 'rgba(20, 83, 45, 0.3)' : '#bbf7d0',
+                                                  }}
+                                              >
                                                   <div className="flex items-center gap-2 mb-2">
-                                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 dark:text-green-400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                                                      <span className="text-sm font-bold text-green-800 dark:text-green-300">Highlights & Achievements</span>
+                                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: isDark ? '#4ade80' : '#16a34a' }}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                                                      <span className="text-sm font-bold" style={{ color: isDark ? '#86efac' : '#166534' }}>Highlights & Achievements</span>
                                                   </div>
                                                   <ul className="space-y-1.5">
                                                       {highlights.map((hl, i) => (
-                                                          <li key={i} className="text-sm text-green-700 dark:text-green-400 flex items-start gap-2">
-                                                              <span className="text-green-500 dark:text-green-500 mt-0.5">•</span>
+                                                          <li key={i} className="flex items-start gap-2 text-sm" style={{ color: isDark ? '#4ade80' : '#15803d' }}>
+                                                              <span className="mt-0.5" style={{ color: isDark ? '#4ade80' : '#16a34a' }}>•</span>
                                                               <span>{hl}</span>
                                                           </li>
                                                       ))}
@@ -358,7 +380,7 @@ export default function Dashboard() {
                                               </div>
                                           )}
 
-                                          <div className="space-y-2 text-sm text-[#3f4d63]">
+                                          <div className="space-y-2 text-sm" style={{ color: isDark ? '#cbd5e1' : '#3f4d63' }}>
                                                 <p><span className="font-semibold">AI Remarks:</span> {m.remarks || 'None'}</p>
                                                 <p><span className="font-semibold">Mentor Remarks:</span> {m.mentor_remarks || 'None'}</p>
                                                 <p><span className="font-semibold">Suggestion:</span> {m.suggestion || 'None'}</p>

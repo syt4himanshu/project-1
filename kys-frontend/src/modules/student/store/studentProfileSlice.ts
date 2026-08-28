@@ -9,6 +9,7 @@ import {
   validateStep2FormatErrors,
   validateStep3FormatErrors,
   validateStudentProfileData,
+  validateStudentProfileDataDetailed,
 } from '../validation/studentProfileSchema'
 import { clearDraft, clearDraftResetMark, getDraftMetadata, isDraftNewerThan, isDraftResetMarked, loadDraft } from '../utils/studentProfileDraft'
 
@@ -556,6 +557,13 @@ const studentProfileSlice = createSlice({
           state.error = ''
         } else {
           state.error = `Please fill required fields: ${missing.join(', ')}`
+        }
+      }
+
+      if (state.error && !state.error.startsWith('Please fill required fields:')) {
+        const validation = validateStudentProfileDataDetailed(state.data)
+        if (validation.isValid && (state.error.includes('must be') || state.error.includes('not allowed'))) {
+          state.error = ''
         }
       }
     },
