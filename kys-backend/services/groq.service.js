@@ -1,18 +1,18 @@
-﻿const Groq = require('groq-sdk');
-const { AI_CONFIG, FALLBACK_MODELS } = require('../config/ai.config');
-const { retryWithBackoff } = require('../utils/retry');
-const CircuitBreaker = require('../utils/circuitBreaker');
-const logger = require('../utils/logger');
+﻿const Groq = require("groq-sdk");
+const { AI_CONFIG, FALLBACK_MODELS } = require("../config/ai.config");
+const { retryWithBackoff } = require("../utils/retry");
+const CircuitBreaker = require("../utils/circuitBreaker");
+const logger = require("../utils/logger");
 
 // Circuit breaker for Groq API
 const groqCircuitBreaker = new CircuitBreaker({
   failureThreshold: 5,
   successThreshold: 2,
   timeout: 30000, // 30s
-  name: 'groq-api',
+  name: "groq-api",
 });
 
-const INSIGHTS_SYSTEM_PROMPT = `You are MentorAI, an experienced faculty mentor and placement advisor for B.Tech Computer Engineering students.
+const INSIGHTS_SYSTEM_PROMPT = `You are MentorAI, an experienced faculty mentor and placement advisor for B.Tech Computer Science and Engineering students.
 
 You will receive:
 1. A student profile with academic records, skills, projects, internships, SWOC, and career goals.
@@ -57,7 +57,6 @@ Keep the response focused and professional — 2–8 sentences unless the task r
 == SNAPSHOT REFRESH ==
 If the faculty writes any of: "Refresh insights", "Analyze student again", "Regenerate student profile" — treat it as a first response and regenerate the full structure including all four sections.`;
 
-
 const REMARKS_SYSTEM_PROMPT = `You are MentorAI, an experienced faculty mentor, placement advisor, and career counselor for engineering students.
 
 Generate mentoring remarks for the student strictly following this sequence:
@@ -90,8 +89,11 @@ Format:
 • No bullet points, no section headers — write as flowing mentor remarks.
 • Do not fabricate data. If information is missing, infer practical guidance from what is available.`;
 
-
-const buildUserMessage = ({ facultyQuery, studentDataset, conversationHistory = [] }) => {
+const buildUserMessage = ({
+  facultyQuery,
+  studentDataset,
+  conversationHistory = [],
+}) => {
   const studentProfile = studentDataset?.students?.[0] || {};
 
   const profileSummary = [
@@ -100,33 +102,61 @@ const buildUserMessage = ({ facultyQuery, studentDataset, conversationHistory = 
     studentProfile.program ? `Program: ${studentProfile.program}` : null,
     studentProfile.cgpa ? `CGPA: ${studentProfile.cgpa}` : null,
     studentProfile.academicRecords?.length
-      ? `Semester-wise SGPA: ${studentProfile.academicRecords.map(r => `Sem ${r.semester}: ${r.sgpa}${r.backlogs && r.backlogs !== 'None' ? ` (backlogs: ${r.backlogs})` : ''}`).join(', ')}`
+      ? `Semester-wise SGPA: ${studentProfile.academicRecords
+          .map(
+            (r) =>
+              `Sem ${r.semester}: ${r.sgpa}${
+                r.backlogs && r.backlogs !== "None"
+                  ? ` (backlogs: ${r.backlogs})`
+                  : ""
+              }`,
+          )
+          .join(", ")}`
       : null,
     studentProfile.skills
-      ? `Skills: Programming — ${studentProfile.skills.programming || 'N/A'}; Technologies — ${studentProfile.skills.technologies || 'N/A'}; Domains — ${studentProfile.skills.domains || 'N/A'}`
+      ? `Skills: Programming — ${
+          studentProfile.skills.programming || "N/A"
+        }; Technologies — ${
+          studentProfile.skills.technologies || "N/A"
+        }; Domains — ${studentProfile.skills.domains || "N/A"}`
       : null,
     studentProfile.projects?.length
-      ? `Projects: ${studentProfile.projects.map(p => p.title).join(', ')}`
+      ? `Projects: ${studentProfile.projects.map((p) => p.title).join(", ")}`
       : null,
     studentProfile.internships?.length
-      ? `Internships: ${studentProfile.internships.map(i => i.title || JSON.stringify(i)).join(', ')}`
+      ? `Internships: ${studentProfile.internships
+          .map((i) => i.title || JSON.stringify(i))
+          .join(", ")}`
       : null,
     studentProfile.careerObjective
-      ? `Career Goal: ${studentProfile.careerObjective.goal || 'N/A'}; Placement Interest: ${studentProfile.careerObjective.placement_interest}`
+      ? `Career Goal: ${
+          studentProfile.careerObjective.goal || "N/A"
+        }; Placement Interest: ${
+          studentProfile.careerObjective.placement_interest
+        }`
       : null,
     studentProfile.swoc
-      ? `Strengths: ${studentProfile.swoc.strengths || 'N/A'}; Weaknesses: ${studentProfile.swoc.weaknesses || 'N/A'}; Opportunities: ${studentProfile.swoc.opportunities || 'N/A'}; Challenges: ${studentProfile.swoc.challenges || 'N/A'}`
+      ? `Strengths: ${studentProfile.swoc.strengths || "N/A"}; Weaknesses: ${
+          studentProfile.swoc.weaknesses || "N/A"
+        }; Opportunities: ${
+          studentProfile.swoc.opportunities || "N/A"
+        }; Challenges: ${studentProfile.swoc.challenges || "N/A"}`
       : null,
     studentProfile.recentMinutes?.length
-      ? `Recent Mentoring Notes: ${studentProfile.recentMinutes.map(m => m.remarks).filter(Boolean).join(' | ')}`
+      ? `Recent Mentoring Notes: ${studentProfile.recentMinutes
+          .map((m) => m.remarks)
+          .filter(Boolean)
+          .join(" | ")}`
       : null,
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   // Build the messages array: system + optional history + current user message
   const isFirstQuery = !conversationHistory || conversationHistory.length === 0;
   const contextNote = isFirstQuery
-    ? ''
-    : '\n\n[This is a follow-up question. Respond conversationally using the context above. Do NOT regenerate the four sections.]';
+    ? ""
+    : "\n\n[This is a follow-up question. Respond conversationally using the context above. Do NOT regenerate the four sections.]";
 
   return {
     profileSummary,
@@ -141,25 +171,35 @@ const buildNonBreakerError = (message) => {
   return error;
 };
 
-const generateFacultyInsights = async ({ facultyQuery, studentDataset, mode = 'insights', conversationHistory = [] }) => {
+const generateFacultyInsights = async ({
+  facultyQuery,
+  studentDataset,
+  mode = "insights",
+  conversationHistory = [],
+}) => {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey || !String(apiKey).trim()) {
-    throw new Error('Missing GROQ_API_KEY');
+    throw new Error("Missing GROQ_API_KEY");
   }
 
   const groq = new Groq({ apiKey: String(apiKey).trim() });
 
-  const systemPrompt = mode === 'remarks' ? REMARKS_SYSTEM_PROMPT : INSIGHTS_SYSTEM_PROMPT;
-  const { currentUserMessage } = buildUserMessage({ facultyQuery, studentDataset, conversationHistory });
+  const systemPrompt =
+    mode === "remarks" ? REMARKS_SYSTEM_PROMPT : INSIGHTS_SYSTEM_PROMPT;
+  const { currentUserMessage } = buildUserMessage({
+    facultyQuery,
+    studentDataset,
+    conversationHistory,
+  });
 
   // Build messages: system → history turns → current user message
   const MAX_HISTORY_TURNS = 6; // keep last 3 exchanges (6 messages) to stay within token budget
   const trimmedHistory = conversationHistory.slice(-MAX_HISTORY_TURNS);
 
   const messages = [
-    { role: 'system', content: systemPrompt },
+    { role: "system", content: systemPrompt },
     ...trimmedHistory,
-    { role: 'user', content: currentUserMessage },
+    { role: "user", content: currentUserMessage },
   ];
 
   return groqCircuitBreaker.execute(async () => {
@@ -172,25 +212,29 @@ const generateFacultyInsights = async ({ facultyQuery, studentDataset, mode = 'i
       try {
         const completion = await retryWithBackoff(
           async () => {
-            return await groq.chat.completions.create({
-              model: currentModel,
-              messages,
-              temperature: AI_CONFIG.temperature,
-              max_tokens: AI_CONFIG.max_tokens,
-            }, { timeout: 10000 });
+            return await groq.chat.completions.create(
+              {
+                model: currentModel,
+                messages,
+                temperature: AI_CONFIG.temperature,
+                max_tokens: AI_CONFIG.max_tokens,
+              },
+              { timeout: 10000 },
+            );
           },
           {
             maxAttempts: 3,
             initialDelay: 1000,
             maxDelay: 5000,
-            operationName: 'groq-api-call',
+            operationName: "groq-api-call",
             shouldRetry: (error) => {
               if (error.status === 401 || error.response?.status === 401) {
                 return false;
               }
 
-              const isModelError = error.error?.error?.code === 'model_decommissioned' ||
-                error.error?.error?.code === 'invalid_request_error' ||
+              const isModelError =
+                error.error?.error?.code === "model_decommissioned" ||
+                error.error?.error?.code === "invalid_request_error" ||
                 /decommissioned|not found|does not exist/.test(error.message);
               if (isModelError) {
                 return false;
@@ -199,32 +243,34 @@ const generateFacultyInsights = async ({ facultyQuery, studentDataset, mode = 'i
               const status = error.status || error.response?.status;
               return status === 429 || status >= 500;
             },
-          }
+          },
         );
 
         const latency = Date.now() - start;
         logger.info({
-          message: 'Groq API success',
+          message: "Groq API success",
           model: currentModel,
           latencyMs: latency,
         });
 
-        return completion?.choices?.[0]?.message?.content || 'No response generated';
-
+        return (
+          completion?.choices?.[0]?.message?.content || "No response generated"
+        );
       } catch (error) {
         logger.error({
-          message: 'Groq API error',
+          message: "Groq API error",
           model: currentModel,
           error: error.message,
           latencyMs: Date.now() - start,
         });
 
         if (error.status === 401 || error.response?.status === 401) {
-          throw buildNonBreakerError('Invalid GROQ_API_KEY');
+          throw buildNonBreakerError("Invalid GROQ_API_KEY");
         }
 
-        const isModelError = error.error?.error?.code === 'model_decommissioned' ||
-          error.error?.error?.code === 'invalid_request_error' ||
+        const isModelError =
+          error.error?.error?.code === "model_decommissioned" ||
+          error.error?.error?.code === "invalid_request_error" ||
           /decommissioned|not found|does not exist/.test(error.message);
 
         if (isModelError && fallbackIndex < FALLBACK_MODELS.length) {
@@ -234,7 +280,7 @@ const generateFacultyInsights = async ({ facultyQuery, studentDataset, mode = 'i
         }
 
         if (isModelError) {
-          throw buildNonBreakerError('Groq model is deprecated or invalid');
+          throw buildNonBreakerError("Groq model is deprecated or invalid");
         }
 
         throw error;

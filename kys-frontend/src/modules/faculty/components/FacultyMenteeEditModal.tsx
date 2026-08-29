@@ -69,111 +69,111 @@ const SECTIONS: Array<{
   anchor: string;
   icon: typeof User;
   countKey?:
-    | "projects"
-    | "internships"
-    | "participation"
-    | "organization"
-    | "skill-programs"
-    | "academics";
+  | "projects"
+  | "internships"
+  | "participation"
+  | "organization"
+  | "skill-programs"
+  | "academics";
 }> = [
-  {
-    id: "personal",
-    label: "Personal Details",
-    description: "Basic info, contact, address and photo",
-    anchor: "profile-section-personal",
-    icon: User,
-  },
-  {
-    id: "parents",
-    label: "Parents & Guardian",
-    description: "Father, mother and local guardian details",
-    anchor: "profile-section-parents",
-    icon: Users,
-  },
-  {
-    id: "emergency",
-    label: "Emergency Contact",
-    description: "Emergency contact person and number",
-    anchor: "profile-section-emergency",
-    icon: Phone,
-  },
-  {
-    id: "past-education",
-    label: "Past Education",
-    description: "SSC, HSC / Diploma, entrance exam records",
-    anchor: "profile-section-past-education-root",
-    icon: BookOpen,
-  },
-  {
-    id: "academics",
-    label: "Academic Records",
-    description: "Semester-wise SGPA, backlogs and awards",
-    anchor: "profile-section-academics",
-    icon: GraduationCap,
-    countKey: "academics",
-  },
-  {
-    id: "projects",
-    label: "Projects",
-    description: "Mini, major and collaborative projects",
-    anchor: "profile-section-projects",
-    icon: FolderKanban,
-    countKey: "projects",
-  },
-  {
-    id: "internships",
-    label: "Internships",
-    description: "Internship experience with company and role details",
-    anchor: "profile-section-internships",
-    icon: Briefcase,
-    countKey: "internships",
-  },
-  {
-    id: "participation",
-    label: "Co-Curricular Activities",
-    description: "Competition and hackathon participation",
-    anchor: "profile-section-participation",
-    icon: Award,
-    countKey: "participation",
-  },
-  {
-    id: "organization",
-    label: "Co-Curricular Organization",
-    description: "Events organised or co-ordinated",
-    anchor: "profile-section-organization",
-    icon: Users,
-    countKey: "organization",
-  },
-  {
-    id: "skill-programs",
-    label: "Skill Programs",
-    description: "SDP, MOOC, training and certification courses",
-    anchor: "profile-section-skill-programs",
-    icon: Sparkles,
-    countKey: "skill-programs",
-  },
-  {
-    id: "career",
-    label: "Career Objective",
-    description: "Career goals, placement interest and expectations",
-    anchor: "profile-section-career",
-    icon: Target,
-  },
-  {
-    id: "skills",
-    label: "Skills",
-    description: "Technical and soft skills, tools and frameworks",
-    anchor: "profile-section-skills",
-    icon: Sparkles,
-  },
-  {
-    id: "swoc",
-    label: "SWOC",
-    description: "Strengths, weaknesses, opportunities and challenges",
-    anchor: "profile-section-swoc",
-    icon: Target,
-  },
-];
+    {
+      id: "personal",
+      label: "Personal Details",
+      description: "Basic info, contact, address and photo",
+      anchor: "profile-section-personal",
+      icon: User,
+    },
+    {
+      id: "parents",
+      label: "Parents & Guardian",
+      description: "Father, mother and local guardian details",
+      anchor: "profile-section-parents",
+      icon: Users,
+    },
+    {
+      id: "emergency",
+      label: "Emergency Contact",
+      description: "Emergency contact person and number",
+      anchor: "profile-section-emergency",
+      icon: Phone,
+    },
+    {
+      id: "past-education",
+      label: "Past Education",
+      description: "SSC, HSC / Diploma, entrance exam records",
+      anchor: "profile-section-past-education-root",
+      icon: BookOpen,
+    },
+    {
+      id: "academics",
+      label: "Academic Records",
+      description: "Semester-wise SGPA, backlogs and awards",
+      anchor: "profile-section-academics",
+      icon: GraduationCap,
+      countKey: "academics",
+    },
+    {
+      id: "projects",
+      label: "Projects",
+      description: "Mini, major and collaborative projects",
+      anchor: "profile-section-projects",
+      icon: FolderKanban,
+      countKey: "projects",
+    },
+    {
+      id: "internships",
+      label: "Internships",
+      description: "Internship experience with company and role details",
+      anchor: "profile-section-internships",
+      icon: Briefcase,
+      countKey: "internships",
+    },
+    {
+      id: "participation",
+      label: "Co-Curricular Activities",
+      description: "Competition and hackathon participation",
+      anchor: "profile-section-participation",
+      icon: Award,
+      countKey: "participation",
+    },
+    {
+      id: "organization",
+      label: "Co-Curricular Organization",
+      description: "Events organised or co-ordinated",
+      anchor: "profile-section-organization",
+      icon: Users,
+      countKey: "organization",
+    },
+    {
+      id: "skill-programs",
+      label: "Skill Programs",
+      description: "SDP, MOOC, training and certification courses",
+      anchor: "profile-section-skill-programs",
+      icon: Sparkles,
+      countKey: "skill-programs",
+    },
+    {
+      id: "career",
+      label: "Career Objective",
+      description: "Career goals, placement interest and expectations",
+      anchor: "profile-section-career",
+      icon: Target,
+    },
+    {
+      id: "skills",
+      label: "Skills",
+      description: "Technical and soft skills, tools and frameworks",
+      anchor: "profile-section-skills",
+      icon: Sparkles,
+    },
+    {
+      id: "swoc",
+      label: "SWOC",
+      description: "Strengths, weaknesses, opportunities and challenges",
+      anchor: "profile-section-swoc",
+      icon: Target,
+    },
+  ];
 
 // ── Section-id → DOM anchor mapping for CSS visibility ───────────────────────
 // Each section id maps to the anchor ids that should be VISIBLE when it is active.
@@ -264,21 +264,21 @@ function buildDraftFromMentee(mentee: MenteePayload): Record<string, unknown> {
 
   const hasUbaProject = Boolean(
     (projects[2] as Record<string, unknown> | undefined)?.title ||
-      (projects[2] as Record<string, unknown> | undefined)?.description ||
-      (projects[2] as Record<string, unknown> | undefined)?.domain,
+    (projects[2] as Record<string, unknown> | undefined)?.description ||
+    (projects[2] as Record<string, unknown> | undefined)?.domain,
   );
   const hasInternshipExperience = internships.some((item) => {
     const row = (item ?? {}) as Record<string, unknown>;
     return Boolean(
       row.company_name ||
-        row.designation ||
-        row.domain ||
-        row.description ||
-        row.internship_type ||
-        row.paid_unpaid ||
-        row.start_date ||
-        row.end_date ||
-        row.title,
+      row.designation ||
+      row.domain ||
+      row.description ||
+      row.internship_type ||
+      row.paid_unpaid ||
+      row.start_date ||
+      row.end_date ||
+      row.title,
     );
   });
   const hasOrganizedActivities = organizations.some((item) => {
@@ -289,10 +289,10 @@ function buildDraftFromMentee(mentee: MenteePayload): Record<string, unknown> {
     const row = (item ?? {}) as Record<string, unknown>;
     return Boolean(
       row.course_title ||
-        row.platform ||
-        row.duration_hours ||
-        row.date_from ||
-        row.date_to,
+      row.platform ||
+      row.duration_hours ||
+      row.date_from ||
+      row.date_to,
     );
   });
 
@@ -508,8 +508,8 @@ function PreviewPanel({ data }: { data: ProfileDraftMap }) {
               <li key={`preview-internship-${index}`}>
                 {String(
                   intern.company_name ||
-                    intern.title ||
-                    `Internship ${index + 1}`,
+                  intern.title ||
+                  `Internship ${index + 1}`,
                 )}
               </li>
             );
@@ -760,7 +760,13 @@ function FacultyMenteeEditForm({
                 aria-hidden="true"
               >
                 {photoPreview ? (
-                  <img src={photoPreview} alt="" />
+                  <img
+                    src={photoPreview}
+                    alt=""
+                    // Hide silently if the Cloudinary asset returns 404 (stale URL).
+                    // The avatar will fall back to the initials span below.
+                    onError={(e) => { e.currentTarget.style.display = 'none' }}
+                  />
                 ) : (
                   <span>
                     {String(draft.full_name || "ST")
@@ -791,11 +797,10 @@ function FacultyMenteeEditForm({
                   <span>Batch: {String(draft.year_of_admission || "—")}</span>
                 </div>
                 <div
-                  className={`faculty-profile-editor__lock ${
-                    draft.is_profile_locked
+                  className={`faculty-profile-editor__lock ${draft.is_profile_locked
                       ? "faculty-profile-editor__lock--locked"
                       : "faculty-profile-editor__lock--open"
-                  }`}
+                    }`}
                 >
                   <Lock size={14} aria-hidden="true" />
                   <div>
@@ -831,9 +836,8 @@ function FacultyMenteeEditForm({
                   <button
                     key={section.id}
                     type="button"
-                    className={`faculty-profile-editor__nav-item ${
-                      activeSection === section.id ? "is-active" : ""
-                    }`}
+                    className={`faculty-profile-editor__nav-item ${activeSection === section.id ? "is-active" : ""
+                      }`}
                     onClick={() => navigateSection(section.id)}
                   >
                     <Icon size={16} aria-hidden="true" />

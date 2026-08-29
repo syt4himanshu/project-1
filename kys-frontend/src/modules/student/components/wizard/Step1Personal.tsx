@@ -625,12 +625,12 @@ export default function Step1Personal() {
                 "Permanent Address",
                 "personal_info.permanent_address",
               ).error &&
-                  getValidation(
-                    "Permanent Address",
-                    "personal_info.permanent_address",
-                  ).touched
-                  ? "border-[#ef4444] focus:border-[#dc2626] focus:ring-[#ef4444]/20"
-                  : ""
+                getValidation(
+                  "Permanent Address",
+                  "personal_info.permanent_address",
+                ).touched
+                ? "border-[#ef4444] focus:border-[#dc2626] focus:ring-[#ef4444]/20"
+                : ""
                 }`}
             />
             {getValidation(
@@ -700,6 +700,25 @@ export default function Step1Personal() {
                           src={String(pi.photoPreviewUrl || pi.photo_preview_url)}
                           alt="PDF Preview"
                           className="h-full w-full object-cover"
+                          // Gracefully handle stale Cloudinary URLs (assets from a prior
+                          // cloud account that no longer exist and return 404).
+                          // On error, replace with the fallback icon so the UI does not
+                          // show a broken-image placeholder.
+                          onError={(e) => {
+                            const img = e.currentTarget
+                            img.style.display = 'none'
+                            const parent = img.parentElement
+                            if (parent && !parent.querySelector('[data-photo-fallback]')) {
+                              const fallback = document.createElement('div')
+                              fallback.setAttribute('data-photo-fallback', '1')
+                              fallback.className = 'flex h-full w-full flex-col items-center justify-center gap-1 text-center'
+                              fallback.innerHTML = `
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 2.25H6.75A2.25 2.25 0 004.5 4.5v15A2.25 2.25 0 006.75 21.75h10.5A2.25 2.25 0 0019.5 19.5V7.5l-5.25-5.25z"/><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 2.25v5.25h5.25"/></svg>
+                                <span style="font-size:0.6rem;color:#94a3b8;line-height:1.2">Re-upload<br/>needed</span>
+                              `
+                              parent.appendChild(fallback)
+                            }
+                          }}
                         />
                       ) : (
                         <FileText className="h-10 w-10 text-slate-400" />
@@ -738,8 +757,8 @@ export default function Step1Personal() {
                 <label
                   htmlFor="passport-photo-upload"
                   className={`${inputCls} m-0 flex cursor-pointer items-center ${photoError
-                      ? "border-[#ef4444] focus-within:border-[#dc2626] focus-within:ring-[#ef4444]/20"
-                      : ""
+                    ? "border-[#ef4444] focus-within:border-[#dc2626] focus-within:ring-[#ef4444]/20"
+                    : ""
                     }`}
                   style={{ padding: "0.375rem 1rem 0.375rem 0.375rem" }}
                 >

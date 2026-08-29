@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { classificationApi } from '../../services/classificationApi';
-import { 
-  Users2, AlertCircle, TrendingDown, TrendingUp, HelpCircle, X, CheckCircle, 
+import {
+  Users2, AlertCircle, TrendingDown, TrendingUp, HelpCircle, X, CheckCircle,
   ChevronLeft, ChevronRight, Search, Calendar, ChevronDown, ChevronUp, Loader2, User
 } from 'lucide-react';
 import type { ClassifiedStudent } from '../../types/classification';
@@ -127,7 +127,7 @@ const ClassificationsPage = () => {
   };
 
   const [isImporting, setIsImporting] = useState(false);
-  
+
   const handleImportMSE = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -136,7 +136,7 @@ const ClassificationsPage = () => {
     try {
       const text = await file.text();
       const rows = text.split('\n').map(row => row.split(',').map(cell => cell.trim()));
-      
+
       const headers = rows[0].map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
       const rollNoIdx = headers.findIndex(h => h.includes('roll') || h.includes('uid'));
       const semIdx = headers.findIndex(h => h.includes('sem'));
@@ -155,7 +155,11 @@ const ClassificationsPage = () => {
         }))
         .filter(row => !isNaN(row.semester) && !isNaN(row.mseMarks));
 
-      const res = await fetch('http://localhost:5003/api/admin/classifications/import-mse', {
+      // Use a relative path so the Vite dev proxy forwards it to the backend in
+      // development, and Nginx routes it correctly in production.  A hardcoded
+      // absolute localhost URL would break when the browser is on a different
+      // machine and would bypass the proxy entirely.
+      const res = await fetch('/api/admin/classifications/import-mse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -163,9 +167,9 @@ const ClassificationsPage = () => {
         },
         body: JSON.stringify({ data })
       });
-      
+
       if (!res.ok) throw new Error('Failed to import');
-      
+
       const result = await res.json();
       setToastMessage(`Successfully imported ${result.updated} records!`);
       setTimeout(() => setToastMessage(''), 4000);
@@ -197,7 +201,7 @@ const ClassificationsPage = () => {
       <div className="w-full bg-gradient-to-r from-[#1a1f36] to-indigo-900 px-6 py-10 shadow-md relative overflow-hidden">
         {/* Decorative background element */}
         <div className="absolute right-0 top-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-        
+
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
           <div className="flex flex-col">
             <h1 className="text-[28px] font-bold text-white flex items-center gap-3 tracking-tight">
@@ -211,7 +215,7 @@ const ClassificationsPage = () => {
               <Calendar className="w-4 h-4 text-indigo-300" />
               {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
             </div>
-            
+
             <label className={`cursor-pointer bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2.5 rounded-full flex items-center gap-2 text-sm font-semibold shadow-sm transition-colors border border-indigo-400 ${isImporting ? 'opacity-70 pointer-events-none' : ''}`}>
               {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
               {isImporting ? 'Importing...' : 'Import MSE% CSV'}
@@ -223,7 +227,7 @@ const ClassificationsPage = () => {
 
       {/* Main Content Container */}
       <div className="max-w-7xl mx-auto w-full px-6 flex flex-col gap-6 -mt-6 relative z-10">
-        
+
         {/* Summary Cards */}
         {isSummaryError ? (
           <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-3 border border-red-200 shadow-sm">
@@ -239,7 +243,7 @@ const ClassificationsPage = () => {
                 {isLoadingSummary ? <span className="animate-pulse bg-gray-200 h-10 w-20 rounded block"></span> : summary?.total || 0}
               </span>
             </div>
-            
+
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-red-500 flex flex-col gap-2 hover:-translate-y-1 transition-transform cursor-default relative overflow-hidden group">
               <div className="absolute right-[-10px] top-[-10px] bg-red-50 w-24 h-24 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl pointer-events-none"></div>
               <span className="text-sm text-gray-500 font-semibold uppercase tracking-wider flex items-center gap-2">
@@ -252,7 +256,7 @@ const ClassificationsPage = () => {
                 {summary?.total ? Math.round(((summary.slowLearners || 0) / summary.total) * 100) : 0}% OF COHORT
               </span>
             </div>
-            
+
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500 flex flex-col gap-2 hover:-translate-y-1 transition-transform cursor-default relative overflow-hidden group">
               <div className="absolute right-[-10px] top-[-10px] bg-green-50 w-24 h-24 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl pointer-events-none"></div>
               <span className="text-sm text-gray-500 font-semibold uppercase tracking-wider flex items-center gap-2">
@@ -270,7 +274,7 @@ const ClassificationsPage = () => {
 
         {/* Info Panel (Collapsible) */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-2">
-          <button 
+          <button
             onClick={() => setPolicyExpanded(!policyExpanded)}
             className="w-full px-6 py-4 bg-gray-50/80 border-b border-gray-200 font-semibold text-[16px] text-gray-800 flex items-center justify-between outline-none hover:bg-gray-100 transition-colors"
           >
@@ -284,7 +288,7 @@ const ClassificationsPage = () => {
               {policyExpanded ? <ChevronUp className="w-5 h-5 text-gray-600" /> : <ChevronDown className="w-5 h-5 text-gray-600" />}
             </div>
           </button>
-          
+
           {policyExpanded && (
             <div className="px-6 py-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-white">
               <div className="flex flex-col gap-4">
@@ -300,10 +304,10 @@ const ClassificationsPage = () => {
                 </h4>
                 {isAddingSlow && (
                   <div className="flex gap-2 mb-1">
-                    <input 
-                      type="text" 
-                      value={newSlowMechanism} 
-                      onChange={e => setNewSlowMechanism(e.target.value)} 
+                    <input
+                      type="text"
+                      value={newSlowMechanism}
+                      onChange={e => setNewSlowMechanism(e.target.value)}
                       placeholder="e.g. Extra Tutorials"
                       className="flex-1 h-8 text-sm border border-red-200 rounded px-2 focus:ring-1 focus:ring-red-400 outline-none"
                       onKeyDown={e => e.key === 'Enter' && handleAddSlowMechanism()}
@@ -334,10 +338,10 @@ const ClassificationsPage = () => {
                 </h4>
                 {isAddingAdvanced && (
                   <div className="flex gap-2 mb-1">
-                    <input 
-                      type="text" 
-                      value={newAdvancedMechanism} 
-                      onChange={e => setNewAdvancedMechanism(e.target.value)} 
+                    <input
+                      type="text"
+                      value={newAdvancedMechanism}
+                      onChange={e => setNewAdvancedMechanism(e.target.value)}
                       placeholder="e.g. Advanced AI Project"
                       className="flex-1 h-8 text-sm border border-green-200 rounded px-2 focus:ring-1 focus:ring-green-400 outline-none"
                       onKeyDown={e => e.key === 'Enter' && handleAddAdvancedMechanism()}
@@ -363,27 +367,27 @@ const ClassificationsPage = () => {
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col lg:flex-row gap-4 items-center mt-2">
           <div className="relative flex-grow w-full lg:max-w-md">
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input 
-              type="text" 
-              placeholder="Search by student name or roll number..." 
+            <input
+              type="text"
+              placeholder="Search by student name or roll number..."
               className="w-full pl-10 pr-4 h-10 bg-gray-50/50 border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          
+
           <div className="flex flex-wrap sm:flex-nowrap w-full lg:w-auto gap-4">
-            <select 
+            <select
               className="flex-1 lg:w-36 h-10 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm cursor-pointer"
-              value={semester} 
+              value={semester}
               onChange={(e) => { setSemester(e.target.value); setPage(1); }}
             >
               <option value="">All Semesters</option>
-              {[1,2,3,4,5,6,7,8].map(s => <option key={s} value={s}>Semester {s}</option>)}
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={s}>Semester {s}</option>)}
             </select>
-            <select 
+            <select
               className="flex-1 lg:w-48 h-10 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm cursor-pointer"
-              value={type} 
+              value={type}
               onChange={(e) => { setType(e.target.value); setPage(1); }}
             >
               <option value="all">All Classification Types</option>
@@ -411,128 +415,128 @@ const ClassificationsPage = () => {
             <div className="flex-grow h-full relative flex flex-col">
               <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-left text-[14px] text-gray-600 whitespace-nowrap min-w-[900px]">
-                <thead className="bg-gray-50 border-b border-gray-200 text-gray-700 sticky top-0 z-10 shadow-sm shadow-gray-100/50">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold tracking-wide">Roll No</th>
-                    <th className="px-6 py-4 font-semibold tracking-wide">Name</th>
-                    <th className="px-6 py-4 font-semibold tracking-wide">Semester</th>
-                    <th className="px-6 py-4 font-semibold tracking-wide">CGPA</th>
-                    <th className="px-6 py-4 font-semibold tracking-wide">Backlogs</th>
-                    <th className="px-6 py-4 font-semibold tracking-wide">MSE%</th>
-                    <th className="px-6 py-4 font-semibold tracking-wide">Classification</th>
-                    <th className="px-6 py-4 font-semibold tracking-wide text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {isLoadingStudents ? (
-                    Array.from({ length: 7 }).map((_, i) => (
-                      <tr key={i} className="even:bg-gray-50/50">
-                        <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-24 animate-pulse"></div></td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
-                            <div className="h-4 bg-gray-200 rounded-md w-36 animate-pulse"></div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-28 animate-pulse"></div></td>
-                        <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-10 animate-pulse"></div></td>
-                        <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-12 animate-pulse"></div></td>
-                        <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-12 animate-pulse"></div></td>
-                        <td className="px-6 py-4"><div className="h-6 bg-gray-200 rounded-full w-24 animate-pulse"></div></td>
-                        <td className="px-6 py-4">
-                          <div className="flex justify-end gap-2">
-                            <div className="h-8 bg-gray-200 rounded-lg w-24 animate-pulse"></div>
-                            <div className="h-8 bg-gray-200 rounded-full w-32 animate-pulse"></div>
+                  <thead className="bg-gray-50 border-b border-gray-200 text-gray-700 sticky top-0 z-10 shadow-sm shadow-gray-100/50">
+                    <tr>
+                      <th className="px-6 py-4 font-semibold tracking-wide">Roll No</th>
+                      <th className="px-6 py-4 font-semibold tracking-wide">Name</th>
+                      <th className="px-6 py-4 font-semibold tracking-wide">Semester</th>
+                      <th className="px-6 py-4 font-semibold tracking-wide">CGPA</th>
+                      <th className="px-6 py-4 font-semibold tracking-wide">Backlogs</th>
+                      <th className="px-6 py-4 font-semibold tracking-wide">MSE%</th>
+                      <th className="px-6 py-4 font-semibold tracking-wide">Classification</th>
+                      <th className="px-6 py-4 font-semibold tracking-wide text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {isLoadingStudents ? (
+                      Array.from({ length: 7 }).map((_, i) => (
+                        <tr key={i} className="even:bg-gray-50/50">
+                          <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-24 animate-pulse"></div></td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
+                              <div className="h-4 bg-gray-200 rounded-md w-36 animate-pulse"></div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-28 animate-pulse"></div></td>
+                          <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-10 animate-pulse"></div></td>
+                          <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-12 animate-pulse"></div></td>
+                          <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-12 animate-pulse"></div></td>
+                          <td className="px-6 py-4"><div className="h-6 bg-gray-200 rounded-full w-24 animate-pulse"></div></td>
+                          <td className="px-6 py-4">
+                            <div className="flex justify-end gap-2">
+                              <div className="h-8 bg-gray-200 rounded-lg w-24 animate-pulse"></div>
+                              <div className="h-8 bg-gray-200 rounded-full w-32 animate-pulse"></div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : paginatedData?.students.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-20 text-center">
+                          <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 ring-8 ring-gray-50/50">
+                              <Search className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <h3 className="text-gray-900 font-semibold mb-2 text-[16px]">No students found</h3>
+                            <p className="text-gray-500 text-sm leading-relaxed">
+                              We couldn't find any students matching your current filter criteria. Try adjusting your filters or clearing the search term.
+                            </p>
+                            <button
+                              onClick={() => { setSemester(''); setType('all'); setSearch(''); setPage(1); }}
+                              className="mt-6 px-4 py-2 bg-indigo-50 text-indigo-700 font-medium rounded-lg text-sm hover:bg-indigo-100 transition-colors"
+                            >
+                              Clear Filters
+                            </button>
                           </div>
                         </td>
                       </tr>
-                    ))
-                  ) : paginatedData?.students.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-6 py-20 text-center">
-                        <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
-                          <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 ring-8 ring-gray-50/50">
-                            <Search className="w-8 h-8 text-gray-400" />
-                          </div>
-                          <h3 className="text-gray-900 font-semibold mb-2 text-[16px]">No students found</h3>
-                          <p className="text-gray-500 text-sm leading-relaxed">
-                            We couldn't find any students matching your current filter criteria. Try adjusting your filters or clearing the search term.
-                          </p>
-                          <button 
-                            onClick={() => { setSemester(''); setType('all'); setSearch(''); setPage(1); }}
-                            className="mt-6 px-4 py-2 bg-indigo-50 text-indigo-700 font-medium rounded-lg text-sm hover:bg-indigo-100 transition-colors"
-                          >
-                            Clear Filters
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedData?.students.map(student => (
-                      <tr key={student.id} className="hover:bg-gray-50 transition-colors even:bg-gray-50/50 group">
-                        <td className="px-6 py-4 font-semibold text-gray-900">{student.rollNo}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
-                              {student.name ? student.name.charAt(0) : '?'}
+                    ) : (
+                      paginatedData?.students.map(student => (
+                        <tr key={student.id} className="hover:bg-gray-50 transition-colors even:bg-gray-50/50 group">
+                          <td className="px-6 py-4 font-semibold text-gray-900">{student.rollNo}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                {student.name ? student.name.charAt(0) : '?'}
+                              </div>
+                              <span className="font-medium text-gray-800">{student.name || 'Unknown Student'}</span>
                             </div>
-                            <span className="font-medium text-gray-800">{student.name || 'Unknown Student'}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 font-medium">Sem {student.semester}</td>
-                        <td className="px-6 py-4 font-semibold text-gray-700">{student.cgpa != null ? Number(student.cgpa).toFixed(2) : '-'}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${student.backlogs && student.backlogs >= 2 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
-                            {student.backlogs ?? 0}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">{student.mseMarks != null ? <span className="font-medium">{student.mseMarks}%</span> : '-'}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1.5">
-                            {student.classification.isSlowLearner && (
-                              <span 
-                                title={student.classification.slowReasons.join('\n')}
-                                className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold tracking-wide uppercase rounded-full cursor-help border border-red-200 shadow-sm"
-                              >
-                                Slow Learner
-                              </span>
-                            )}
-                            {student.classification.isAdvancedLearner && (
-                              <span 
-                                title={student.classification.advancedReasons.join('\n')}
-                                className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold tracking-wide uppercase rounded-full cursor-help border border-green-200 shadow-sm"
-                              >
-                                Advanced Learner
-                              </span>
-                            )}
-                            {!student.classification.isSlowLearner && !student.classification.isAdvancedLearner && (
-                              <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold tracking-wide uppercase rounded-full border border-gray-200 shadow-sm">
-                                General
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                              <button 
+                          </td>
+                          <td className="px-6 py-4 font-medium">Sem {student.semester}</td>
+                          <td className="px-6 py-4 font-semibold text-gray-700">{student.cgpa != null ? Number(student.cgpa).toFixed(2) : '-'}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${student.backlogs && student.backlogs >= 2 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                              {student.backlogs ?? 0}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">{student.mseMarks != null ? <span className="font-medium">{student.mseMarks}%</span> : '-'}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1.5">
+                              {student.classification.isSlowLearner && (
+                                <span
+                                  title={student.classification.slowReasons.join('\n')}
+                                  className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold tracking-wide uppercase rounded-full cursor-help border border-red-200 shadow-sm"
+                                >
+                                  Slow Learner
+                                </span>
+                              )}
+                              {student.classification.isAdvancedLearner && (
+                                <span
+                                  title={student.classification.advancedReasons.join('\n')}
+                                  className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold tracking-wide uppercase rounded-full cursor-help border border-green-200 shadow-sm"
+                                >
+                                  Advanced Learner
+                                </span>
+                              )}
+                              {!student.classification.isSlowLearner && !student.classification.isAdvancedLearner && (
+                                <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold tracking-wide uppercase rounded-full border border-gray-200 shadow-sm">
+                                  General
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
                                 className="px-3 py-1.5 text-gray-600 bg-transparent hover:bg-gray-200 border border-transparent hover:border-gray-300 rounded-lg text-sm font-semibold transition-all shadow-sm hover:shadow"
                                 onClick={() => setPreviewStudentId(student.id)}
                               >
                                 View Profile
                               </button>
-                            <button 
-                              onClick={() => openSupportModal(student)}
-                              className="px-4 py-1.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-full text-sm font-semibold transition-all shadow-sm hover:shadow-md active:scale-95 whitespace-nowrap flex items-center gap-1.5"
-                            >
-                              <span>+</span> Support Plan
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                              <button
+                                onClick={() => openSupportModal(student)}
+                                className="px-4 py-1.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-full text-sm font-semibold transition-all shadow-sm hover:shadow-md active:scale-95 whitespace-nowrap flex items-center gap-1.5"
+                              >
+                                <span>+</span> Support Plan
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
 
               {/* Mobile Card View */}
@@ -557,7 +561,7 @@ const ClassificationsPage = () => {
                           <span className="text-[13px] font-medium text-gray-500 mt-0.5">{student.rollNo} <span className="mx-1">•</span> Sem {student.semester}</span>
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm pt-1">
                         <div className="flex flex-col gap-1">
                           <span className="text-[11px] font-bold tracking-wider text-gray-400 uppercase">CGPA</span>
@@ -569,7 +573,7 @@ const ClassificationsPage = () => {
                             {student.backlogs ?? 0}
                           </span>
                         </div>
-                        
+
                         <div className="flex flex-col col-span-2 mt-1 gap-1.5">
                           <span className="text-[11px] font-bold tracking-wider text-gray-400 uppercase">Classification</span>
                           <div className="flex flex-wrap gap-1.5">
@@ -593,13 +597,13 @@ const ClassificationsPage = () => {
                       </div>
 
                       <div className="flex justify-end gap-2 mt-2 pt-3 border-t border-gray-50">
-                        <button 
+                        <button
                           onClick={() => setPreviewStudentId(student.id)}
                           className="px-3 py-1.5 text-gray-600 bg-transparent hover:bg-gray-100 border border-gray-200 rounded-lg text-xs font-bold transition-all"
                         >
                           Profile
                         </button>
-                        <button 
+                        <button
                           onClick={() => openSupportModal(student)}
                           className="px-3 py-1.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 active:scale-95"
                         >
@@ -612,14 +616,14 @@ const ClassificationsPage = () => {
               </div>
             </div>
           )}
-          
+
           {/* Pagination Controls */}
           <div className="bg-white px-6 py-4 border-t border-gray-200 flex items-center justify-between mt-auto">
             <span className="text-sm font-medium text-gray-500">
               Showing <span className="text-gray-900 font-semibold">{paginatedData?.total ? ((page - 1) * limit) + 1 : 0}</span> to <span className="text-gray-900 font-semibold">{Math.min(page * limit, paginatedData?.total || 0)}</span> of <span className="text-gray-900 font-semibold">{paginatedData?.total || 0}</span> students
             </span>
             <div className="flex items-center gap-3">
-              <button 
+              <button
                 disabled={page === 1 || isLoadingStudents}
                 onClick={() => setPage(p => p - 1)}
                 className="p-1.5 rounded-lg bg-white border border-gray-300 disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition-colors shadow-sm"
@@ -629,7 +633,7 @@ const ClassificationsPage = () => {
               <div className="text-sm font-semibold text-gray-700 min-w-[80px] text-center">
                 Page {page}
               </div>
-              <button 
+              <button
                 disabled={!paginatedData || page * limit >= paginatedData.total || isLoadingStudents}
                 onClick={() => setPage(p => p + 1)}
                 className="p-1.5 rounded-lg bg-white border border-gray-300 disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition-colors shadow-sm"
@@ -655,26 +659,25 @@ const ClassificationsPage = () => {
                   {selectedStudent.name} <span className="opacity-50">•</span> {selectedStudent.rollNo}
                 </p>
               </div>
-              <button 
-                onClick={() => setModalOpen(false)} 
+              <button
+                onClick={() => setModalOpen(false)}
                 className="text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 p-2 rounded-full relative z-10"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleAddPlanSubmit} className="p-6 flex flex-col gap-5 bg-white">
-              
+
               {/* Classification Info Banner */}
-              <div className={`p-4 rounded-xl border ${
-                selectedStudent.classification.isSlowLearner && selectedStudent.classification.isAdvancedLearner 
+              <div className={`p-4 rounded-xl border ${selectedStudent.classification.isSlowLearner && selectedStudent.classification.isAdvancedLearner
                   ? 'bg-amber-50 border-amber-200 text-amber-900'
                   : selectedStudent.classification.isAdvancedLearner
                     ? 'bg-green-50 border-green-200 text-green-900'
                     : selectedStudent.classification.isSlowLearner
                       ? 'bg-red-50 border-red-200 text-red-900'
                       : 'bg-gray-50 border-gray-200 text-gray-900'
-              }`}>
+                }`}>
                 <div className="flex items-center gap-2.5">
                   <div className={`p-1.5 rounded-full bg-white/60 shadow-sm`}>
                     {selectedStudent.classification.isSlowLearner && selectedStudent.classification.isAdvancedLearner && <AlertCircle className="w-4 h-4 text-amber-700" />}
@@ -683,17 +686,17 @@ const ClassificationsPage = () => {
                     {!selectedStudent.classification.isSlowLearner && !selectedStudent.classification.isAdvancedLearner && <Users2 className="w-4 h-4 text-gray-700" />}
                   </div>
                   <p className="text-sm font-semibold tracking-wide">
-                    {selectedStudent.classification.isSlowLearner && selectedStudent.classification.isAdvancedLearner 
-                    ? 'Both Categories (Slow & Advanced Learner)' 
-                    : selectedStudent.classification.isAdvancedLearner ? 'Advanced Learner'
-                    : selectedStudent.classification.isSlowLearner ? 'Slow Learner' : 'General Classification'}
+                    {selectedStudent.classification.isSlowLearner && selectedStudent.classification.isAdvancedLearner
+                      ? 'Both Categories (Slow & Advanced Learner)'
+                      : selectedStudent.classification.isAdvancedLearner ? 'Advanced Learner'
+                        : selectedStudent.classification.isSlowLearner ? 'Slow Learner' : 'General Classification'}
                   </p>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Target Category</label>
-                <select 
+                <select
                   required
                   value={planType}
                   onChange={(e) => {
@@ -709,7 +712,7 @@ const ClassificationsPage = () => {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Support Mechanism</label>
-                <select 
+                <select
                   required
                   value={mechanism}
                   onChange={(e) => setMechanism(e.target.value)}
@@ -726,7 +729,7 @@ const ClassificationsPage = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Scheduled Date</label>
                 <div className="relative">
                   <Calendar className="w-4 h-4 text-gray-500 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input 
+                  <input
                     type="date"
                     required
                     max="9999-12-31"
@@ -739,7 +742,7 @@ const ClassificationsPage = () => {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Additional Notes</label>
-                <textarea 
+                <textarea
                   rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -749,15 +752,15 @@ const ClassificationsPage = () => {
               </div>
 
               <div className="mt-2 flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setModalOpen(false)}
                   className="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={addSupportPlanMutation.isPending}
                   className="w-full sm:w-auto px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors disabled:opacity-70 disabled:cursor-not-allowed shadow-sm shadow-indigo-600/30 flex items-center justify-center gap-2"
                 >
@@ -774,9 +777,9 @@ const ClassificationsPage = () => {
       )}
 
       {previewStudentId !== null && (
-        <StudentDetailModal 
-          studentId={previewStudentId} 
-          onClose={() => setPreviewStudentId(null)} 
+        <StudentDetailModal
+          studentId={previewStudentId}
+          onClose={() => setPreviewStudentId(null)}
         />
       )}
     </div>

@@ -927,14 +927,14 @@ const listUsers = async (_req, res, next) => {
             u.student_profile?.uid ||
             u.username
           : u.role === "faculty"
-            ? buildFullName(
-                u.faculty_profile?.first_name,
-                "",
-                u.faculty_profile?.last_name,
-              ) ||
-              u.faculty_profile?.email ||
-              u.username
-            : u.username,
+          ? buildFullName(
+              u.faculty_profile?.first_name,
+              "",
+              u.faculty_profile?.last_name,
+            ) ||
+            u.faculty_profile?.email ||
+            u.username
+          : u.username,
       photoUrl:
         serializeModel(u.student_profile?.personal_info)?.photoUrl || null,
       photoPreviewUrl:
@@ -1031,11 +1031,9 @@ const createUser = async (req, res, next) => {
       if (!email)
         return res.status(400).json({ error: "Missing faculty field: email" });
       if (!isValidFacultyEmail(email)) {
-        return res
-          .status(400)
-          .json({
-            error: "Invalid email format, must end with @stvincentngp.edu.in",
-          });
+        return res.status(400).json({
+          error: "Invalid email format, must end with @stvincentngp.edu.in",
+        });
       }
       if (!firstName && !fallbackName) {
         return res
@@ -1187,12 +1185,10 @@ const updateUser = async (req, res, next) => {
       return res.status(400).json({ error: "No data provided" });
 
     if ("role" in data && data.role !== user.role) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Changing user role is not allowed. Delete and recreate the user with the new role.",
-        });
+      return res.status(400).json({
+        error:
+          "Changing user role is not allowed. Delete and recreate the user with the new role.",
+      });
     }
 
     if (user.role === "student") {
@@ -1256,11 +1252,9 @@ const updateUser = async (req, res, next) => {
 
       if ("email" in data) {
         if (!String(data.email).endsWith("@stvincentngp.edu.in")) {
-          return res
-            .status(400)
-            .json({
-              error: "Invalid email format, must end with @stvincentngp.edu.in",
-            });
+          return res.status(400).json({
+            error: "Invalid email format, must end with @stvincentngp.edu.in",
+          });
         }
         if (
           await User.findOne({
@@ -1320,14 +1314,101 @@ const deleteUser = async (req, res, next) => {
       // student.mentor_id is set to NULL (FK: ON DELETE SET NULL handles this
       // at the DB level, but we do it explicitly for clarity and safety).
       if (user.role === "faculty" && user.faculty_profile) {
+        // Remove mentor assignment from students
         await Student.update(
           { mentor_id: null },
           { where: { mentor_id: user.faculty_profile.id }, transaction: tx },
         );
+
+        // Nullify faculty references on mentoring minutes (DB may not have ON DELETE SET NULL)
+        const { MentoringMinute } = require("../models");
+        await MentoringMinute.update(
+          { faculty_id: null },
+          { where: { faculty_id: user.faculty_profile.id }, transaction: tx },
+        );
+
         await user.faculty_profile.destroy({ transaction: tx });
       }
 
       if (user.role === "student" && user.student_profile) {
+        // Explicitly remove dependent student records to avoid DB FK violations
+        const models = require("../models");
+        const studentId = user.student_profile.id;
+
+        // Delete mentoring minutes referencing this student
+        if (models.MentoringMinute)
+          await models.MentoringMinute.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+
+        // Delete other student-owned records (personal info, education, projects, activities, support plans, etc.)
+        if (models.StudentPersonalInfo)
+          await models.StudentPersonalInfo.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.PastEducation)
+          await models.PastEducation.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.PostAdmissionAcademicRecord)
+          await models.PostAdmissionAcademicRecord.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.Project)
+          await models.Project.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.Internship)
+          await models.Internship.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.CoCurricularParticipation)
+          await models.CoCurricularParticipation.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.CoCurricularOrganization)
+          await models.CoCurricularOrganization.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.CareerObjective)
+          await models.CareerObjective.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.Skills)
+          await models.Skills.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.SWOC)
+          await models.SWOC.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.CareerActivity)
+          await models.CareerActivity.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.CareerDevActivity)
+          await models.CareerDevActivity.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+        if (models.SupportPlan)
+          await models.SupportPlan.destroy({
+            where: { student_id: studentId },
+            transaction: tx,
+          });
+
         await user.student_profile.destroy({ transaction: tx });
       }
 
@@ -1336,9 +1417,22 @@ const deleteUser = async (req, res, next) => {
       return res.status(200).json({ message: "User deleted successfully" });
     } catch (deleteError) {
       await tx.rollback();
-      return res
-        .status(500)
-        .json({ error: "Database error", detail: deleteError.message });
+      const logger = require("../utils/logger");
+      logger.error({ message: "Failed to delete user", error: deleteError });
+
+      // Handle common Sequelize constraint errors more gracefully
+      if (
+        deleteError &&
+        (deleteError.name === "SequelizeForeignKeyConstraintError" ||
+          deleteError.name === "SequelizeDatabaseError")
+      ) {
+        return res.status(409).json({
+          error:
+            "Cannot delete user because related records exist. Remove or reassign dependent records and try again.",
+        });
+      }
+
+      return res.status(500).json({ error: "Database error" });
     }
   } catch (error) {
     return next(error);
@@ -1350,22 +1444,20 @@ const resetPassword = async (req, res, next) => {
     const { role, username, new_password } = req.body || {};
 
     if (!role || !["student", "faculty"].includes(role)) {
-      return res
-        .status(400)
-        .json({
-          error: "Invalid or missing role. Must be 'student' or 'faculty'",
-        });
+      return res.status(400).json({
+        error: "Invalid or missing role. Must be 'student' or 'faculty'",
+      });
     }
     if (!username)
       return res.status(400).json({ error: "username is required" });
 
     const user = await User.findOne({ where: { username, role } });
     if (!user)
-      return res
-        .status(404)
-        .json({
-          error: `${role.charAt(0).toUpperCase() + role.slice(1)} with given username not found`,
-        });
+      return res.status(404).json({
+        error: `${
+          role.charAt(0).toUpperCase() + role.slice(1)
+        } with given username not found`,
+      });
 
     if (await verifyPassword(new_password || "", user.password_hash)) {
       return res
@@ -1578,11 +1670,9 @@ const confirmMentees = async (req, res, next) => {
         .json({ error: "Database error during assignment" });
     }
 
-    return res
-      .status(200)
-      .json({
-        message: `Assigned ${students.length} mentees to faculty ${facultyId} successfully.`,
-      });
+    return res.status(200).json({
+      message: `Assigned ${students.length} mentees to faculty ${facultyId} successfully.`,
+    });
   } catch (error) {
     return next(error);
   }
@@ -1791,11 +1881,9 @@ const autoAllocateUnassigned = async (req, res, next) => {
       (f) => f.current_count < CAPACITY,
     );
     if (!eligibleFaculty.length) {
-      return res
-        .status(400)
-        .json({
-          error: "All faculty members have reached maximum capacity (30).",
-        });
+      return res.status(400).json({
+        error: "All faculty members have reached maximum capacity (30).",
+      });
     }
 
     // Group unassigned students by semester + section to maintain balanced section mix
@@ -1927,11 +2015,9 @@ const confirmAllocation = async (req, res, next) => {
       );
     });
 
-    return res
-      .status(200)
-      .json({
-        message: `Assigned ${studentIds.length} students to faculty ${facultyId}`,
-      });
+    return res.status(200).json({
+      message: `Assigned ${studentIds.length} students to faculty ${facultyId}`,
+    });
   } catch (error) {
     return next(error);
   }
@@ -1956,11 +2042,9 @@ const removeAllocation = async (req, res, next) => {
       where: { id: { [Op.in]: studentIds }, mentor_id: facultyId },
     });
     if (students.length !== studentIds.length) {
-      return res
-        .status(404)
-        .json({
-          error: "One or more student IDs not assigned to this faculty",
-        });
+      return res.status(404).json({
+        error: "One or more student IDs not assigned to this faculty",
+      });
     }
 
     await sequelize.transaction(async (tx) => {
@@ -1973,11 +2057,9 @@ const removeAllocation = async (req, res, next) => {
       );
     });
 
-    return res
-      .status(200)
-      .json({
-        message: `Removed ${studentIds.length} students from faculty ${facultyId}`,
-      });
+    return res.status(200).json({
+      message: `Removed ${studentIds.length} students from faculty ${facultyId}`,
+    });
   } catch (error) {
     return next(error);
   }

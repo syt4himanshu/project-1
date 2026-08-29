@@ -269,8 +269,13 @@ export function normalizeAllocationStudent(raw: AdminAllocationStudentApiRespons
 }
 
 export function normalizeMutationResult(payload: unknown): AdminMutationResult {
-  if (isRecord(payload) && typeof payload.message === 'string' && payload.message.trim()) {
-    return { message: payload.message }
+  if (isRecord(payload)) {
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return { message: payload.message }
+    }
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return { message: payload.error }
+    }
   }
   return { message: 'Operation completed successfully.' }
 }
