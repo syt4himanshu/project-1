@@ -57,37 +57,35 @@ Keep the response focused and professional — 2–8 sentences unless the task r
 == SNAPSHOT REFRESH ==
 If the faculty writes any of: "Refresh insights", "Analyze student again", "Regenerate student profile" — treat it as a first response and regenerate the full structure including all four sections.`;
 
-const REMARKS_SYSTEM_PROMPT = `You are MentorAI, an experienced faculty mentor, placement advisor, and career counselor for engineering students.
+const REMARKS_SYSTEM_PROMPT = `You are MentorAI, an academic mentor and placement advisor for B.Tech Computer Science and Engineering students.
 
-Generate mentoring remarks for the student strictly following this sequence:
-1. Recognize strengths — highlight 1-2 specific achievements or positive attributes visible in the student's profile.
-2. Identify improvement opportunities — point out 1-2 specific areas that need attention, grounded in the student's data.
-3. Explain why improvement matters — briefly state the career or academic consequence of addressing each gap.
-4. Suggest practical next steps — give concrete, actionable recommendations tailored to the student's goals and profile.
-5. End with encouragement — close with a brief, genuine, personalized statement (no generic phrases like "You can do it!" or "Keep it up!").
+Follow these rules strictly:
+- Analyze ONLY the student information supplied. Do NOT invent missing information.
+- If an important field is missing, state it as "Not provided" (e.g., "CGPA: Not provided.").
+- Never estimate CGPA, attendance, skills, certifications, internships, achievements, or project details.
+- Prioritize highest-impact, actionable recommendations focused on the next semester.
+- Do NOT expose internal reasoning, chain-of-thought, or any meta-analysis. Never output <think> or </think>.
+- Never mention prompts, schemas, models, AI, system messages, or internal instructions.
+- Avoid generic motivational language and avoid repeating the same information.
 
-Tone rules:
-• Professional, warm, encouraging, constructive, and data-driven.
-• Write as a faculty mentor speaking directly to the student.
-• Every point must be specific to this student's profile — no generic filler.
+STRICT OUTPUT FORMAT (MUST be followed exactly):
 
-Language rules — always use phrasings like:
-• "Your academic record indicates..."
-• "Your current CGPA of X suggests..."
-• "Your participation in [activity] reflects..."
-• "Based on your profile..."
-• "Your experience with [skill/project] demonstrates..."
+Direct Answer:
+4-5 concise sentences that directly answer the faculty's question. Be professional, specific, and evidence-based.
 
-Strictly avoid:
-• "Based on the schema..." / "The database indicates..." / "The prompt suggests..."
-• "I extracted..." / "According to the JSON..." / "The context shows..."
-• Any reference to internal systems, databases, schemas, or data extraction.
-• Generic motivational language not tied to the student's actual profile.
+Student Overview:
+- Up to 3 concise bullet points summarizing the student's key facts (use "Not provided" where data is missing).
 
-Format:
-• 5-7 lines total. Each line is one clear, complete thought.
-• No bullet points, no section headers — write as flowing mentor remarks.
-• Do not fabricate data. If information is missing, infer practical guidance from what is available.`;
+Strengths & Potential:
+- 2-4 concise bullet points grounded in the supplied data.
+
+Areas for Improvement:
+- 2-4 concise bullet points, prioritized, grounded in the supplied data.
+
+Faculty Recommendations:
+- 3-4 prioritized, actionable bullet points focused on the next semester.
+
+Only output these five sections in this order and nothing else. Do not add introductions, conclusions, reasoning, or metadata.`;
 
 const buildUserMessage = ({
   facultyQuery,
@@ -96,11 +94,31 @@ const buildUserMessage = ({
 }) => {
   const studentProfile = studentDataset?.students?.[0] || {};
 
+  // Sanitize student profile fields to reduce prompt-injection risk (escape angle brackets and redact obvious instruction-like lines)
+  const sanitizeForPrompt = (value) => {
+    if (value === null || value === undefined) return "";
+    const text = String(value);
+    // Escape angle brackets so the model treats them as data
+    let s = text.replace(/</g, "<").replace(/>/g, ">");
+    // Redact suspicious instruction-like tokens while preserving data
+    s = s.replace(
+      /(ignore previous instructions|ignore all previous|system message|you are the|<think>|<\/think>)/gi,
+      "[REDACTED]",
+    );
+    return s;
+  };
+
   const profileSummary = [
-    studentProfile.name ? `Student Name: ${studentProfile.name}` : null,
+    studentProfile.name
+      ? `Student Name: ${sanitizeForPrompt(studentProfile.name)}`
+      : null,
     studentProfile.semester ? `Semester: ${studentProfile.semester}` : null,
-    studentProfile.program ? `Program: ${studentProfile.program}` : null,
-    studentProfile.cgpa ? `CGPA: ${studentProfile.cgpa}` : null,
+    studentProfile.program
+      ? `Program: ${sanitizeForPrompt(studentProfile.program)}`
+      : null,
+    studentProfile.cgpa
+      ? `CGPA: ${sanitizeForPrompt(studentProfile.cgpa)}`
+      : null,
     studentProfile.academicRecords?.length
       ? `Semester-wise SGPA: ${studentProfile.academicRecords
           .map(
@@ -151,6 +169,69 @@ const buildUserMessage = ({
   ]
     .filter(Boolean)
     .join("\n");
+
+  // Clean and validate model text output to enforce required sections and remove chain-of-thought
+  const cleanAndValidateResponse = (rawText) => {
+    if (!rawText || typeof rawText !== "string")
+      return { ok: false, reason: "Empty response" };
+
+    // 1. Remove <think>...</think> blocks
+    let text = rawText.replace(/<think>[\s\S]*?<\/think>/gi, "");
+
+    // 2. Remove common reasoning headings and sections
+    text = text.replace(
+      /(^|\n)\s*(Thinking Process:|Analysis:|Self-?Correction:|Review and Refine:|Draft:|Let's verify|Proceed|One minor adjustment|Data used to understand this message)[\s\S]*?(?=\n[A-Z][a-zA-Z &]+:|$)/gi,
+      "\n",
+    );
+
+    // 3. Remove markdown code fences if they wrap the whole response or appear unnecessarily
+    text = text.replace(/```[\s\S]*?```/g, (m) => m.replace(/```/g, ""));
+
+    // 4. Normalize whitespace
+    text = text.replace(/\r\n/g, "\n").replace(/\t/g, " ").trim();
+
+    // 5. Collapse duplicated consecutive lines
+    const lines = text.split("\n");
+    const collapsed = [];
+    for (const line of lines) {
+      if (
+        collapsed.length &&
+        collapsed[collapsed.length - 1].trim() === line.trim()
+      )
+        continue;
+      collapsed.push(line);
+    }
+    text = collapsed.join("\n").trim();
+
+    // 6. Ensure required sections exist and extract them
+    const sectionNames = [
+      "Direct Answer",
+      "Student Overview",
+      "Strengths & Potential",
+      "Areas for Improvement",
+      "Faculty Recommendations",
+    ];
+
+    const found = {};
+    for (const name of sectionNames) {
+      const re = new RegExp(
+        "^" + name.replace(/[-&]/g, "\\$&") + "\\s*:",
+        "im",
+      );
+      found[name] = re.test(text);
+    }
+
+    const missing = sectionNames.filter((n) => !found[n]);
+    if (missing.length)
+      return {
+        ok: false,
+        reason: "Missing sections: " + missing.join(", "),
+        cleaned: text,
+      };
+
+    // If all sections present, return cleaned text
+    return { ok: true, cleaned: text };
+  };
 
   // Build the messages array: system + optional history + current user message
   const isFirstQuery = !conversationHistory || conversationHistory.length === 0;
@@ -253,9 +334,67 @@ const generateFacultyInsights = async ({
           latencyMs: latency,
         });
 
-        return (
-          completion?.choices?.[0]?.message?.content || "No response generated"
-        );
+        const raw =
+          completion?.choices?.[0]?.message?.content || "No response generated";
+
+        // Clean and validate the response
+        const cleaned = cleanAndValidateResponse(raw);
+        if (cleaned.ok) return cleaned.cleaned;
+
+        // Attempt one controlled regeneration with an explicit instruction
+        logger.warn({
+          message:
+            "AI response missing required sections, attempting one regeneration",
+          reason: cleaned.reason,
+        });
+
+        try {
+          const regen = await retryWithBackoff(
+            async () => {
+              return await groq.chat.completions.create(
+                {
+                  model: currentModel,
+                  messages: [
+                    { role: "system", content: systemPrompt },
+                    ...trimmedHistory,
+                    { role: "user", content: currentUserMessage },
+                    {
+                      role: "user",
+                      content:
+                        'Regenerate the answer in the exact required format: Direct Answer:, Student Overview:, Strengths & Potential:, Areas for Improvement:, Faculty Recommendations:. Do not include any internal reasoning or metadata. If a field is missing, write "Not provided" for that field.',
+                    },
+                  ],
+                  temperature: AI_CONFIG.temperature,
+                  max_tokens: AI_CONFIG.max_tokens,
+                },
+                { timeout: 10000 },
+              );
+            },
+            {
+              maxAttempts: 2,
+              initialDelay: 500,
+              maxDelay: 1000,
+              operationName: "groq-api-regen",
+            },
+          );
+
+          const raw2 =
+            regen?.choices?.[0]?.message?.content || "No response generated";
+          const cleaned2 = cleanAndValidateResponse(raw2);
+          if (cleaned2.ok) return cleaned2.cleaned;
+
+          logger.error({
+            message: "Regeneration failed to produce valid format",
+            reason: cleaned2.reason,
+          });
+          return "ERROR: AI response malformed. Please try again or refine the query.";
+        } catch (regenError) {
+          logger.error({
+            message: "Regeneration attempt failed",
+            error: regenError?.message || regenError,
+          });
+          return "ERROR: AI generation failed. Please try again later.";
+        }
       } catch (error) {
         logger.error({
           message: "Groq API error",

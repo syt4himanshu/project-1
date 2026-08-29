@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, type FormEvent } from 'react'
+﻿import { useState, useEffect, useRef, type FormEvent } from "react";
 import {
   Sparkles,
   Send,
@@ -9,122 +9,131 @@ import {
   TrendingUp,
   MessageSquareText,
   X,
-} from 'lucide-react'
-import { facultyClient } from '../api/client'
-import { toApiErrorMessage } from '../../../shared/api/errorMapper'
+} from "lucide-react";
+import { facultyClient } from "../api/client";
+import { toApiErrorMessage } from "../../../shared/api/errorMapper";
 
 interface StudentContext {
-  uid: string
-  name: string
-  semester: number
-  program: string
+  uid: string;
+  name: string;
+  semester: number;
+  program: string;
   previousRemarks?: Array<{
-    date: string
-    remarks: string
-    suggestion?: string
-    action?: string
-  }>
+    date: string;
+    remarks: string;
+    suggestion?: string;
+    action?: string;
+  }>;
 }
 
 interface AIRemarksAssistantProps {
-  open: boolean
-  studentContext: StudentContext
-  onClose: () => void
-  onInsert: (remarks: string, suggestion?: string, action?: string) => void
+  open: boolean;
+  studentContext: StudentContext;
+  onClose: () => void;
+  onInsert: (remarks: string, suggestion?: string, action?: string) => void;
 }
 
 interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
 }
 
 const SUGGESTION_CHIPS = [
-  { id: 'give_remarks', label: 'Give Remarks', Icon: FileText },
-  { id: 'skills', label: 'Skill improvement plan', Icon: TrendingUp },
-  { id: 'behavior', label: 'Behavior & communication', Icon: MessageSquareText },
-]
+  { id: "give_remarks", label: "Give Remarks", Icon: FileText },
+  { id: "skills", label: "Skill improvement plan", Icon: TrendingUp },
+  {
+    id: "behavior",
+    label: "Behavior & communication",
+    Icon: MessageSquareText,
+  },
+];
 
-export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: AIRemarksAssistantProps) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export function AIRemarksAssistant({
+  open,
+  studentContext,
+  onClose,
+  onInsert,
+}: AIRemarksAssistantProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [generatedContent, setGeneratedContent] = useState<{
-    remarks: string
-    suggestion?: string
-    action?: string
-  } | null>(null)
+    remarks: string;
+    suggestion?: string;
+    action?: string;
+  } | null>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   useEffect(() => {
     if (open) {
-      inputRef.current?.focus()
+      inputRef.current?.focus();
     }
-  }, [open])
+  }, [open]);
 
   useEffect(() => {
     if (open && messages.length === 0) {
       setMessages([
         {
-          id: '1',
-          role: 'assistant',
+          id: "1",
+          role: "assistant",
           content: `I can help you draft clear, professional remarks for ${studentContext.name}. Use a prompt below or ask directly.`,
           timestamp: new Date(),
         },
-      ])
+      ]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [open]);
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
+      if (e.key === "Escape") {
+        onClose();
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose])
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
 
   const handleSuggestionClick = async (chipId: string) => {
     const prompts: Record<string, string> = {
       give_remarks: `Generate comprehensive mentoring remarks for ${studentContext.name} following the full sequence: recognize strengths, identify improvement areas, explain why improvement matters, suggest practical next steps, and end with personalized encouragement.`,
       skills: `Suggest a skill improvement plan for ${studentContext.name}`,
       behavior: `Write behavior and communication remarks for ${studentContext.name}`,
-    }
+    };
 
-    const prompt = prompts[chipId]
+    const prompt = prompts[chipId];
     if (prompt) {
-      await handleSendMessage(prompt)
+      await handleSendMessage(prompt);
     }
-  }
+  };
 
   const handleSendMessage = async (messageText?: string) => {
-    const text = messageText || input.trim()
-    if (!text || isLoading) return
+    const text = messageText || input.trim();
+    if (!text || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: text,
       timestamp: new Date(),
-    }
+    };
 
-    setMessages((prev) => [...prev, userMessage])
-    setInput('')
-    setIsLoading(true)
-    setError(null)
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+    setError(null);
 
     try {
       const data = await facultyClient.askAIRemarks({
@@ -136,50 +145,60 @@ export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: 
           program: studentContext.program,
           previousRemarks: studentContext.previousRemarks?.slice(0, 3),
         },
-      })
-      const aiContent = data.content || 'No response generated'
+      });
+      const aiContent = data.content || "No response generated";
 
-      const parsed = parseAIResponse(aiContent)
-      setGeneratedContent(parsed)
+      const parsed = parseAIResponse(aiContent);
+      setGeneratedContent(parsed);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
+        role: "assistant",
         content: aiContent,
         timestamp: new Date(),
-      }
+      };
 
-      setMessages((prev) => [...prev, assistantMessage])
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
-      setError(toApiErrorMessage(err, 'Failed to get AI response'))
+      setError(toApiErrorMessage(err, "Failed to get AI response"));
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'I could not generate remarks right now. Please retry in a moment.',
+        role: "assistant",
+        content:
+          "I could not generate remarks right now. Please retry in a moment.",
         timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    void handleSendMessage()
-  }
+    e.preventDefault();
+    void handleSendMessage();
+  };
 
   const handleInsertRemarks = () => {
     if (generatedContent) {
-      onInsert(generatedContent.remarks, generatedContent.suggestion, generatedContent.action)
-      onClose()
+      onInsert(
+        generatedContent.remarks,
+        generatedContent.suggestion,
+        generatedContent.action,
+      );
+      onClose();
     }
-  }
+  };
 
-  if (!open) return null
+  if (!open) return null;
 
   return (
-    <div className="ai-remarks-overlay" role="dialog" aria-modal="true" aria-labelledby="ai-remarks-title">
+    <div
+      className="ai-remarks-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ai-remarks-title"
+    >
       <div className="ai-remarks-backdrop" onClick={onClose} />
 
       <div className="ai-remarks-popup">
@@ -187,9 +206,12 @@ export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: 
           <div className="ai-remarks-header-content">
             <Sparkles className="ai-remarks-icon" size={20} />
             <div className="ai-remarks-header-text">
-              <h3 id="ai-remarks-title" className="ai-remarks-title">AI Remarks Assistant</h3>
+              <h3 id="ai-remarks-title" className="ai-remarks-title">
+                AI Remarks Assistant
+              </h3>
               <p className="ai-remarks-subtitle">
-                {studentContext.name} • Sem {studentContext.semester} • {studentContext.program}
+                {studentContext.name} • Sem {studentContext.semester} •{" "}
+                {studentContext.program}
               </p>
             </div>
           </div>
@@ -222,11 +244,13 @@ export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: 
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`ai-remarks-message ${msg.role === 'user' ? 'ai-remarks-message--user' : 'ai-remarks-message--assistant'}`}
+              className={`ai-remarks-message ${
+                msg.role === "user"
+                  ? "ai-remarks-message--user"
+                  : "ai-remarks-message--assistant"
+              }`}
             >
-              <div className="ai-remarks-message-content">
-                {msg.content}
-              </div>
+              <div className="ai-remarks-message-content">{msg.content}</div>
             </div>
           ))}
 
@@ -250,7 +274,9 @@ export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: 
         </div>
 
         <form className="ai-remarks-input-form" onSubmit={handleSubmit}>
-          <label className="ai-remarks-input-label" htmlFor="ai-remarks-query">Ask AI</label>
+          <label className="ai-remarks-input-label" htmlFor="ai-remarks-query">
+            Ask AI
+          </label>
           <textarea
             ref={inputRef}
             id="ai-remarks-query"
@@ -285,17 +311,43 @@ export function AIRemarksAssistant({ open, studentContext, onClose, onInsert }: 
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function parseAIResponse(content: string): {
-  remarks: string
-  suggestion?: string
-  action?: string
+  remarks: string;
+  suggestion?: string;
+  action?: string;
 } {
-  return {
-    remarks: content.trim(),
-    suggestion: undefined,
-    action: undefined,
+  if (!content || typeof content !== "string") return { remarks: "" };
+
+  // Basic sanitization: remove <think> blocks and angle-bracket tags
+  let text = content.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  text = text.replace(/<[^>]+>/g, "");
+
+  // Extract sections by header
+  const sectionRegex =
+    /^(Direct Answer|Student Overview|Strengths & Potential|Areas for Improvement|Faculty Recommendations)\s*:\s*([\s\S]*?)(?=\n[A-Z][\w &-]+:\s|$)/gim;
+  const sections: Record<string, string> = {};
+  let m: RegExpExecArray | null;
+  while ((m = sectionRegex.exec(text)) !== null) {
+    const name = m[1].trim();
+    const body = m[2].trim();
+    sections[name] = body;
   }
+
+  const direct = sections["Direct Answer"] || text.trim();
+  const facultyRec = sections["Faculty Recommendations"] || "";
+
+  // Map faculty recommendations to suggestion/action heuristically
+  const recLines = facultyRec
+    .split(/\n|\r/)
+    .map((l) => l.replace(/^[-\u2022\*\s]+/, "").trim())
+    .filter(Boolean);
+
+  return {
+    remarks: direct.trim(),
+    suggestion: recLines[0] || undefined,
+    action: recLines[1] || undefined,
+  };
 }
