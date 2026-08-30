@@ -36,7 +36,7 @@ export default function Step4AcademicAfter() {
                     <section key={sem} ref={el => { semCardRefs.current[sem] = el }} className={sectionCardCls}>
                         <h3 className="mb-4 text-xl font-semibold text-[#223b60]">Semester {sem}</h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                            {field('SGPA / Percentage', input('number', String(rec.sgpa || ''), v => upd(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86'))}
+                            {field('SGPA', input('number', String(rec.sgpa || ''), v => upd(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86'))}
 
                             <div>
                                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Session & Year of Passing</label>

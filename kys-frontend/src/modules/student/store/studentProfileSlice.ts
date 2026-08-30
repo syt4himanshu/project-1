@@ -206,7 +206,7 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     for (const sem of semesters) {
       const rec = postAdmissionRecords.find((r) => Number(r.semester) === sem) || {}
       if (isBlank(rec.sgpa)) {
-        missing.push(`Semester ${sem} SGPA / Percentage`)
+        missing.push(`Semester ${sem} SGPA`)
       }
     }
 

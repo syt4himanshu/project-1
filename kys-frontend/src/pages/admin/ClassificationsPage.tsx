@@ -3,8 +3,9 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { classificationApi } from '../../services/classificationApi';
 import {
   Users2, AlertCircle, TrendingDown, TrendingUp, HelpCircle, X, CheckCircle,
-  ChevronLeft, ChevronRight, Search, Calendar, ChevronDown, ChevronUp, Loader2, User
+  ChevronLeft, ChevronRight, Search, Calendar, ChevronDown, ChevronUp, Loader2, User, Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import type { ClassifiedStudent } from '../../types/classification';
 import { StudentDetailModal } from '../../modules/admin/components/students/StudentDetailModal';
 
@@ -26,9 +27,13 @@ const ClassificationsPage = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [policyExpanded, setPolicyExpanded] = useState(false);
 
-  const { data: summary, isLoading: isLoadingSummary, isError: isSummaryError } = useQuery({
+  const { data: summary, isLoading: isLoadingSummary, isError: isSummaryError, refetch: refetchSummary } = useQuery({
     queryKey: ['classificationSummary'],
-    queryFn: classificationApi.getSummary
+    queryFn: classificationApi.getSummary,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -43,7 +48,11 @@ const ClassificationsPage = () => {
 
   const { data: paginatedData, isLoading: isLoadingStudents, isError: isStudentsError, refetch } = useQuery({
     queryKey: ['classifiedStudents', semester, type, page, debouncedSearch],
-    queryFn: () => classificationApi.getStudents({ semester, type, search: debouncedSearch, page, limit })
+    queryFn: () => classificationApi.getStudents({ semester, type, search: debouncedSearch, page, limit }),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const addSupportPlanMutation = useMutation({
@@ -126,61 +135,43 @@ const ClassificationsPage = () => {
     setIsAddingAdvanced(false);
   };
 
-  const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
-  const handleImportMSE = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsImporting(true);
+  const handleExportExcel = async () => {
+    setIsExporting(true);
     try {
-      const text = await file.text();
-      const rows = text.split('\n').map(row => row.split(',').map(cell => cell.trim()));
+      const response = await classificationApi.getStudents({ semester, type, search: debouncedSearch, page: 1, limit: 10000 });
+      
+      const exportData = response.students.map(student => ({
+        'Roll No': student.rollNo,
+        'Name': student.name || 'Unknown Student',
+        'Semester': student.semester,
+        'CGPA': student.cgpa != null ? Number(student.cgpa).toFixed(2) : '-',
+        'Backlogs': student.backlogs ?? 0,
+        'Classification': student.classification.isSlowLearner && student.classification.isAdvancedLearner
+          ? 'Slow & Advanced Learner'
+          : student.classification.isAdvancedLearner
+            ? 'Advanced Learner'
+            : student.classification.isSlowLearner
+              ? 'Slow Learner'
+              : 'General'
+      }));
 
-      const headers = rows[0].map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
-      const rollNoIdx = headers.findIndex(h => h.includes('roll') || h.includes('uid'));
-      const semIdx = headers.findIndex(h => h.includes('sem'));
-      const mseIdx = headers.findIndex(h => h.includes('mse') || h.includes('mark'));
-
-      if (rollNoIdx === -1 || semIdx === -1 || mseIdx === -1) {
-        throw new Error('CSV must contain headers: Roll No, Semester, MSE Marks');
-      }
-
-      const data = rows.slice(1)
-        .filter(row => row.length > Math.max(rollNoIdx, semIdx, mseIdx) && row[rollNoIdx])
-        .map(row => ({
-          rollNo: row[rollNoIdx],
-          semester: parseInt(row[semIdx]),
-          mseMarks: parseFloat(row[mseIdx])
-        }))
-        .filter(row => !isNaN(row.semester) && !isNaN(row.mseMarks));
-
-      // Use a relative path so the Vite dev proxy forwards it to the backend in
-      // development, and Nginx routes it correctly in production.  A hardcoded
-      // absolute localhost URL would break when the browser is on a different
-      // machine and would bypass the proxy entirely.
-      const res = await fetch('/api/admin/classifications/import-mse', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${JSON.parse(localStorage.getItem('kys.auth.session') || '{}').accessToken}`
-        },
-        body: JSON.stringify({ data })
-      });
-
-      if (!res.ok) throw new Error('Failed to import');
-
-      const result = await res.json();
-      setToastMessage(`Successfully imported ${result.updated} records!`);
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Learner Classifications');
+      XLSX.writeFile(workbook, 'Learner_Classifications_Report.xlsx');
+      
+      setToastMessage('Report downloaded successfully!');
       setTimeout(() => setToastMessage(''), 4000);
-      refetch();
     } catch (error: any) {
-      alert(error.message || 'Failed to import MSE marks. Please check your CSV format.');
+      alert(error.message || 'Failed to export report.');
     } finally {
-      setIsImporting(false);
-      e.target.value = '';
+      setIsExporting(false);
     }
   };
+
+
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50/50 pb-12 w-full">
@@ -216,11 +207,14 @@ const ClassificationsPage = () => {
               {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
             </div>
 
-            <label className={`cursor-pointer bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2.5 rounded-full flex items-center gap-2 text-sm font-semibold shadow-sm transition-colors border border-indigo-400 ${isImporting ? 'opacity-70 pointer-events-none' : ''}`}>
-              {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
-              {isImporting ? 'Importing...' : 'Import MSE% CSV'}
-              <input type="file" accept=".csv" className="hidden" onChange={handleImportMSE} />
-            </label>
+            <button
+              onClick={handleExportExcel}
+              disabled={isExporting}
+              className={`cursor-pointer bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2.5 rounded-full flex items-center gap-2 text-sm font-semibold shadow-sm transition-colors border border-indigo-400 ${isExporting ? 'opacity-70 pointer-events-none' : ''}`}
+            >
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {isExporting ? 'Downloading...' : 'Download Report'}
+            </button>
           </div>
         </div>
       </div>
@@ -230,9 +224,17 @@ const ClassificationsPage = () => {
 
         {/* Summary Cards */}
         {isSummaryError ? (
-          <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-3 border border-red-200 shadow-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <span className="font-medium text-sm">Failed to load summary statistics. Please refresh the page.</span>
+          <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center justify-between gap-3 border border-red-200 shadow-sm">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <span className="font-medium text-sm">Failed to load summary statistics. Please try again.</span>
+            </div>
+            <button 
+              onClick={() => refetchSummary()}
+              className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors whitespace-nowrap shadow-sm"
+            >
+              Retry
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -422,7 +424,6 @@ const ClassificationsPage = () => {
                       <th className="px-6 py-4 font-semibold tracking-wide">Semester</th>
                       <th className="px-6 py-4 font-semibold tracking-wide">CGPA</th>
                       <th className="px-6 py-4 font-semibold tracking-wide">Backlogs</th>
-                      <th className="px-6 py-4 font-semibold tracking-wide">MSE%</th>
                       <th className="px-6 py-4 font-semibold tracking-wide">Classification</th>
                       <th className="px-6 py-4 font-semibold tracking-wide text-right">Actions</th>
                     </tr>
@@ -441,7 +442,6 @@ const ClassificationsPage = () => {
                           <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-28 animate-pulse"></div></td>
                           <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-10 animate-pulse"></div></td>
                           <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-12 animate-pulse"></div></td>
-                          <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md w-12 animate-pulse"></div></td>
                           <td className="px-6 py-4"><div className="h-6 bg-gray-200 rounded-full w-24 animate-pulse"></div></td>
                           <td className="px-6 py-4">
                             <div className="flex justify-end gap-2">
@@ -453,7 +453,7 @@ const ClassificationsPage = () => {
                       ))
                     ) : paginatedData?.students.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-6 py-20 text-center">
+                        <td colSpan={7} className="px-6 py-20 text-center">
                           <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
                             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 ring-8 ring-gray-50/50">
                               <Search className="w-8 h-8 text-gray-400" />
@@ -490,7 +490,6 @@ const ClassificationsPage = () => {
                               {student.backlogs ?? 0}
                             </span>
                           </td>
-                          <td className="px-6 py-4">{student.mseMarks != null ? <span className="font-medium">{student.mseMarks}%</span> : '-'}</td>
                           <td className="px-6 py-4">
                             <div className="flex flex-wrap gap-1.5">
                               {student.classification.isSlowLearner && (

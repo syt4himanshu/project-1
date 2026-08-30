@@ -67,12 +67,21 @@ export default function Step3AcademicBefore() {
     update({ admission_type: value });
   };
 
-  const getValidation = (fieldName: string) => {
+  const getValidation = (fieldName: string, value?: unknown) => {
     let normalizedFieldName = fieldName;
     if (fieldName.startsWith("HSSC")) {
       normalizedFieldName = fieldName.replace("HSSC", "HSC");
     } else if (fieldName.startsWith("DIPLOMA")) {
       normalizedFieldName = fieldName.replace("DIPLOMA", "Diploma");
+    }
+
+    if (fieldName.includes("SGPA")) {
+      if (value !== undefined && value !== null && value !== "") {
+        const num = Number(value);
+        if (isNaN(num) || num < 0 || num > 10) {
+          return { error: 'SGPA must be between 0 and 10', touched: true };
+        }
+      }
     }
 
     const missingFields =
@@ -415,7 +424,7 @@ export default function Step3AcademicBefore() {
                   </h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                     {field(
-                      "SGPA / Percentage *",
+                      "SGPA *",
                       input(
                         "number",
                         String(rec.sgpa || ""),
@@ -426,7 +435,7 @@ export default function Step3AcademicBefore() {
                             v === "" ? null : Number(v),
                           ),
                         "e.g. 8.86",
-                        getValidation(`Semester ${sem} SGPA / Percentage`),
+                        getValidation(`Semester ${sem} SGPA`, rec.sgpa),
                       ),
                     )}
 
