@@ -22,6 +22,10 @@ function token() {
   return readStoredSession()?.accessToken ?? null
 }
 
+// Groq SDK 10s × 3 attempts + backoff (~32s) < backend extendedTimeout 60s < nginx 60s.
+// Client abort is set just under the backend budget so the UI fails cleanly first.
+const CHATBOT_REQUEST_TIMEOUT_MS = 55_000
+
 export interface MenteesParams {
   limit?: number
   offset?: number
@@ -108,6 +112,8 @@ export const facultyClient = {
       body: data,
       token: token(),
       signal,
+      timeoutMs: CHATBOT_REQUEST_TIMEOUT_MS,
+      retry: { maxAttempts: 1 },
     }),
 
   askAIRemarks: (data: AIRemarksRequest, signal?: AbortSignal) =>

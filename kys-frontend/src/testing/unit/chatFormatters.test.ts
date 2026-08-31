@@ -5,7 +5,6 @@ import {
     parseFirstResponse,
     parseFollowUpResponse,
     parseStructuredResponse,
-    toErrorMessage,
 } from '../../modules/faculty/chatbot/utils/chatFormatters'
 import type { MenteeRow } from '../../modules/faculty/api/types'
 
@@ -115,36 +114,6 @@ describe('parseStructuredResponse', () => {
 
         expect(result['Student Overview']).toBe(text)
         expect(result['Strengths & Potential']).toBe('')
-    })
-})
-
-// ─── toErrorMessage ───────────────────────────────────────────────────────────
-
-describe('toErrorMessage', () => {
-    it('maps forbidden/assigned errors', () => {
-        const err = new Error('Forbidden: Student is not assigned to this faculty')
-        expect(toErrorMessage(err)).toMatch(/only.*assigned/i)
-    })
-
-    it('maps timeout errors', () => {
-        const err = new Error('Request timeout exceeded')
-        expect(toErrorMessage(err)).toMatch(/timeout/i)
-    })
-
-    it('maps no-student-data errors', () => {
-        const err = new Error('No student data found')
-        expect(toErrorMessage(err)).toMatch(/not enough/i)
-    })
-
-    it('returns raw message for unknown errors', () => {
-        const err = new Error('Something unexpected happened')
-        expect(toErrorMessage(err)).toBe('Something unexpected happened')
-    })
-
-    it('returns fallback for non-Error values', () => {
-        expect(toErrorMessage(null)).toBe('Could not generate insights right now.')
-        expect(toErrorMessage(undefined)).toBe('Could not generate insights right now.')
-        expect(toErrorMessage(42)).toBe('Could not generate insights right now.')
     })
 })
 

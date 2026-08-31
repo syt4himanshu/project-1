@@ -18,6 +18,7 @@ const classificationRoutes = require('./src/routes/classificationRoutes');
 
 const { extractTokenIdentityOptional } = require('./middleware/auth');
 const { performHealthCheck } = require('./utils/healthCheck');
+const { groqCircuitBreaker } = require('./services/groq.service');
 const { requestTiming, getTimingStats, getSlowEndpoints } = require('./middleware/requestTiming');
 
 const app = express();
@@ -87,7 +88,10 @@ app.get('/api/health/live', (_req, res) => {
 });
 
 app.get('/api/health/ready', async (_req, res) => {
-  const health = await performHealthCheck({ includeGroq: true });
+  const health = await performHealthCheck({
+    includeGroq: true,
+    groqCircuitBreaker,
+  });
   const statusCode = health.status === 'healthy' ? 200 : 503;
   res.status(statusCode).json(health);
 });

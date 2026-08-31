@@ -15,6 +15,7 @@ const {
 const { generateAIRemarks } = require('../controllers/faculty-ai.controller');
 const { verifyToken, roleRequired } = require('../middleware/auth');
 const { chatbotRateLimiter } = require('../middleware/rateLimiter');
+const { extendedTimeout } = require('../middleware/timeout');
 const { validate, validateRequest } = require('../middleware/validate');
 const { studentProfileSchema } = require('../middleware/validation/student.validation');
 const { withRequestId } = require('../middleware/requestId');
@@ -100,6 +101,9 @@ router.get(
 
 router.post(
   '/chatbot',
+  // AI budget: Groq SDK 10s × 3 attempts + backoff (~32s worst case) fits within 60s.
+  // Overrides the app-wide standardTimeout (30s) for this route only.
+  extendedTimeout,
   chatbotRateLimiter,
   [
     body('query').isString().trim().isLength({ min: 1, max: 2000 }).withMessage('Query must be 1-2000 characters'),

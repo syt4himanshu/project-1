@@ -1,4 +1,5 @@
 const { generateFacultyInsights } = require('../services/groq.service');
+const { normalizeStudentRecord } = require('../services/studentContextAdapter');
 const { 
     Student, 
     MentoringMinute, 
@@ -77,51 +78,60 @@ const generateAIRemarks = async (req, res) => {
             SWOC.findOne({ where: { student_id: student.id } })
         ]);
 
-        // Calculate CGPA
-        const sgpas = academicRecords.map(r => parseFloat(r.sgpa)).filter(val => !isNaN(val) && val > 0);
-        let calculatedCgpa = 'N/A';
-        if (sgpas.length > 0) {
-            calculatedCgpa = (sgpas.reduce((a, b) => a + b, 0) / sgpas.length).toFixed(2);
-        }
-
-        // Build enriched context for AI (same format as chatbot)
-        const enrichedContext = {
+        // Build model-shaped context, then normalize via shared adapter (same as chatbot path)
+        const enrichedContext = normalizeStudentRecord({
             uid: student.uid,
             name: [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' '),
             semester: student.semester,
-            cgpa: calculatedCgpa,
-            academicRecords: academicRecords.map(r => ({
-                semester: r.semester,
-                sgpa: r.sgpa,
-                backlogs: r.backlog_subjects || 'None'
+            program: studentContext.program,
+            academics: academicRecords.map((record) => ({
+                semester: record.semester,
+                sgpa: record.sgpa,
+                backlog_subjects: record.backlog_subjects,
             })),
-            projects: projects.map(p => ({ title: p.title, description: p.description })),
-            internships: internships.map(i => i.title ? { title: i.title, description: i.description || '' } : i),
-            careerObjective: careerObjective ? {
-                goal: careerObjective.career_goal,
-                details: careerObjective.specific_details,
-                placement_interest: careerObjective.interested_in_campus_placement ? 'Yes' : 'No'
-            } : null,
-            skills: skills ? {
-                programming: skills.programming_languages,
-                technologies: skills.technologies_frameworks,
-                domains: skills.domains_of_interest,
-                tools: skills.familiar_tools_platforms
-            } : null,
-            swoc: swoc ? {
-                strengths: swoc.strengths,
-                weaknesses: swoc.weaknesses,
-                opportunities: swoc.opportunities,
-                challenges: swoc.challenges
-            } : null,
-            program: studentContext.program || 'N/A',
-            recentMinutes: recentMinutes.map(m => ({
-                date: m.date,
-                remarks: m.remarks,
-                suggestion: m.suggestion,
-                action: m.action,
+            projects: projects.map((project) => ({
+                title: project.title,
+                description: project.description,
             })),
-        };
+            internships: internships.map((internship) => ({
+                title: internship.title,
+                company_name: internship.company_name,
+                domain: internship.domain,
+                internship_type: internship.internship_type,
+                paid_unpaid: internship.paid_unpaid,
+                description: internship.description,
+            })),
+            career_objective: careerObjective
+                ? {
+                    career_goal: careerObjective.career_goal,
+                    specific_details: careerObjective.specific_details,
+                    interested_in_campus_placement: careerObjective.interested_in_campus_placement,
+                    clarity_preparedness: careerObjective.clarity_preparedness,
+                }
+                : null,
+            skills: skills
+                ? {
+                    programming_languages: skills.programming_languages,
+                    technologies_frameworks: skills.technologies_frameworks,
+                    domains_of_interest: skills.domains_of_interest,
+                    familiar_tools_platforms: skills.familiar_tools_platforms,
+                }
+                : null,
+            swoc: swoc
+                ? {
+                    strengths: swoc.strengths,
+                    weaknesses: swoc.weaknesses,
+                    opportunities: swoc.opportunities,
+                    challenges: swoc.challenges,
+                }
+                : null,
+            recent_mentoring_minutes: recentMinutes.map((minute) => ({
+                date: minute.date,
+                remarks: minute.remarks,
+                suggestion: minute.suggestion,
+                action: minute.action,
+            })),
+        });
 
         // Generate AI insights using the same service as chatbot
         const aiResponse = await generateFacultyInsights({

@@ -3,7 +3,6 @@
  */
 
 const { sequelize } = require('../models');
-const CircuitBreaker = require('./circuitBreaker');
 
 /**
  * Check database health
@@ -34,7 +33,7 @@ const checkDatabase = async () => {
 };
 
 /**
- * Check Groq AI service health
+ * Check Groq AI service health via a lightweight live probe.
  */
 const checkGroqService = async () => {
     try {
@@ -76,23 +75,36 @@ const checkGroqService = async () => {
 };
 
 /**
- * Get circuit breaker status
+ * Map circuit breaker state to a health-check status label.
+ */
+const mapBreakerStateToHealthStatus = (state) => {
+    if (state === 'CLOSED') return 'healthy';
+    if (state === 'HALF_OPEN') return 'degraded';
+    return 'unhealthy';
+};
+
+/**
+ * Get circuit breaker status from the live exported instance.
  */
 const getCircuitBreakerStatus = (circuitBreaker) => {
     if (!circuitBreaker) {
-        return { status: 'unknown' };
+        return { status: 'unknown', state: 'unknown' };
     }
 
     const state = circuitBreaker.getState();
     return {
+        status: mapBreakerStateToHealthStatus(state.state),
         state: state.state,
         failureCount: state.failureCount,
         successCount: state.successCount,
+        nextAttempt: state.nextAttempt,
     };
 };
 
 /**
- * Comprehensive health check
+ * Comprehensive health check.
+ * When groqCircuitBreaker is supplied, readiness reflects its live state
+ * instead of relying solely on a direct Groq probe.
  */
 const performHealthCheck = async (options = {}) => {
     const { includeGroq = false, groqCircuitBreaker = null } = options;
@@ -102,20 +114,39 @@ const performHealthCheck = async (options = {}) => {
     };
 
     if (includeGroq) {
-        checks.groq = await checkGroqService();
+        const breakerStatus = getCircuitBreakerStatus(groqCircuitBreaker);
+        checks.groqCircuitBreaker = breakerStatus;
 
-        if (groqCircuitBreaker) {
-            checks.groqCircuitBreaker = getCircuitBreakerStatus(groqCircuitBreaker);
+        if (breakerStatus.state === 'OPEN') {
+            checks.groq = {
+                status: 'unhealthy',
+                error: 'Groq circuit breaker is OPEN',
+                skippedLiveProbe: true,
+            };
+        } else if (breakerStatus.state === 'HALF_OPEN') {
+            checks.groq = {
+                status: 'degraded',
+                error: 'Groq circuit breaker is HALF_OPEN',
+                skippedLiveProbe: true,
+            };
+        } else {
+            checks.groq = await checkGroqService();
         }
     }
 
-    // Determine overall status
-    const allHealthy = Object.values(checks).every(
-        check => check.status === 'healthy' || check.status === 'unknown'
-    );
+    const checkStatuses = Object.values(checks).map((check) => check.status);
+    const hasUnhealthy = checkStatuses.includes('unhealthy');
+    const hasDegraded = checkStatuses.includes('degraded');
+
+    let status = 'healthy';
+    if (hasUnhealthy) {
+        status = 'unhealthy';
+    } else if (hasDegraded) {
+        status = 'degraded';
+    }
 
     return {
-        status: allHealthy ? 'healthy' : 'degraded',
+        status,
         timestamp: new Date().toISOString(),
         checks,
     };
@@ -125,5 +156,6 @@ module.exports = {
     checkDatabase,
     checkGroqService,
     getCircuitBreakerStatus,
+    mapBreakerStateToHealthStatus,
     performHealthCheck,
 };

@@ -13,8 +13,8 @@ import {
   isSnapshotRefreshQuery,
   parseFirstResponse,
   parseFollowUpResponse,
-  toErrorMessage,
 } from '../chatbot/utils/chatFormatters'
+import { logChatbotError, mapChatbotError } from '../chatbot/utils/chatErrorMapper'
 import type {
   ChatMessageModel,
   ChatbotRequest,
@@ -137,9 +137,10 @@ export const submitFacultyChatPayload = createAsyncThunk(
         return
       }
 
+      logChatbotError(error)
       dispatch(facultyChatActions.requestFailed({
         assistantId,
-        message: toErrorMessage(error),
+        message: mapChatbotError(error),
       }))
     } finally {
       activeRequestController = null

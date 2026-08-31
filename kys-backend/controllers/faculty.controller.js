@@ -7,9 +7,14 @@ const {
   resolveAuthorizedStudentIds,
   getSanitizedStudentDataset,
 } = require('../models/facultyChatbot.model');
-const { generateFacultyInsights } = require('../services/groq.service');
+const { generateFacultyInsights, groqCircuitBreaker } = require('../services/groq.service');
 const { sendResponse } = require('../utils/responseWrapper');
 const logger = require('../utils/logger');
+const {
+  logFacultyChatbotControllerStart,
+  logFacultyChatbotControllerSuccess,
+  logFacultyChatbotControllerError,
+} = require('../utils/aiRequestLogger');
 const { getMenteesCache, setMenteesCache, invalidateMenteesCache } = require('../utils/facultyMenteesCache');
 const { applyStudentProfileUpdate } = require('../utils/studentProfileUpdate');
 
@@ -231,7 +236,6 @@ const sanitizeFacultyQuery = (input) => {
 
 const facultyChatbot = async (req, res) => {
   try {
-    logger.info({ reqId: req.id, message: "Chatbot Request Initiated", queryLength: req.body?.query?.length, studentId: req.body?.studentId });
     const query = sanitizeFacultyQuery(req.body?.query);
     const studentId = typeof req.body?.studentId === 'string' ? req.body.studentId.trim().slice(0, 32) : '';
 
@@ -265,20 +269,34 @@ const facultyChatbot = async (req, res) => {
       return sendResponse(res, { success: false, status: 404, error: 'No student data found for chatbot insights' });
     }
 
+    const studentDataset = {
+      total_students: sanitizedStudentData.length,
+      student_limit: MAX_STUDENTS,
+      students: sanitizedStudentData,
+    };
+
+    logFacultyChatbotControllerStart(req.id, {
+      queryLength: query.length,
+      studentIdPresent: Boolean(studentId),
+      conversationHistoryTurns: conversationHistory.length,
+      studentDataset,
+    });
+
     const response = await generateFacultyInsights({
       facultyQuery: query,
-      studentDataset: {
-        total_students: sanitizedStudentData.length,
-        student_limit: MAX_STUDENTS,
-        students: sanitizedStudentData,
-      },
+      studentDataset,
       mode: 'insights',
       conversationHistory,
     }, req.id);
 
+    logFacultyChatbotControllerSuccess(req.id, {
+      responseLength: response?.length ?? 0,
+      circuitBreaker: groqCircuitBreaker,
+    });
+
     return sendResponse(res, { success: true, data: { response } });
   } catch (error) {
-    logger.error({ reqId: req.id, message: 'POST /api/faculty/chatbot failed', details: error.message });
+    logFacultyChatbotControllerError(req.id, error, groqCircuitBreaker);
     return sendResponse(res, { success: false, status: 500, error: error.message || 'Unknown error' });
   }
 };

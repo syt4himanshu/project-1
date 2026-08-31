@@ -3,38 +3,20 @@
  */
 
 const logger = require('./logger');
+const { classifyGroqError } = require('./aiErrors');
 
 /**
- * Sleep for specified milliseconds
- */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * Check if error is retryable
+ * Retry policy for provider calls — uses aiErrors taxonomy (retryable flag),
+ * not ad hoc status/message sniffing.
  */
 const isRetryableError = (error) => {
-    // Network errors
-    if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
-        return true;
+    if (error && typeof error.retryable === 'boolean') {
+        return error.retryable;
     }
 
-    // HTTP status codes
-    const status = error.status || error.response?.status;
-    if (status === 429 || status === 500 || status === 502 || status === 503 || status === 504) {
-        return true;
-    }
-
-    // Groq-specific errors
-    if (error.message?.includes('rate limit') || error.message?.includes('timeout')) {
-        return true;
-    }
-
-    return false;
+    return classifyGroqError(error).retryable === true;
 };
 
-/**
- * Extract retry delay in milliseconds from an error object (headers, message, etc.)
- */
 const extractRetryDelayMs = (error) => {
     if (!error) return null;
 
@@ -80,6 +62,11 @@ const extractRetryDelayMs = (error) => {
 
     return null;
 };
+
+/**
+ * Sleep for specified milliseconds
+ */
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Execute function with retry logic and exponential backoff

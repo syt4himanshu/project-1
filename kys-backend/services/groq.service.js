@@ -1,8 +1,24 @@
 ﻿const Groq = require("groq-sdk");
 const { AI_CONFIG, FALLBACK_MODELS } = require("../config/ai.config");
-const { retryWithBackoff } = require("../utils/retry");
+const { retryWithBackoff, isRetryableError } = require("../utils/retry");
 const CircuitBreaker = require("../utils/circuitBreaker");
-const logger = require("../utils/logger");
+const {
+  createAIConfigError,
+  createAIUnavailableError,
+  createValidationError,
+  isAIError,
+  isGroqModelError,
+  classifyGroqError,
+} = require("../utils/aiErrors");
+const { adaptStudentDataset } = require("./studentContextAdapter");
+const {
+  validateFacultyInsightsResponse,
+} = require("../utils/aiResponseValidator");
+const {
+  createAiRequestContext,
+  resolveAiErrorCode,
+  summarizeStudentDataset,
+} = require("../utils/aiRequestLogger");
 
 // Circuit breaker for Groq API
 const groqCircuitBreaker = new CircuitBreaker({
@@ -12,6 +28,46 @@ const groqCircuitBreaker = new CircuitBreaker({
   name: "groq-api",
 });
 
+let createGroqClient = (apiKey) =>
+  new Groq({ apiKey: String(apiKey).trim() });
+
+// Hard cap on Groq HTTP calls per user-initiated request (main retries + regen + fallbacks).
+// Budget: frontend 1 × backend ≤ 4 provider calls.
+const MAX_GROQ_CALLS_PER_REQUEST = 4;
+
+const createGroqCallBudget = (maxCalls = MAX_GROQ_CALLS_PER_REQUEST) => {
+  let used = 0;
+
+  return {
+    run(fn) {
+      if (used >= maxCalls) {
+        throw createValidationError(
+          "AI provider call limit reached for this request",
+        );
+      }
+      used += 1;
+      return fn();
+    },
+    getUsed() {
+      return used;
+    },
+    remaining() {
+      return Math.max(0, maxCalls - used);
+    },
+  };
+};
+
+const assertGroqCircuitAllowsCall = () => {
+  const { state, nextAttempt } = groqCircuitBreaker.getState();
+  if (state === "OPEN" && Date.now() < nextAttempt) {
+    const error = createAIUnavailableError(
+      "Circuit breaker is OPEN for groq-api",
+    );
+    error.circuitBreakerOpen = true;
+    throw error;
+  }
+};
+
 const INSIGHTS_SYSTEM_PROMPT = `You are MentorAI, an experienced faculty mentor and placement advisor for B.Tech Computer Science and Engineering students.
 
 You will receive:
@@ -20,6 +76,9 @@ You will receive:
 3. Optionally, previous conversation history.
 
 == FIRST RESPONSE (when no conversation history is provided) ==
+
+Your response MUST begin with the literal line "Direct Answer:" as the very first line.
+Do not omit this header. Do not prepend introductions, markdown, blank lines, or any text before it.
 
 Respond in exactly this structure:
 
@@ -37,6 +96,26 @@ Areas for Improvement:
 
 Faculty Recommendations:
 [2–4 bullet points with concrete, prioritized actions the student should take this semester.]
+
+EXAMPLE (copy this exact header format — first line must be "Direct Answer:"):
+Direct Answer:
+The student's CGPA of 8.4 and project portfolio indicate solid placement readiness for software roles.
+
+Student Overview:
+- Semester 6 B.Tech CSE student with CGPA 8.4
+- Two completed projects in web development
+
+Strengths & Potential:
+- Strong programming fundamentals in Python and Java
+- Demonstrated teamwork on capstone projects
+
+Areas for Improvement:
+- Limited internship exposure to date
+- No certifications in cloud technologies yet
+
+Faculty Recommendations:
+- Apply for summer internships in product-based companies
+- Complete an AWS or Azure fundamentals certification this semester
 
 == FOLLOW-UP RESPONSES (when conversation history is provided) ==
 
@@ -170,69 +249,6 @@ const buildUserMessage = ({
     .filter(Boolean)
     .join("\n");
 
-  // Clean and validate model text output to enforce required sections and remove chain-of-thought
-  const cleanAndValidateResponse = (rawText) => {
-    if (!rawText || typeof rawText !== "string")
-      return { ok: false, reason: "Empty response" };
-
-    // 1. Remove <think>...</think> blocks
-    let text = rawText.replace(/<think>[\s\S]*?<\/think>/gi, "");
-
-    // 2. Remove common reasoning headings and sections
-    text = text.replace(
-      /(^|\n)\s*(Thinking Process:|Analysis:|Self-?Correction:|Review and Refine:|Draft:|Let's verify|Proceed|One minor adjustment|Data used to understand this message)[\s\S]*?(?=\n[A-Z][a-zA-Z &]+:|$)/gi,
-      "\n",
-    );
-
-    // 3. Remove markdown code fences if they wrap the whole response or appear unnecessarily
-    text = text.replace(/```[\s\S]*?```/g, (m) => m.replace(/```/g, ""));
-
-    // 4. Normalize whitespace
-    text = text.replace(/\r\n/g, "\n").replace(/\t/g, " ").trim();
-
-    // 5. Collapse duplicated consecutive lines
-    const lines = text.split("\n");
-    const collapsed = [];
-    for (const line of lines) {
-      if (
-        collapsed.length &&
-        collapsed[collapsed.length - 1].trim() === line.trim()
-      )
-        continue;
-      collapsed.push(line);
-    }
-    text = collapsed.join("\n").trim();
-
-    // 6. Ensure required sections exist and extract them
-    const sectionNames = [
-      "Direct Answer",
-      "Student Overview",
-      "Strengths & Potential",
-      "Areas for Improvement",
-      "Faculty Recommendations",
-    ];
-
-    const found = {};
-    for (const name of sectionNames) {
-      const re = new RegExp(
-        "^" + name.replace(/[-&]/g, "\\$&") + "\\s*:",
-        "im",
-      );
-      found[name] = re.test(text);
-    }
-
-    const missing = sectionNames.filter((n) => !found[n]);
-    if (missing.length)
-      return {
-        ok: false,
-        reason: "Missing sections: " + missing.join(", "),
-        cleaned: text,
-      };
-
-    // If all sections present, return cleaned text
-    return { ok: true, cleaned: text };
-  };
-
   // Build the messages array: system + optional history + current user message
   const isFirstQuery = !conversationHistory || conversationHistory.length === 0;
   const contextNote = isFirstQuery
@@ -246,30 +262,44 @@ const buildUserMessage = ({
   };
 };
 
-const buildNonBreakerError = (message) => {
-  const error = new Error(message);
-  error.skipCircuitBreaker = true;
-  return error;
-};
+const generateFacultyInsights = async (
+  {
+    facultyQuery,
+    studentDataset,
+    mode = "insights",
+    conversationHistory = [],
+  },
+  requestId = null,
+) => {
+  const ai = createAiRequestContext(requestId, groqCircuitBreaker);
 
-const generateFacultyInsights = async ({
-  facultyQuery,
-  studentDataset,
-  mode = "insights",
-  conversationHistory = [],
-}) => {
+  ai.log("info", "service.start", {
+    extra: {
+      mode,
+      queryLength: facultyQuery?.length ?? 0,
+      conversationHistoryTurns: conversationHistory.length,
+      studentDataset: summarizeStudentDataset(studentDataset),
+    },
+  });
+
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey || !String(apiKey).trim()) {
-    throw new Error("Missing GROQ_API_KEY");
+    const configError = createAIConfigError("Missing GROQ_API_KEY");
+    ai.log("error", "service.error", {
+      errorCode: resolveAiErrorCode(configError),
+      extra: { reason: "missing_api_key" },
+    });
+    throw configError;
   }
 
-  const groq = new Groq({ apiKey: String(apiKey).trim() });
+  const groq = createGroqClient(apiKey);
 
   const systemPrompt =
     mode === "remarks" ? REMARKS_SYSTEM_PROMPT : INSIGHTS_SYSTEM_PROMPT;
+  const adaptedStudentDataset = adaptStudentDataset(studentDataset);
   const { currentUserMessage } = buildUserMessage({
     facultyQuery,
-    studentDataset,
+    studentDataset: adaptedStudentDataset,
     conversationHistory,
   });
 
@@ -283,151 +313,277 @@ const generateFacultyInsights = async ({
     { role: "user", content: currentUserMessage },
   ];
 
-  return groqCircuitBreaker.execute(async () => {
-    let currentModel = AI_CONFIG.model;
-    let fallbackIndex = 0;
+  assertGroqCircuitAllowsCall();
 
-    while (true) {
-      const start = Date.now();
+  try {
+    const result = await groqCircuitBreaker.execute(async () => {
+      const callBudget = createGroqCallBudget();
+
+      const invokeGroq = (payload, attemptMeta = {}) =>
+        callBudget.run(async () => {
+          ai.log("info", "provider.call", {
+            model: payload.model,
+            attemptNumber: attemptMeta.attemptNumber ?? callBudget.getUsed(),
+            extra: {
+              operation: attemptMeta.operation || "completion",
+              groqCallsUsed: callBudget.getUsed(),
+            },
+          });
+
+          return groq.chat.completions.create(payload, { timeout: 10000 });
+        });
 
       try {
-        const completion = await retryWithBackoff(
-          async () => {
-            return await groq.chat.completions.create(
-              {
-                model: currentModel,
-                messages,
-                temperature: AI_CONFIG.temperature,
-                max_tokens: AI_CONFIG.max_tokens,
+        let currentModel = AI_CONFIG.model;
+        let fallbackIndex = 0;
+
+        while (true) {
+          const start = Date.now();
+          let providerAttemptNumber = 0;
+
+          try {
+            const completion = await retryWithBackoff(
+              async () => {
+                providerAttemptNumber += 1;
+                return invokeGroq(
+                  {
+                    model: currentModel,
+                    messages,
+                    temperature: AI_CONFIG.temperature,
+                    max_tokens: AI_CONFIG.max_tokens,
+                  },
+                  {
+                    attemptNumber: providerAttemptNumber,
+                    operation: "completion",
+                  },
+                );
               },
-              { timeout: 10000 },
+              {
+                maxAttempts: 2,
+                initialDelay: 1000,
+                maxDelay: 5000,
+                operationName: "groq-api-call",
+                shouldRetry: isRetryableError,
+              },
             );
-          },
-          {
-            maxAttempts: 3,
-            initialDelay: 1000,
-            maxDelay: 5000,
-            operationName: "groq-api-call",
-            shouldRetry: (error) => {
-              if (error.status === 401 || error.response?.status === 401) {
-                return false;
-              }
 
-              const isModelError =
-                error.error?.error?.code === "model_decommissioned" ||
-                error.error?.error?.code === "invalid_request_error" ||
-                /decommissioned|not found|does not exist/.test(error.message);
-              if (isModelError) {
-                return false;
-              }
+            const latency = Date.now() - start;
+            ai.log("info", "provider.success", {
+              model: currentModel,
+              providerLatencyMs: latency,
+              attemptNumber: providerAttemptNumber,
+              extra: { groqCallsUsed: callBudget.getUsed() },
+            });
 
-              const status = error.status || error.response?.status;
-              return status === 429 || status >= 500;
-            },
-          },
-        );
+            const raw =
+              completion?.choices?.[0]?.message?.content ?? null;
 
-        const latency = Date.now() - start;
-        logger.info({
-          message: "Groq API success",
-          model: currentModel,
-          latencyMs: latency,
-        });
+            const validated = validateFacultyInsightsResponse(raw);
+            ai.log(validated.ok ? "info" : "warn", "validation.result", {
+              model: currentModel,
+              extra: {
+                ok: validated.ok,
+                reason: validated.reason,
+                rawResponseLength: typeof raw === "string" ? raw.length : 0,
+                validatedResponseLength: validated.ok ? validated.text.length : 0,
+              },
+            });
 
-        const raw =
-          completion?.choices?.[0]?.message?.content || "No response generated";
+            if (validated.ok) {
+              return validated.text;
+            }
 
-        // Clean and validate the response
-        const cleaned = cleanAndValidateResponse(raw);
-        if (cleaned.ok) return cleaned.cleaned;
-
-        // Attempt one controlled regeneration with an explicit instruction
-        logger.warn({
-          message:
-            "AI response missing required sections, attempting one regeneration",
-          reason: cleaned.reason,
-        });
-
-        try {
-          const regen = await retryWithBackoff(
-            async () => {
-              return await groq.chat.completions.create(
-                {
-                  model: currentModel,
-                  messages: [
-                    { role: "system", content: systemPrompt },
-                    ...trimmedHistory,
-                    { role: "user", content: currentUserMessage },
-                    {
-                      role: "user",
-                      content:
-                        'Regenerate the answer in the exact required format: Direct Answer:, Student Overview:, Strengths & Potential:, Areas for Improvement:, Faculty Recommendations:. Do not include any internal reasoning or metadata. If a field is missing, write "Not provided" for that field.',
-                    },
-                  ],
-                  temperature: AI_CONFIG.temperature,
-                  max_tokens: AI_CONFIG.max_tokens,
-                },
-                { timeout: 10000 },
+            if (callBudget.remaining() === 0) {
+              const validationError = createValidationError(
+                "AI response could not be validated. Please try again or refine the query.",
               );
-            },
-            {
-              maxAttempts: 2,
-              initialDelay: 500,
-              maxDelay: 1000,
-              operationName: "groq-api-regen",
-            },
-          );
+              ai.log("error", "service.error", {
+                model: currentModel,
+                errorCode: resolveAiErrorCode(validationError),
+                extra: {
+                  reason: validated.reason,
+                  groqCallsUsed: callBudget.getUsed(),
+                  regenerationSkipped: true,
+                },
+              });
+              throw validationError;
+            }
 
-          const raw2 =
-            regen?.choices?.[0]?.message?.content || "No response generated";
-          const cleaned2 = cleanAndValidateResponse(raw2);
-          if (cleaned2.ok) return cleaned2.cleaned;
+            ai.log("warn", "validation.regeneration", {
+              model: currentModel,
+              extra: {
+                reason: validated.reason,
+                groqCallsRemaining: callBudget.remaining(),
+              },
+            });
 
-          logger.error({
-            message: "Regeneration failed to produce valid format",
-            reason: cleaned2.reason,
-          });
-          return "ERROR: AI response malformed. Please try again or refine the query.";
-        } catch (regenError) {
-          logger.error({
-            message: "Regeneration attempt failed",
-            error: regenError?.message || regenError,
-          });
-          return "ERROR: AI generation failed. Please try again later.";
+            try {
+              let regenAttemptNumber = 0;
+              const regen = await retryWithBackoff(
+                async () => {
+                  regenAttemptNumber += 1;
+                  return invokeGroq(
+                    {
+                      model: currentModel,
+                      messages: [
+                        { role: "system", content: systemPrompt },
+                        ...trimmedHistory,
+                        { role: "user", content: currentUserMessage },
+                        {
+                          role: "user",
+                          content:
+                            'Regenerate the answer in the exact required format: Direct Answer:, Student Overview:, Strengths & Potential:, Areas for Improvement:, Faculty Recommendations:. Do not include any internal reasoning or metadata. If a field is missing, write "Not provided" for that field.',
+                        },
+                      ],
+                      temperature: AI_CONFIG.temperature,
+                      max_tokens: AI_CONFIG.max_tokens,
+                    },
+                    {
+                      attemptNumber: regenAttemptNumber,
+                      operation: "regeneration",
+                    },
+                  );
+                },
+                {
+                  maxAttempts: 1,
+                  initialDelay: 500,
+                  maxDelay: 1000,
+                  operationName: "groq-api-regen",
+                  shouldRetry: isRetryableError,
+                },
+              );
+
+              const raw2 = regen?.choices?.[0]?.message?.content ?? null;
+              const validated2 = validateFacultyInsightsResponse(raw2);
+              ai.log(validated2.ok ? "info" : "error", "validation.result", {
+                model: currentModel,
+                extra: {
+                  ok: validated2.ok,
+                  reason: validated2.reason,
+                  rawResponseLength: typeof raw2 === "string" ? raw2.length : 0,
+                  validatedResponseLength: validated2.ok ? validated2.text.length : 0,
+                  regeneration: true,
+                },
+              });
+
+              if (validated2.ok) {
+                return validated2.text;
+              }
+
+              const validationError = createValidationError(
+                "AI response could not be validated. Please try again or refine the query.",
+              );
+              ai.log("error", "service.error", {
+                model: currentModel,
+                errorCode: resolveAiErrorCode(validationError),
+                extra: {
+                  reason: validated2.reason,
+                  groqCallsUsed: callBudget.getUsed(),
+                  regenerationFailed: true,
+                },
+              });
+              throw validationError;
+            } catch (regenError) {
+              if (isAIError(regenError)) {
+                ai.log("error", "provider.error", {
+                  model: currentModel,
+                  errorCode: resolveAiErrorCode(regenError),
+                  extra: {
+                    operation: "regeneration",
+                    groqCallsUsed: callBudget.getUsed(),
+                  },
+                });
+                throw regenError;
+              }
+
+              const classified = classifyGroqError(regenError);
+              ai.log("error", "provider.error", {
+                model: currentModel,
+                errorCode: resolveAiErrorCode(classified),
+                extra: {
+                  operation: "regeneration",
+                  groqCallsUsed: callBudget.getUsed(),
+                },
+              });
+              throw classified;
+            }
+          } catch (error) {
+            const latency = Date.now() - start;
+            const classified = isAIError(error) ? error : classifyGroqError(error);
+
+            ai.log("error", "provider.error", {
+              model: currentModel,
+              providerLatencyMs: latency,
+              attemptNumber: providerAttemptNumber,
+              errorCode: resolveAiErrorCode(classified),
+              extra: { groqCallsUsed: callBudget.getUsed() },
+            });
+
+            if (error.status === 401 || error.response?.status === 401) {
+              throw createAIConfigError("Invalid GROQ_API_KEY", { cause: error });
+            }
+
+            if (isGroqModelError(error) && fallbackIndex < FALLBACK_MODELS.length) {
+              if (callBudget.remaining() === 0) {
+                throw createAIConfigError("Groq model is deprecated or invalid", {
+                  cause: error,
+                });
+              }
+              currentModel = FALLBACK_MODELS[fallbackIndex++];
+              ai.log("info", "provider.fallback", {
+                model: currentModel,
+                extra: { fallbackIndex },
+              });
+              continue;
+            }
+
+            if (isGroqModelError(error)) {
+              throw createAIConfigError("Groq model is deprecated or invalid", {
+                cause: error,
+              });
+            }
+
+            throw classified;
+          }
         }
       } catch (error) {
-        logger.error({
-          message: "Groq API error",
-          model: currentModel,
-          error: error.message,
-          latencyMs: Date.now() - start,
-        });
-
-        if (error.status === 401 || error.response?.status === 401) {
-          throw buildNonBreakerError("Invalid GROQ_API_KEY");
+        if (isAIError(error)) {
+          throw error;
         }
 
-        const isModelError =
-          error.error?.error?.code === "model_decommissioned" ||
-          error.error?.error?.code === "invalid_request_error" ||
-          /decommissioned|not found|does not exist/.test(error.message);
-
-        if (isModelError && fallbackIndex < FALLBACK_MODELS.length) {
-          currentModel = FALLBACK_MODELS[fallbackIndex++];
-          logger.info({ message: `Trying fallback model: ${currentModel}` });
-          continue;
-        }
-
-        if (isModelError) {
-          throw buildNonBreakerError("Groq model is deprecated or invalid");
-        }
-
-        throw error;
+        throw createValidationError(
+          error?.message || "Unexpected application error during AI generation",
+          { cause: error },
+        );
       }
-    }
-  });
+    });
+
+    ai.log("info", "service.complete", {
+      extra: { responseLength: result?.length ?? 0 },
+    });
+
+    return result;
+  } catch (error) {
+    ai.log("error", "service.error", {
+      errorCode: resolveAiErrorCode(error),
+      extra: { errorMessage: error?.message || "Unknown error" },
+    });
+    throw error;
+  }
 };
 
 module.exports = {
   generateFacultyInsights,
+  groqCircuitBreaker,
+  buildUserMessage,
+  MAX_GROQ_CALLS_PER_REQUEST,
+  createGroqCallBudget,
+  assertGroqCircuitAllowsCall,
+  __setGroqClientFactoryForTests: (factory) => {
+    createGroqClient = factory;
+  },
+  __resetGroqClientFactoryForTests: () => {
+    createGroqClient = (apiKey) =>
+      new Groq({ apiKey: String(apiKey).trim() });
+  },
 };

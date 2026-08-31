@@ -6,6 +6,7 @@ import { useFacultyChat } from '../../modules/faculty/hooks/useFacultyChat'
 import { facultyClient } from '../../modules/faculty/api/client'
 import { HttpError } from '../../shared/api/httpClient'
 import { createAppStore } from '../../app/store'
+import { CHATBOT_AI_UNAVAILABLE_MESSAGE } from '../../modules/faculty/chatbot/utils/chatErrorMapper'
 
 // Mock the faculty API client
 vi.mock('../../modules/faculty/api/client', () => ({
@@ -186,7 +187,7 @@ describe('useFacultyChat', () => {
             await result.current.submitPayload({ query: 'Test', studentId: 'S001' })
         })
 
-        expect(result.current.messages[0].contextLabel).toBe('Student: Alice Smith')
+        expect(result.current.messages[0].contextLabel).toBe('Mentee: Alice Smith')
     })
 
     it('maps 403 error to user-safe message', async () => {
@@ -211,7 +212,7 @@ describe('useFacultyChat', () => {
 
     it('maps 429 error to rate-limit message', async () => {
         vi.mocked(facultyClient.askChatbot).mockRejectedValue(
-            new HttpError('Too many requests', 429, null),
+            new HttpError('Too many chatbot requests. Please retry shortly.', 429, null),
         )
 
         const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
@@ -225,6 +226,127 @@ describe('useFacultyChat', () => {
 
         const assistantMsg = result.current.messages.find((m) => m.role === 'assistant')
         expect(assistantMsg?.content).toMatch(/rate limit/i)
+        expect(assistantMsg?.content).not.toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
+    })
+
+    it('maps circuit-breaker-open errors to the safe AI message and logs technical detail', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        vi.mocked(facultyClient.askChatbot).mockRejectedValue(
+            new HttpError('Circuit breaker is OPEN for groq-api', 500, { code: 'AI_UNAVAILABLE' }),
+        )
+
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
+        await waitFor(() => expect(result.current.menteeLoading).toBe(false))
+
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
+        await act(async () => {
+            await result.current.submitPayload({ query: 'Test', studentId: 'S001' })
+        })
+
+        const assistantMsg = result.current.messages.find((m) => m.role === 'assistant')
+        expect(assistantMsg?.error).toBe(true)
+        expect(assistantMsg?.content).toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
+        expect(result.current.requestError).toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
+        expect(assistantMsg?.content).not.toMatch(/circuit breaker|groq/i)
+        expect(consoleSpy).toHaveBeenCalledWith(
+            '[faculty-chatbot] request failed',
+            expect.objectContaining({
+                message: 'Circuit breaker is OPEN for groq-api',
+                code: 'AI_UNAVAILABLE',
+            }),
+        )
+        expect(result.current.lastPayloadExists).toBe(true)
+
+        consoleSpy.mockRestore()
+    })
+
+    it('allows regenerate after a mapped AI failure', async () => {
+        vi.mocked(facultyClient.askChatbot)
+            .mockRejectedValueOnce(
+                new HttpError('Circuit breaker is OPEN for groq-api', 500, null),
+            )
+            .mockResolvedValueOnce({ response: FIRST_RESPONSE })
+
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
+        await waitFor(() => expect(result.current.menteeLoading).toBe(false))
+
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
+        await act(async () => {
+            await result.current.submitPayload({ query: 'Analyze student', studentId: 'S001' })
+        })
+
+        expect(result.current.requestError).toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
+        expect(result.current.lastPayloadExists).toBe(true)
+
+        await act(async () => {
+            await result.current.regenerate()
+        })
+
+        const assistantMsgs = result.current.messages.filter((m) => m.role === 'assistant')
+        const latestAssistant = assistantMsgs[assistantMsgs.length - 1]
+        expect(latestAssistant?.error).toBeFalsy()
+        expect(latestAssistant?.content).toContain('CGPA of 8.1')
+        expect(result.current.requestError).toBe('')
+    })
+
+    it('maps generic 500 errors to the safe AI unavailable message', async () => {
+        vi.mocked(facultyClient.askChatbot).mockRejectedValue(
+            new HttpError('Internal server error', 500, null),
+        )
+
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
+        await waitFor(() => expect(result.current.menteeLoading).toBe(false))
+
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
+        await act(async () => {
+            await result.current.submitPayload({ query: 'Test', studentId: 'S001' })
+        })
+
+        const assistantMsg = result.current.messages.find((m) => m.role === 'assistant')
+        expect(assistantMsg?.content).toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
+        expect(assistantMsg?.content).not.toMatch(/internal server error/i)
+    })
+
+    it('maps raw provider timeout text to the safe AI unavailable message', async () => {
+        vi.mocked(facultyClient.askChatbot).mockRejectedValue(
+            new HttpError('Request timed out. Try again, or narrow to one student.', 408, null),
+        )
+
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
+        await waitFor(() => expect(result.current.menteeLoading).toBe(false))
+
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
+        await act(async () => {
+            await result.current.submitPayload({ query: 'Test', studentId: 'S001' })
+        })
+
+        const assistantMsg = result.current.messages.find((m) => m.role === 'assistant')
+        expect(assistantMsg?.content).toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
+        expect(assistantMsg?.content).not.toMatch(/timeout/i)
+    })
+
+    it('never surfaces raw ReferenceError text in the chat UI', async () => {
+        vi.mocked(facultyClient.askChatbot).mockRejectedValue(
+            new HttpError('ReferenceError: cleanAndValidateResponse is not defined', 500, null),
+        )
+
+        const { result } = renderHook(() => useFacultyChat(), { wrapper: createWrapper() })
+        await waitFor(() => expect(result.current.menteeLoading).toBe(false))
+
+        act(() => { result.current.setSelectedStudentUid('S001') })
+
+        await act(async () => {
+            await result.current.submitPayload({ query: 'Test', studentId: 'S001' })
+        })
+
+        const assistantMsg = result.current.messages.find((m) => m.role === 'assistant')
+        expect(assistantMsg?.content).toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
+        expect(assistantMsg?.content).not.toMatch(/referenceerror/i)
     })
 
     it('marks lastPayloadExists after first submit', async () => {
@@ -261,6 +383,6 @@ describe('useFacultyChat', () => {
         expect(result.current.analysisText).toBe('')
 
         act(() => { result.current.setSelectedStudentUid('S001') })
-        expect(result.current.analysisText).toBe('Analyzing student profile...')
+        expect(result.current.analysisText).toBe('Analyzing mentee profile...')
     })
 })

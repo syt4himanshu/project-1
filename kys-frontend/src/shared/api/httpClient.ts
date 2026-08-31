@@ -21,6 +21,8 @@ export const AUTH_EXPIRED_EVENT = 'kys:auth-expired'
 interface JsonRequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown
   token?: string | null
+  /** Abort the fetch if it exceeds this duration (per attempt). */
+  timeoutMs?: number
   retry?: {
     maxAttempts?: number
     initialDelay?: number
@@ -110,12 +112,60 @@ function isSupportedBodyInit(value: unknown): value is BodyInit {
   )
 }
 
+function mergeAbortSignals(signals: AbortSignal[]): AbortSignal {
+  const active = signals.filter(Boolean)
+  if (active.length === 0) {
+    throw new Error('mergeAbortSignals requires at least one signal')
+  }
+
+  if (typeof AbortSignal.any === 'function') {
+    return AbortSignal.any(active)
+  }
+
+  const controller = new AbortController()
+  for (const signal of active) {
+    if (signal.aborted) {
+      controller.abort(signal.reason)
+      return controller.signal
+    }
+    signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true })
+  }
+
+  return controller.signal
+}
+
+function createTimeoutSignal(timeoutMs: number): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    controller.abort(new DOMException('Request timed out', 'TimeoutError'))
+  }, timeoutMs)
+
+  return {
+    signal: controller.signal,
+    clear: () => clearTimeout(timeoutId),
+  }
+}
+
+function toRequestTimeoutError(error: unknown): HttpError | null {
+  if (!(error instanceof DOMException) || error.name !== 'TimeoutError') {
+    return null
+  }
+
+  return new HttpError(
+    'Request timed out. Try again, or narrow to one student.',
+    408,
+    null,
+  )
+}
+
 export async function requestJson<T>(path: string, options: JsonRequestOptions = {}): Promise<T> {
   const {
     body,
     token,
     headers: customHeaders,
     retry = { maxAttempts: 2, initialDelay: 1000, maxDelay: 5000 },
+    timeoutMs,
+    signal: userSignal,
     ...requestInit
   } = options
 
@@ -125,6 +175,8 @@ export async function requestJson<T>(path: string, options: JsonRequestOptions =
   let delay = initialDelay
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let clearAttemptTimeout: (() => void) | undefined
+
     try {
       const headers = new Headers(customHeaders ?? undefined)
 
@@ -145,10 +197,20 @@ export async function requestJson<T>(path: string, options: JsonRequestOptions =
         }
       }
 
+      let fetchSignal = userSignal
+      if (timeoutMs) {
+        const { signal: timeoutSignal, clear } = createTimeoutSignal(timeoutMs)
+        clearAttemptTimeout = clear
+        fetchSignal = userSignal
+          ? mergeAbortSignals([userSignal, timeoutSignal])
+          : timeoutSignal
+      }
+
       const response = await fetch(buildUrl(path), {
         ...requestInit,
         headers,
         body: requestBody,
+        signal: fetchSignal,
       })
 
       const payload = await parsePayload(response)
@@ -188,7 +250,7 @@ export async function requestJson<T>(path: string, options: JsonRequestOptions =
       return parsed.data
 
     } catch (error) {
-      lastError = error
+      lastError = toRequestTimeoutError(error) ?? error
 
       const isLastAttempt = attempt === maxAttempts
       const canRetry = isRetryableError(error, maxDelay)
@@ -209,6 +271,8 @@ export async function requestJson<T>(path: string, options: JsonRequestOptions =
 
       // Exponential backoff for subsequent attempts
       delay = Math.min(delay * 2, maxDelay)
+    } finally {
+      clearAttemptTimeout?.()
     }
   }
 

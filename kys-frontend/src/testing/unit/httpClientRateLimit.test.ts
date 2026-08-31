@@ -5,6 +5,11 @@ import {
   requestJson,
 } from '../../shared/api/httpClient'
 import { toApiErrorMessage } from '../../shared/api/errorMapper'
+import { facultyClient } from '../../modules/faculty/api/client'
+
+vi.mock('../../shared/auth/storage', () => ({
+  readStoredSession: () => ({ accessToken: 'test-token' }),
+}))
 
 describe('HTTP Client Rate Limit & Retry Behavior', () => {
   beforeEach(() => {
@@ -148,6 +153,46 @@ describe('HTTP Client Rate Limit & Retry Behavior', () => {
 
       expect(callCount).toBe(2)
       expect(data).toEqual({ value: 123 })
+    })
+  })
+
+  describe('faculty chatbot client policy (Phase 4)', () => {
+    it('askChatbot disables httpClient retries with maxAttempts: 1', async () => {
+      const spy = vi.spyOn(
+        await import('../../shared/api/httpClient'),
+        'requestJson',
+      ).mockRejectedValue(new HttpError('Internal server error', 500, null))
+
+      await expect(
+        facultyClient.askChatbot({ query: 'Analyze student', studentId: 'S001' }),
+      ).rejects.toBeInstanceOf(HttpError)
+
+      expect(spy).toHaveBeenCalledTimes(1)
+      expect(spy).toHaveBeenCalledWith(
+        '/api/faculty/chatbot',
+        expect.objectContaining({
+          method: 'POST',
+          timeoutMs: 55_000,
+          retry: { maxAttempts: 1 },
+        }),
+      )
+    })
+
+    it('does not perform a second HTTP attempt for chatbot 500 responses', async () => {
+      let callCount = 0
+      vi.spyOn(
+        await import('../../shared/api/httpClient'),
+        'requestJson',
+      ).mockImplementation(async () => {
+        callCount += 1
+        throw new HttpError('Internal server error', 500, null)
+      })
+
+      await expect(
+        facultyClient.askChatbot({ query: 'Analyze student', studentId: 'S001' }),
+      ).rejects.toBeInstanceOf(HttpError)
+
+      expect(callCount).toBe(1)
     })
   })
 })
