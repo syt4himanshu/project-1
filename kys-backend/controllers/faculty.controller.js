@@ -9,6 +9,7 @@ const {
 } = require('../models/facultyChatbot.model');
 const { generateFacultyInsights, groqCircuitBreaker } = require('../services/groq.service');
 const { sendResponse } = require('../utils/responseWrapper');
+const { isAIError } = require('../utils/aiErrors');
 const logger = require('../utils/logger');
 const {
   logFacultyChatbotControllerStart,
@@ -297,7 +298,22 @@ const facultyChatbot = async (req, res) => {
     return sendResponse(res, { success: true, data: { response } });
   } catch (error) {
     logFacultyChatbotControllerError(req.id, error, groqCircuitBreaker);
-    return sendResponse(res, { success: false, status: 500, error: error.message || 'Unknown error' });
+
+    if (isAIError(error)) {
+      return sendResponse(res, {
+        success: false,
+        status: error.httpStatus,
+        error: error.message,
+        code: error.code,
+      });
+    }
+
+    logger.error({ reqId: req.id, message: error.message, stack: error.stack });
+    return sendResponse(res, {
+      success: false,
+      status: 500,
+      error: 'An unexpected error occurred while generating mentoring insights.',
+    });
   }
 };
 

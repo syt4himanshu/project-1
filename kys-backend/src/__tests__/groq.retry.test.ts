@@ -64,7 +64,7 @@ describe('Groq retry budget helpers', () => {
     }
   });
 
-  it('allows at most four provider calls when main retry uses taxonomy gating', async () => {
+  it('allows at most three provider calls when main retry uses taxonomy gating', async () => {
     const budget = createGroqCallBudget(MAX_GROQ_CALLS_PER_REQUEST);
     let providerCalls = 0;
 
@@ -84,7 +84,6 @@ describe('Groq retry budget helpers', () => {
         },
       );
 
-    await expect(invokeWithRetry()).rejects.toMatchObject({ status: 503 });
     await expect(invokeWithRetry()).rejects.toMatchObject({ status: 503 });
 
     try {

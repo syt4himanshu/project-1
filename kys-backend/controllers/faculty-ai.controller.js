@@ -12,6 +12,7 @@ const {
     SWOC
 } = require('../models');
 const { sendResponse } = require('../utils/responseWrapper');
+const { isAIError } = require('../utils/aiErrors');
 const logger = require('../utils/logger');
 
 /**
@@ -155,7 +156,21 @@ const generateAIRemarks = async (req, res) => {
         });
     } catch (error) {
         logger.error({ reqId: req.id, message: 'AI Remarks Generation Error', error: error.message, stack: error.stack });
-        return sendResponse(res, { success: false, status: 500, error: error.message || 'Failed to generate AI remarks' });
+
+        if (isAIError(error)) {
+            return sendResponse(res, {
+                success: false,
+                status: error.httpStatus,
+                error: error.message,
+                code: error.code,
+            });
+        }
+
+        return sendResponse(res, {
+            success: false,
+            status: 500,
+            error: 'An unexpected error occurred while generating AI remarks.',
+        });
     }
 };
 

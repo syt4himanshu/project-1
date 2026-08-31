@@ -37,6 +37,11 @@ const providerErrors = {
     Object.assign(new Error('model decommissioned'), {
       error: { error: { code: 'model_decommissioned' } },
     }),
+  modelNotFound: () =>
+    Object.assign(new Error('The model does not exist or you do not have access to it'), {
+      status: 404,
+      error: { error: { code: 'model_not_found' } },
+    }),
 };
 
 const minimalStudentDataset = () => ({

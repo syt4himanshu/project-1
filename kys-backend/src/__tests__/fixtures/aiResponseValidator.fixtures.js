@@ -25,6 +25,11 @@ const MARKDOWN_BOLD_RESPONSE = WELL_FORMED_RESPONSE.replace(
   "**$1:**",
 );
 
+const MARKDOWN_HEADING_RESPONSE = WELL_FORMED_RESPONSE.replace(
+  /^(Direct Answer|Student Overview|Strengths & Potential|Areas for Improvement|Faculty Recommendations):/gm,
+  "## $1",
+);
+
 const WITH_THINKING_BLOCK = `<think>
 Let me analyze the student profile carefully before answering.
 </think>
@@ -48,6 +53,7 @@ module.exports = {
   WELL_FORMED_RESPONSE,
   MARKDOWN_FENCED_RESPONSE,
   MARKDOWN_BOLD_RESPONSE,
+  MARKDOWN_HEADING_RESPONSE,
   WITH_THINKING_BLOCK,
   TRUNCATED_RESPONSE,
   EMPTY_RESPONSES,

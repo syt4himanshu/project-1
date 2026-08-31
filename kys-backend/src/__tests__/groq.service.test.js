@@ -232,6 +232,18 @@ describe('groq.service generateFacultyInsights — audit scenario coverage', () 
     expect(unavailableErrors.length).toBe(6);
   });
 
+  it('uses a fallback model after a model_not_found provider error without retrying 404', async () => {
+    const mockCreate = installMockGroq()
+      .mockRejectedValueOnce(providerErrors.modelNotFound())
+      .mockImplementationOnce(providerSuccess);
+
+    const result = await groqService.generateFacultyInsights(basePayload(), REQUEST_ID);
+
+    expect(result).toBe(WELL_FORMED_RESPONSE);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    expect(mockCreate.mock.calls[1][0].model).not.toBe(mockCreate.mock.calls[0][0].model);
+  });
+
   it('uses a fallback model after a decommissioned-model provider error', async () => {
     const mockCreate = installMockGroq()
       .mockRejectedValueOnce(providerErrors.modelDecommissioned())

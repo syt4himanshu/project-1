@@ -43,6 +43,17 @@ describe('aiErrors taxonomy', () => {
     expect(classified.skipCircuitBreaker).toBe(true);
   });
 
+  it('classifies provider 404 model errors as AI_CONFIG_ERROR', () => {
+    const classified = classifyGroqError({
+      status: 404,
+      message: 'The model does not exist or you do not have access to it',
+      error: { error: { code: 'model_not_found' } },
+    });
+    expect(classified.code).toBe(AI_ERROR_CODES.AI_CONFIG_ERROR);
+    expect(classified.skipCircuitBreaker).toBe(true);
+    expect(classified.retryable).toBe(false);
+  });
+
   it('detects Groq model errors', () => {
     expect(
       isGroqModelError({

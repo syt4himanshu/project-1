@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { HttpError } from '../../shared/api/httpClient'
 import {
     CHATBOT_AI_UNAVAILABLE_MESSAGE,
+    CHATBOT_VALIDATION_MESSAGE,
     logChatbotError,
     mapChatbotError,
 } from '../../modules/faculty/chatbot/utils/chatErrorMapper'
@@ -11,11 +12,20 @@ describe('mapChatbotError', () => {
         ['AI_UNAVAILABLE', { code: 'AI_UNAVAILABLE' }],
         ['AI_RATE_LIMITED', { code: 'AI_RATE_LIMITED' }],
         ['AI_CONFIG_ERROR', { code: 'AI_CONFIG_ERROR' }],
-        ['VALIDATION_ERROR', { code: 'VALIDATION_ERROR' }],
         ['AI_TIMEOUT', { code: 'AI_TIMEOUT' }],
-    ])('maps taxonomy code %s to the safe AI message', (_label, payload) => {
+    ])('maps infrastructure taxonomy code %s to the safe AI message', (_label, payload) => {
         const err = new HttpError('Provider unavailable', 503, payload)
         expect(mapChatbotError(err)).toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
+    })
+
+    it('maps VALIDATION_ERROR to the validation-specific message', () => {
+        const err = new HttpError(
+            'We could not produce a complete mentoring response. Please try again.',
+            422,
+            { code: 'VALIDATION_ERROR' },
+        )
+        expect(mapChatbotError(err)).toBe(CHATBOT_VALIDATION_MESSAGE)
+        expect(mapChatbotError(err)).not.toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
     })
 
     it('maps circuit-breaker-open errors to the safe AI message', () => {
@@ -34,13 +44,13 @@ describe('mapChatbotError', () => {
         expect(mapChatbotError(err)).toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
     })
 
-    it('maps 422 validation failures to the safe AI message', () => {
+    it('maps 422 validation failures to the validation-specific message', () => {
         const err = new HttpError(
-            'AI response failed validation after regeneration',
+            'We could not produce a complete mentoring response. Please try again.',
             422,
             { code: 'VALIDATION_ERROR' },
         )
-        expect(mapChatbotError(err)).toBe(CHATBOT_AI_UNAVAILABLE_MESSAGE)
+        expect(mapChatbotError(err)).toBe(CHATBOT_VALIDATION_MESSAGE)
     })
 
     it('maps timeout errors to the safe AI message', () => {

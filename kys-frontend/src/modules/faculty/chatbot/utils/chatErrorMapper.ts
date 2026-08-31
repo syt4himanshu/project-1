@@ -3,11 +3,13 @@ import { HttpError } from '../../../../shared/api/httpClient'
 export const CHATBOT_AI_UNAVAILABLE_MESSAGE =
     'AI mentoring service is temporarily unavailable. Please try again shortly.'
 
-const AI_ERROR_CODES = new Set([
+export const CHATBOT_VALIDATION_MESSAGE =
+    'We could not produce a complete mentoring response. Please try again.'
+
+const AI_INFRASTRUCTURE_CODES = new Set([
     'AI_UNAVAILABLE',
     'AI_RATE_LIMITED',
     'AI_CONFIG_ERROR',
-    'VALIDATION_ERROR',
     'AI_TIMEOUT',
 ])
 
@@ -18,7 +20,7 @@ const CHATBOT_RATE_LIMIT_MESSAGE =
     'Rate limit reached (10 requests/min). Please wait a moment before trying again.'
 
 const TECHNICAL_MESSAGE_PATTERN =
-    /circuit\s*breaker|circuitbreaker|referenceerror|typeerror|groq-api|\bAI_[A-Z_]+\b|model_decommissioned|validation_error/i
+    /circuit\s*breaker|circuitbreaker|referenceerror|typeerror|groq-api|model_decommissioned|model_not_found/i
 
 function readErrorCode(error: unknown): string | null {
     if (!(error instanceof HttpError) || error.payload === null || typeof error.payload !== 'object') {
@@ -40,12 +42,12 @@ function readErrorCode(error: unknown): string | null {
 
 function isAiInfrastructureError(error: unknown, message: string): boolean {
     const code = readErrorCode(error)
-    if (code && AI_ERROR_CODES.has(code)) return true
+    if (code && AI_INFRASTRUCTURE_CODES.has(code)) return true
 
     if (TECHNICAL_MESSAGE_PATTERN.test(message)) return true
 
     if (error instanceof HttpError) {
-        if ([500, 502, 503, 504, 422, 408].includes(error.status)) return true
+        if ([500, 502, 503, 504, 408].includes(error.status)) return true
     }
 
     return /\btimeout\b/i.test(message)
@@ -76,11 +78,13 @@ export function logChatbotError(error: unknown): void {
 /**
  * Maps backend chatbot errors to user-safe messages.
  * Domain errors (auth, assignment, missing data) keep specific copy.
- * AI/infrastructure failures always return CHATBOT_AI_UNAVAILABLE_MESSAGE.
+ * Provider/infrastructure failures return CHATBOT_AI_UNAVAILABLE_MESSAGE.
+ * Validation failures return CHATBOT_VALIDATION_MESSAGE.
  */
 export function mapChatbotError(error: unknown): string {
     if (error instanceof HttpError) {
         const message = error.message
+        const code = readErrorCode(error)
 
         switch (error.status) {
             case 401:
@@ -89,13 +93,22 @@ export function mapChatbotError(error: unknown): string {
                 return PERMISSION_DENIED_MESSAGE
             case 404:
                 return NO_DATA_MESSAGE
+            case 422:
+                if (code === 'VALIDATION_ERROR') {
+                    return CHATBOT_VALIDATION_MESSAGE
+                }
+                return CHATBOT_VALIDATION_MESSAGE
             case 429:
-                if (readErrorCode(error) === 'AI_RATE_LIMITED' || /provider|groq/i.test(message)) {
+                if (code === 'AI_RATE_LIMITED' || /provider|groq/i.test(message)) {
                     return CHATBOT_AI_UNAVAILABLE_MESSAGE
                 }
                 return CHATBOT_RATE_LIMIT_MESSAGE
             default:
                 break
+        }
+
+        if (code === 'VALIDATION_ERROR') {
+            return CHATBOT_VALIDATION_MESSAGE
         }
 
         if (/forbidden|not assigned/i.test(message)) return PERMISSION_DENIED_MESSAGE

@@ -7,6 +7,7 @@ import {
   EMPTY_RESPONSES,
   MARKDOWN_BOLD_RESPONSE,
   MARKDOWN_FENCED_RESPONSE,
+  MARKDOWN_HEADING_RESPONSE,
   TRUNCATED_RESPONSE,
   WELL_FORMED_RESPONSE,
   WITH_THINKING_BLOCK,
@@ -67,6 +68,15 @@ describe('validateFacultyInsightsResponse', () => {
     expect(result.text).not.toMatch(/\*\*Direct Answer\*\*/);
   });
 
+  it('accepts markdown heading section headers without colons', () => {
+    const result = validateFacultyInsightsResponse(MARKDOWN_HEADING_RESPONSE);
+
+    expect(result.ok).toBe(true);
+    expect(result.reason).toBeNull();
+    expect(result.text).toContain('Direct Answer:');
+    expect(result.text).toContain('Faculty Recommendations:');
+  });
+
   it('strips redacted_thinking blocks and returns cleaned faculty-safe text', () => {
     const result = validateFacultyInsightsResponse(WITH_THINKING_BLOCK);
 
@@ -116,13 +126,12 @@ Faculty Recommendations:
     });
   });
 
-  it('rejects responses that still contain chain-of-thought markers after cleaning', () => {
+  it('strips orphan chain-of-thought markers from otherwise valid responses', () => {
     const result = validateFacultyInsightsResponse(
       'Direct Answer:\nLeaked </think> marker.\n\nStudent Overview:\n- A\n\nStrengths & Potential:\n- B\n\nAreas for Improvement:\n- C\n\nFaculty Recommendations:\n- D',
     );
 
-    expect(result.ok).toBe(false);
-    expect(result.text).toBeNull();
-    expect(result.reason).toBe('Response contains disallowed reasoning content');
+    expect(result.ok).toBe(true);
+    expect(result.text).not.toMatch(/redacted_thinking/i);
   });
 });

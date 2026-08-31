@@ -4,11 +4,8 @@
  * Input: untrusted model text.
  * Output: { ok, text, reason } — never throws.
  *
- * - ok=true  → text is cleaned faculty-safe content, reason is null
- * - ok=false → text is null, reason describes the validation failure
- *
- * Chain-of-thought (<think> blocks) is stripped server-side and
- * must never appear in text returned to callers.
+ * Chain-of-thought is stripped server-side and must never appear in text
+ * returned to callers.
  */
 
 const REQUIRED_SECTIONS = [
@@ -21,13 +18,16 @@ const REQUIRED_SECTIONS = [
 
 const MAX_RESPONSE_CHARS = 20_000;
 
-const CHAIN_OF_THOUGHT_PATTERNS = [
+const THINKING_BLOCK_PATTERNS = [
   /<think>[\s\S]*?<\/redacted_thinking>/gi,
   /<think>[\s\S]*?<\/think>/gi,
+  new RegExp('<' + 'think' + '>[\\s\\S]*?<\\/' + 'think' + '>', 'gi'),
 ];
 
+const ORPHAN_THINKING_MARKERS = /<\/?(?:redacted_thinking|think)>/gi;
+
 const REASONING_HEADING_PATTERN =
-  /(^|\n)\s*(Thinking Process:|Analysis:|Self-?Correction:|Review and Refine:|Draft:|Let's verify|Proceed|One minor adjustment|Data used to understand this message)[\s\S]*?(?=\n[A-Z][a-zA-Z &]+:|$)/gi;
+  /(^|\n)\s*(Thinking Process:|Analysis:|Reasoning:|Self-?Correction:|Review and Refine:|Draft:|Let's verify|Proceed|One minor adjustment|Data used to understand this message)[\s\S]*?(?=\n(?:#{1,6}\s+)?[A-Z][a-zA-Z &]+:|\nDirect Answer:|\nStudent Overview:|\nStrengths & Potential:|\nAreas for Improvement:|\nFaculty Recommendations:|$)/gi;
 
 const unwrapMarkdownFences = (text) => {
   const trimmed = text.trim();
@@ -57,14 +57,57 @@ const collapseDuplicateLines = (text) => {
 };
 
 const containsChainOfThought = (text) =>
-  /<think>|<\/redacted_thinking>|<\/think>/i.test(text);
+  /<think>|<\/redacted_thinking>|<\/?think>/i.test(text);
 
 const escapeRegExp = (value) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const sectionHeaderPatterns = (name) => {
+  const escaped = escapeRegExp(name);
+  return [
+    new RegExp(`^${escaped}\\s*:`, "im"),
+    new RegExp(`^#{1,6}\\s+${escaped}\\s*:?`, "im"),
+    new RegExp(`^\\*\\*${escaped}\\*\\*\\s*:?`, "im"),
+    new RegExp(`^[-*]\\s+${escaped}\\s*:?`, "im"),
+    new RegExp(`^\\d+\\.\\s*${escaped}\\s*:?`, "im"),
+  ];
+};
+
+const trimPreambleBeforeFirstSection = (text) => {
+  let earliest = -1;
+
+  for (const name of REQUIRED_SECTIONS) {
+    for (const pattern of sectionHeaderPatterns(name)) {
+      const match = text.match(pattern);
+      if (match && typeof match.index === "number") {
+        earliest =
+          earliest === -1 ? match.index : Math.min(earliest, match.index);
+      }
+    }
+  }
+
+  if (earliest > 0) {
+    return text.slice(earliest);
+  }
+
+  return text;
+};
+
+const stripThinkingContent = (text) => {
+  let cleaned = text;
+
+  for (const pattern of THINKING_BLOCK_PATTERNS) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+
+  cleaned = cleaned.replace(REASONING_HEADING_PATTERN, "\n");
+  cleaned = cleaned.replace(ORPHAN_THINKING_MARKERS, "");
+
+  return cleaned;
+};
+
 /**
  * Normalize markdown-wrapped section headers to plain "Section Name:" lines.
- * openai/gpt-oss-120b often returns **Direct Answer:** instead of Direct Answer:
  */
 const normalizeSectionHeaders = (text) => {
   const lines = text.split("\n");
@@ -75,19 +118,19 @@ const normalizeSectionHeaders = (text) => {
         const escaped = escapeRegExp(name);
 
         const patterns = [
-          // **Direct Answer:** (colon inside bold — gpt-oss-120b default)
           new RegExp(`^(\\s*)\\*\\*${escaped}\\s*:\\s*\\*\\*\\s*(.*)$`, "i"),
-          // **Direct Answer**: or **Direct Answer**:
           new RegExp(`^(\\s*)\\*\\*${escaped}\\*\\*\\s*:(.*)$`, "i"),
-          new RegExp(`^(\\s*)#{1,6}\\s+${escaped}\\s*:(.*)$`, "i"),
-          new RegExp(`^(\\s*)[-*]\\s+${escaped}\\s*:(.*)$`, "i"),
-          new RegExp(`^(\\s*)\\d+\\.\\s*${escaped}\\s*:(.*)$`, "i"),
+          new RegExp(`^(\\s*)#{1,6}\\s+${escaped}\\s*:?\\s*(.*)$`, "i"),
+          new RegExp(`^(\\s*)[-*]\\s+${escaped}\\s*:?\\s*(.*)$`, "i"),
+          new RegExp(`^(\\s*)\\d+\\.\\s*${escaped}\\s*:?\\s*(.*)$`, "i"),
+          new RegExp(`^(\\s*)${escaped}\\s*:\\s*(.*)$`, "i"),
         ];
 
         for (const pattern of patterns) {
           const match = line.match(pattern);
           if (match) {
-            return `${match[1]}${name}:${match[2] || ""}`;
+            const rest = (match[2] || "").trim();
+            return rest ? `${match[1]}${name}:\n${rest}` : `${match[1]}${name}:`;
           }
         }
       }
@@ -99,11 +142,24 @@ const normalizeSectionHeaders = (text) => {
 
 const findMissingSections = (text) => {
   const sectionHeaderPattern = (name) =>
-    new RegExp("^" + name.replace(/[-&]/g, "\\$&") + "\\s*:", "im");
+    new RegExp("^" + escapeRegExp(name) + "\\s*:", "im");
 
   return REQUIRED_SECTIONS.filter(
     (name) => !sectionHeaderPattern(name).test(text),
   );
+};
+
+const normalizeFacultyResponseText = (rawText) => {
+  let text = rawText;
+
+  text = stripThinkingContent(text);
+  text = unwrapMarkdownFences(text);
+  text = text.replace(/\r\n/g, "\n").replace(/\t/g, " ").trim();
+  text = trimPreambleBeforeFirstSection(text);
+  text = collapseDuplicateLines(text);
+  text = normalizeSectionHeaders(text);
+
+  return text.trim();
 };
 
 /**
@@ -123,17 +179,7 @@ const validateFacultyInsightsResponse = (rawText) => {
     return { ok: false, text: null, reason: "Empty response" };
   }
 
-  let text = rawText;
-
-  for (const pattern of CHAIN_OF_THOUGHT_PATTERNS) {
-    text = text.replace(pattern, "");
-  }
-
-  text = text.replace(REASONING_HEADING_PATTERN, "\n");
-  text = unwrapMarkdownFences(text);
-  text = text.replace(/\r\n/g, "\n").replace(/\t/g, " ").trim();
-  text = collapseDuplicateLines(text);
-  text = normalizeSectionHeaders(text);
+  let text = normalizeFacultyResponseText(rawText);
 
   if (!text) {
     return { ok: false, text: null, reason: "Empty response" };
@@ -169,6 +215,7 @@ const validateFacultyInsightsResponse = (rawText) => {
 
 module.exports = {
   validateFacultyInsightsResponse,
+  normalizeFacultyResponseText,
   REQUIRED_SECTIONS,
   MAX_RESPONSE_CHARS,
 };

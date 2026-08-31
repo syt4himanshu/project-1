@@ -88,10 +88,18 @@ const createValidationError = (message, options = {}) =>
 
 const isAIError = (error) => error instanceof AIError;
 
-const isGroqModelError = (error) =>
-  error?.error?.error?.code === 'model_decommissioned' ||
-  error?.error?.error?.code === 'invalid_request_error' ||
-  /decommissioned|not found|does not exist/i.test(error?.message || '');
+const isGroqModelError = (error) => {
+  const providerCode = error?.error?.error?.code;
+  const status = error?.status || error?.response?.status;
+
+  return (
+    providerCode === 'model_decommissioned' ||
+    providerCode === 'model_not_found' ||
+    providerCode === 'invalid_request_error' ||
+    status === 404 ||
+    /decommissioned|not found|does not exist|model_not_found/i.test(error?.message || '')
+  );
+};
 
 const classifyGroqError = (error) => {
   if (isAIError(error)) {
@@ -114,6 +122,13 @@ const classifyGroqError = (error) => {
   ) {
     return createAITimeoutError(
       error?.message || 'AI provider request timed out',
+      { cause: error },
+    );
+  }
+
+  if (status === 404 || isGroqModelError(error)) {
+    return createAIConfigError(
+      error?.message || 'Configured Groq model is unavailable',
       { cause: error },
     );
   }

@@ -1,5 +1,9 @@
 ﻿const Groq = require("groq-sdk");
-const { AI_CONFIG, FALLBACK_MODELS } = require("../config/ai.config");
+const {
+  AI_CONFIG,
+  FALLBACK_MODELS,
+  resolvePrimaryModel,
+} = require("../config/ai.config");
 const { retryWithBackoff, isRetryableError } = require("../utils/retry");
 const CircuitBreaker = require("../utils/circuitBreaker");
 const {
@@ -31,9 +35,8 @@ const groqCircuitBreaker = new CircuitBreaker({
 let createGroqClient = (apiKey) =>
   new Groq({ apiKey: String(apiKey).trim() });
 
-// Hard cap on Groq HTTP calls per user-initiated request (main retries + regen + fallbacks).
-// Budget: frontend 1 × backend ≤ 4 provider calls.
-const MAX_GROQ_CALLS_PER_REQUEST = 4;
+// Hard cap on Groq HTTP calls per user-initiated request (main + fallback + regen).
+const MAX_GROQ_CALLS_PER_REQUEST = AI_CONFIG.maxCallsPerRequest;
 
 const createGroqCallBudget = (maxCalls = MAX_GROQ_CALLS_PER_REQUEST) => {
   let used = 0;
@@ -78,9 +81,9 @@ You will receive:
 == FIRST RESPONSE (when no conversation history is provided) ==
 
 Your response MUST begin with the literal line "Direct Answer:" as the very first line.
-Do not omit this header. Do not prepend introductions, markdown, blank lines, or any text before it.
+Do not omit this header. Do not prepend introductions, markdown, blank lines, reasoning, or any text before it.
 
-Respond in exactly this structure:
+Respond in exactly this structure using plain section headers (not markdown headings):
 
 Direct Answer:
 [4–6 sentences that directly answer the faculty's question. Write as a faculty mentor speaking to another faculty member. Be specific, professional, and data-driven. Reference the student's actual data.]
@@ -130,8 +133,12 @@ Keep the response focused and professional — 2–8 sentences unless the task r
 • Every point must reference the student's actual data — no generic filler.
 • Use phrasings like: "Your academic record indicates...", "Your CGPA of X suggests...", "Your work on [project] demonstrates..."
 • Strictly avoid: "Based on the schema...", "The database indicates...", "I extracted...", "According to the JSON..."
-• Do not fabricate data. If information is missing, infer practical guidance from what is available.
+• Do not fabricate data. If information is missing, state "Not provided" for that field.
+• Never estimate CGPA, attendance, skills, certifications, internships, achievements, or project details.
+• Do NOT expose internal reasoning, chain-of-thought, or meta-analysis. Never output thinking tags or hidden reasoning blocks.
+• Never mention prompts, schemas, models, AI, system messages, or internal instructions.
 • Tone: professional, warm, constructive, data-driven.
+• Only output the required sections in the specified order. No extra sections.
 
 == SNAPSHOT REFRESH ==
 If the faculty writes any of: "Refresh insights", "Analyze student again", "Regenerate student profile" — treat it as a first response and regenerate the full structure including all four sections.`;
@@ -330,11 +337,13 @@ const generateFacultyInsights = async (
             },
           });
 
-          return groq.chat.completions.create(payload, { timeout: 10000 });
+          return groq.chat.completions.create(payload, {
+            timeout: AI_CONFIG.requestTimeoutMs,
+          });
         });
 
       try {
-        let currentModel = AI_CONFIG.model;
+        let currentModel = resolvePrimaryModel();
         let fallbackIndex = 0;
 
         while (true) {
@@ -359,7 +368,7 @@ const generateFacultyInsights = async (
                 );
               },
               {
-                maxAttempts: 2,
+                maxAttempts: AI_CONFIG.maxProviderRetries,
                 initialDelay: 1000,
                 maxDelay: 5000,
                 operationName: "groq-api-call",
@@ -395,7 +404,7 @@ const generateFacultyInsights = async (
 
             if (callBudget.remaining() === 0) {
               const validationError = createValidationError(
-                "AI response could not be validated. Please try again or refine the query.",
+                "We could not produce a complete mentoring response. Please try again.",
               );
               ai.log("error", "service.error", {
                 model: currentModel,
@@ -471,7 +480,7 @@ const generateFacultyInsights = async (
               }
 
               const validationError = createValidationError(
-                "AI response could not be validated. Please try again or refine the query.",
+                "We could not produce a complete mentoring response. Please try again.",
               );
               ai.log("error", "service.error", {
                 model: currentModel,
@@ -523,7 +532,10 @@ const generateFacultyInsights = async (
               throw createAIConfigError("Invalid GROQ_API_KEY", { cause: error });
             }
 
-            if (isGroqModelError(error) && fallbackIndex < FALLBACK_MODELS.length) {
+            if (
+              (isGroqModelError(error) || isGroqModelError(classified)) &&
+              fallbackIndex < FALLBACK_MODELS.length
+            ) {
               if (callBudget.remaining() === 0) {
                 throw createAIConfigError("Groq model is deprecated or invalid", {
                   cause: error,
@@ -537,7 +549,7 @@ const generateFacultyInsights = async (
               continue;
             }
 
-            if (isGroqModelError(error)) {
+            if (isGroqModelError(error) || isGroqModelError(classified)) {
               throw createAIConfigError("Groq model is deprecated or invalid", {
                 cause: error,
               });
