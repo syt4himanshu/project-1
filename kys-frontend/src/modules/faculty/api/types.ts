@@ -26,6 +26,7 @@ export interface MenteeRow {
   last_name?: string
   semester: number
   section?: string
+  mobile_no?: string
   year_of_admission?: number
   is_profile_locked?: boolean
   profile_locked_at?: string | null

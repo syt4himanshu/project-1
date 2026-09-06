@@ -171,7 +171,10 @@ export function FacultyDashboardPage() {
         <section className="faculty-overview__students">
           <div className="faculty-overview__students-head">
             <h3>Mentees ({filteredMentees.length})</h3>
-            <span className="faculty-overview__students-badge">Mentee Details</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '100px 100px', gap: '1rem', alignItems: 'center', textAlign: 'center' }}>
+              <span className="faculty-overview__students-badge">Mentee Details</span>
+              <span className="faculty-overview__students-badge">Mobile</span>
+            </div>
           </div>
 
           <div className="faculty-overview__students-list">
@@ -215,9 +218,16 @@ export function FacultyDashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <button type="button" className="button button--soft" onClick={() => setActiveUid(row.uid)}>
-                    View
-                  </button>
+                  <div style={{ display: 'grid', gridTemplateColumns: '100px 100px', gap: '1rem', alignItems: 'center', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <button type="button" className="button button--soft" onClick={() => setActiveUid(row.uid)}>
+                        View
+                      </button>
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                      {row.mobile_no || 'N/A'}
+                    </span>
+                  </div>
                 </article>
               ))
             )}

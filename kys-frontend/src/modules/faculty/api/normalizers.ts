@@ -245,6 +245,9 @@ export function normalizeMenteeRow(raw: unknown): MenteeRow {
     const fullName =
         str(r.full_name) ||
         [firstName, middleName, lastName].filter(Boolean).join(' ')
+        
+    const personalInfo = (r.personal_info as Record<string, unknown>) || {}
+    const mobileNo = str(personalInfo.mobile_no) || str(personalInfo.mobile) || str(personalInfo.mobile_number) || str(r.mobile_no) || undefined
 
     return {
         id: num(r.id),
@@ -257,6 +260,7 @@ export function normalizeMenteeRow(raw: unknown): MenteeRow {
         last_name: lastName || undefined,
         semester: num(r.semester),
         section: str(r.section) || undefined,
+        mobile_no: mobileNo,
         year_of_admission: typeof r.year_of_admission === 'number' ? r.year_of_admission : undefined,
         is_profile_locked: bool(r.is_profile_locked),
         profile_locked_at: nullable(r.profile_locked_at),
