@@ -8,6 +8,7 @@ export {
   useUpdateMenteeProfile,
   useMenteeMinutes,
   useAddMentoringMinute,
+  usePendingMutationsCount,
   useUploadMenteePhoto,
   useFacultyChatbot,
   useChangePassword,

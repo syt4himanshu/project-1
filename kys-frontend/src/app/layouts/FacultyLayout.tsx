@@ -1,11 +1,17 @@
+import { useState } from 'react'
 import { LogOut } from 'lucide-react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../providers/auth-context'
+import { syncEngine } from '../../shared/sync/syncEngine'
+import { LogoutConfirmationModal } from '../../shared/components/LogoutConfirmationModal'
 
 export default function FacultyLayout() {
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [unsyncedCount, setUnsyncedCount] = useState(0)
 
   const heading = location.pathname.startsWith('/faculty/chatbot')
     ? 'AI Chatbot'
@@ -13,9 +19,23 @@ export default function FacultyLayout() {
       ? 'My Profile'
       : 'Dashboard'
 
-  const handleLogout = async () => {
+  const proceedLogout = async () => {
+    setShowLogoutModal(false)
     await logout()
     navigate('/', { replace: true })
+  }
+
+  const handleLogoutClick = async () => {
+    if (user?.id) {
+      const state = await syncEngine.getSyncState(user.id)
+      const count = state.pendingCount + state.conflictCount + state.failedCount
+      if (count > 0) {
+        setUnsyncedCount(count)
+        setShowLogoutModal(true)
+        return
+      }
+    }
+    await proceedLogout()
   }
 
   return (
@@ -29,7 +49,7 @@ export default function FacultyLayout() {
             </p>
           </div>
           <div className="dashboard-topbar__right">
-            <button type="button" className="button button--danger" onClick={handleLogout}>
+            <button type="button" className="button button--danger" onClick={handleLogoutClick}>
               <LogOut className="dashboard-nav__icon" aria-hidden="true" />
               <span>Logout</span>
             </button>
@@ -40,6 +60,13 @@ export default function FacultyLayout() {
           <Outlet />
         </section>
       </main>
+
+      <LogoutConfirmationModal
+        isOpen={showLogoutModal}
+        unsyncedCount={unsyncedCount}
+        onConfirm={proceedLogout}
+        onCancel={() => setShowLogoutModal(false)}
+      />
     </div>
   )
 }

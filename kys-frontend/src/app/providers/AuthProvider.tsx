@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { AUTH_EXPIRED_EVENT } from '../../shared/api/httpClient'
+import { readStoredSession } from '../../shared/auth/storage'
+import { clearOfflineDataForFaculty } from '../../shared/db'
+import { syncEngine } from '../../shared/sync/syncEngine'
 import {
   authExpired,
   loginWithCredentials,
@@ -29,6 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onAuthExpired = () => {
+      syncEngine.abortActiveSync()
+      // Purge IndexedDB for the current faculty BEFORE the session is cleared,
+      // so we still have the facultyId.  The IDB clear is fire-and-forget —
+      // auth expiry must not be blocked by a storage error.
+      const currentSession = readStoredSession()
+      if (currentSession?.user?.id) {
+        void clearOfflineDataForFaculty(currentSession.user.id).catch(() => {/* non-blocking */ })
+      }
       dispatch(authExpired())
     }
 

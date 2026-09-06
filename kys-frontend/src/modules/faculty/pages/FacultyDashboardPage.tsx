@@ -4,18 +4,23 @@ import { useAuth } from '../../../app/providers/auth-context'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { QueryState } from '../../../shared/ui'
 import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
+import { OfflineDataBadge } from '../../../shared/components/OfflineDataBadge'
 import { StudentPreviewModal } from '../components/StudentPreviewModal'
 import { useMentees } from '../hooks'
+import { ConflictResolutionModal, useSyncState } from '../../../shared/sync'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 export function FacultyDashboardPage() {
   const { user } = useAuth()
   const menteesQuery = useMentees()
+  const { isSyncing, pendingCount, conflictCount, syncNow } = useSyncState()
 
   const [searchValue, setSearchValue] = useState('')
   const [semesterFilter, setSemesterFilter] = useState('')
   const [batchFilter, setBatchFilter] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
   const [activeUid, setActiveUid] = useState('')
+  const [conflictModalOpen, setConflictModalOpen] = useState(false)
 
   const mentees = useMemo(() => menteesQuery.data ?? [], [menteesQuery.data])
 
@@ -87,7 +92,41 @@ export function FacultyDashboardPage() {
 
       <div className="faculty-overview">
         <div className="faculty-overview__head">
-          <h2 className="faculty-overview__title">Mentor Dashboard</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="faculty-overview__title">Mentor Dashboard</h2>
+            {Boolean((menteesQuery.data as { isOfflineCache?: boolean })?.isOfflineCache) && (
+              <OfflineDataBadge />
+            )}
+            {isSyncing && (
+              <span
+                role="status"
+                className="inline-flex items-center gap-1.5 rounded-full border border-blue-300 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+              >
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Syncing changes...
+              </span>
+            )}
+            {!isSyncing && pendingCount > 0 && (
+              <button
+                type="button"
+                onClick={() => void syncNow()}
+                className="inline-flex items-center gap-1.5 rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-800 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Pending Sync: {pendingCount} (Sync Now)
+              </button>
+            )}
+            {conflictCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setConflictModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+              >
+                <AlertTriangle className="h-3 w-3" />
+                Conflict: {conflictCount} needs review
+              </button>
+            )}
+          </div>
           <div className="faculty-overview__quick-links">
             <Link to="/faculty/chatbot" className="button button--soft">Chatbot</Link>
             <Link to="/faculty/profile#change-password" className="button button--soft">Change Password</Link>
@@ -239,6 +278,11 @@ export function FacultyDashboardPage() {
         uid={activeUid}
         open={Boolean(activeUid)}
         onClose={() => setActiveUid('')}
+      />
+
+      <ConflictResolutionModal
+        open={conflictModalOpen}
+        onClose={() => setConflictModalOpen(false)}
       />
     </div>
   )

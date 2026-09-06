@@ -22,8 +22,6 @@ function token() {
   return readStoredSession()?.accessToken ?? null
 }
 
-// Groq SDK 10s × 3 attempts + backoff (~32s) < backend extendedTimeout 60s < nginx 60s.
-// Client abort is set just under the backend budget so the UI fails cleanly first.
 const CHATBOT_REQUEST_TIMEOUT_MS = 55_000
 
 export interface MenteesParams {
@@ -36,6 +34,12 @@ export interface MenteeMinutesParams {
   offset?: number
 }
 
+export interface RequestExtraOptions {
+  headers?: Record<string, string>
+  token?: string | null
+  signal?: AbortSignal
+}
+
 function buildQuery(params: Record<string, number | undefined>): string {
   const parts = Object.entries(params)
     .filter(([, v]) => v !== undefined)
@@ -44,55 +48,81 @@ function buildQuery(params: Record<string, number | undefined>): string {
 }
 
 export const facultyClient = {
-  getProfile: () =>
-    requestJson<FacultyProfile>(ENDPOINTS.faculty.me, { token: token() }),
+  getProfile: (options?: RequestExtraOptions) =>
+    requestJson<FacultyProfile>(ENDPOINTS.faculty.me, {
+      token: options?.token !== undefined ? options.token : token(),
+      signal: options?.signal,
+      headers: options?.headers,
+    }),
 
-  updateProfile: (data: FacultyProfileUpdateInput) =>
+  updateProfile: (data: FacultyProfileUpdateInput, options?: RequestExtraOptions) =>
     requestJson<MutationResult>(ENDPOINTS.faculty.me, {
       method: 'PUT',
       body: data,
-      token: token(),
+      token: options?.token !== undefined ? options.token : token(),
+      signal: options?.signal,
+      headers: options?.headers,
     }),
 
-  getMentees: ({ limit = 50, offset = 0 }: MenteesParams = {}) =>
+  getMentees: ({ limit = 50, offset = 0 }: MenteesParams = {}, options?: RequestExtraOptions) =>
     requestJson<MenteeRow[]>(
       `${ENDPOINTS.faculty.mentees}${buildQuery({ limit, offset })}`,
-      { token: token() },
+      {
+        token: options?.token !== undefined ? options.token : token(),
+        signal: options?.signal,
+        headers: options?.headers,
+      },
     ),
 
-  getMentee: (uid: string) =>
-    requestJson<MenteePayload>(ENDPOINTS.faculty.mentee(uid), { token: token() }),
+  getMentee: (uid: string, options?: RequestExtraOptions) =>
+    requestJson<MenteePayload>(ENDPOINTS.faculty.mentee(uid), {
+      token: options?.token !== undefined ? options.token : token(),
+      signal: options?.signal,
+      headers: options?.headers,
+    }),
 
-  getMenteeMinutes: (uid: string, { limit = 20, offset = 0 }: MenteeMinutesParams = {}) =>
+  getMenteeMinutes: (uid: string, { limit = 20, offset = 0 }: MenteeMinutesParams = {}, options?: RequestExtraOptions) =>
     requestJson<MenteeMinutesPayload>(
       `${ENDPOINTS.faculty.menteeMinutes(uid)}${buildQuery({ limit, offset })}`,
-      { token: token() },
+      {
+        token: options?.token !== undefined ? options.token : token(),
+        signal: options?.signal,
+        headers: options?.headers,
+      },
     ),
 
-  lockMentee: (uid: string) =>
+  lockMentee: (uid: string, options?: RequestExtraOptions) =>
     requestJson<LockMenteeResponse>(ENDPOINTS.faculty.lockMentee(uid), {
       method: 'PUT',
-      token: token(),
+      token: options?.token !== undefined ? options.token : token(),
+      signal: options?.signal,
+      headers: options?.headers,
     }),
 
-  unlockMentee: (uid: string) =>
+  unlockMentee: (uid: string, options?: RequestExtraOptions) =>
     requestJson<LockMenteeResponse>(ENDPOINTS.faculty.unlockMentee(uid), {
       method: 'PUT',
-      token: token(),
+      token: options?.token !== undefined ? options.token : token(),
+      signal: options?.signal,
+      headers: options?.headers,
     }),
 
-  updateMenteeProfile: (uid: string, data: unknown) =>
+  updateMenteeProfile: (uid: string, data: unknown, options?: RequestExtraOptions) =>
     requestJson<UpdateMenteeProfileResponse>(ENDPOINTS.faculty.updateMenteeProfile(uid), {
       method: 'PUT',
       body: data,
-      token: token(),
+      token: options?.token !== undefined ? options.token : token(),
+      signal: options?.signal,
+      headers: options?.headers,
     }),
 
-  addMentoringMinute: (uid: string, data: AddMinuteInput) =>
+  addMentoringMinute: (uid: string, data: AddMinuteInput, options?: RequestExtraOptions) =>
     requestJson<MutationResult>(ENDPOINTS.faculty.menteeMinutes(uid), {
       method: 'POST',
       body: data,
-      token: token(),
+      token: options?.token !== undefined ? options.token : token(),
+      signal: options?.signal,
+      headers: options?.headers,
     }),
 
   uploadMenteePhoto: (studentId: number, file: File) => {

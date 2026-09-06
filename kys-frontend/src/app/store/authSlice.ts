@@ -3,6 +3,8 @@ import { ENDPOINTS } from '../../shared/api/endpointRegistry'
 import { requestJson } from '../../shared/api/httpClient'
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../../shared/auth/storage'
 import { isUserRole, type AuthSession, type AuthUser } from '../../shared/auth/session'
+import { clearOfflineDataForFaculty } from '../../shared/db'
+import { syncEngine } from '../../shared/sync/syncEngine'
 import type { RootState } from './index'
 
 interface LoginResponse {
@@ -129,7 +131,23 @@ export const loginWithCredentials = createAsyncThunk(
 export const logoutCurrentUser = createAsyncThunk(
   'auth/logoutCurrentUser',
   async (_arg: void, { getState }): Promise<void> => {
-    const token = selectAuthToken(getState() as RootState)
+    const state = getState() as RootState
+    const token = selectAuthToken(state)
+    const facultyId = selectAuthUser(state)?.id ?? null
+
+    // Abort any active sync operations for this session
+    syncEngine.abortActiveSync()
+
+    // Clear IndexedDB offline data BEFORE wiping the session so we still have
+    // the facultyId. Errors are intentionally swallowed — a failed IDB clear
+    // must never block the logout flow.
+    if (facultyId !== null) {
+      try {
+        await clearOfflineDataForFaculty(facultyId)
+      } catch {
+        // Non-blocking: IDB unavailable or already cleared.
+      }
+    }
 
     // Synchronously clear stored session
     clearStoredSession()
@@ -152,6 +170,9 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     authExpired(state) {
+      // Note: IndexedDB cleanup for authExpired is handled by the
+      // AUTH_EXPIRED_EVENT listener in AuthProvider, which calls
+      // clearOfflineDataForFaculty before dispatching this action.
       clearStoredSession()
       state.session = null
       state.status = 'anonymous'

@@ -18,6 +18,7 @@ const CareerActivity = require('./CareerActivity');
 const CareerDevActivity = require('./CareerDevActivity');
 const PasswordResetToken = require('./PasswordResetToken');
 const SupportPlan = require('./SupportPlan');
+const IdempotencyKey = require('./IdempotencyKey');
 
 [
   User,
@@ -38,6 +39,7 @@ const SupportPlan = require('./SupportPlan');
   CareerDevActivity,
   PasswordResetToken,
   SupportPlan,
+  IdempotencyKey,
 ].forEach((model) => model.initModel(sequelize));
 
 User.hasOne(Student, { foreignKey: 'user_id', as: 'student_profile', onDelete: 'CASCADE' });
@@ -133,4 +135,5 @@ module.exports = {
   CareerDevActivity,
   PasswordResetToken,
   SupportPlan,
+  IdempotencyKey,
 };

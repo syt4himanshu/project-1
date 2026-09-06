@@ -31,8 +31,9 @@ const corsOptions = {
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key'],
 };
+const { idempotencyMiddleware } = require('./middleware/idempotency');
 const forceHttps = String(process.env.FORCE_HTTPS || 'false').toLowerCase() === 'true';
 
 if (forceHttps) {
@@ -66,6 +67,7 @@ app.options(/.*/, cors(corsOptions));
 
 app.use(express.json({ limit: "50kb" }));
 app.use(extractTokenIdentityOptional);
+app.use(idempotencyMiddleware);
 app.use(globalRateLimiter);
 app.use(requestTiming); // Enhanced request timing middleware
 app.use(standardTimeout); // Add timeout middleware
