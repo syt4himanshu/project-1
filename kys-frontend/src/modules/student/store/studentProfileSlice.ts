@@ -12,6 +12,7 @@ import {
   validateStudentProfileDataDetailed,
 } from '../validation/studentProfileSchema'
 import { clearDraft, clearDraftResetMark, getDraftMetadata, isDraftNewerThan, isDraftResetMarked, loadDraft } from '../utils/studentProfileDraft'
+import { getAcademicSemesterRange } from '../utils/semesterRange'
 
 export const STUDENT_PROFILE_STEP_COUNT = 5
 const DRAFT_RESTORE_TOAST_SUPPRESSION_MS = 3000
@@ -204,7 +205,8 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
 
     const currentSem = Number(data.semester || 8)
     const postAdmissionRecords = (data.post_admission_records as Record<string, unknown>[]) || []
-    const semesters = Array.from({ length: Math.max(currentSem - 1, 0) }, (_, i) => i + 1)
+    // Use admission-type-aware range: diploma students start at sem 3, HSC at sem 1.
+    const semesters = getAcademicSemesterRange(admissionType, currentSem)
     for (const sem of semesters) {
       const rec = postAdmissionRecords.find((r) => Number(r.semester) === sem) || {}
       if (isBlank(rec.sgpa)) {

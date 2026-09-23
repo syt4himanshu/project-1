@@ -17,7 +17,7 @@ const { verifyToken, roleRequired } = require('../middleware/auth');
 const { chatbotRateLimiter } = require('../middleware/rateLimiter');
 const { extendedTimeout } = require('../middleware/timeout');
 const { validate, validateRequest } = require('../middleware/validate');
-const { studentProfileSchema } = require('../middleware/validation/student.validation');
+const { menteeProfileSchema } = require('../middleware/validation/menteeProfileSchema');
 const { withRequestId } = require('../middleware/requestId');
 
 const router = express.Router();
@@ -69,7 +69,7 @@ router.put(
   [
     param('uid').isString().trim().notEmpty(),
     validateRequest,
-    validate(studentProfileSchema)
+    validate(menteeProfileSchema)
   ],
   updateMenteeProfileByFaculty
 );

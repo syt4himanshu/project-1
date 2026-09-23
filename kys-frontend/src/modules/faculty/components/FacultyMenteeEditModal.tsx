@@ -8,7 +8,6 @@ import {
 import {
   BookOpen,
   Briefcase,
-  Eye,
   FolderKanban,
   GraduationCap,
   Lock,
@@ -26,19 +25,26 @@ import {
 import { Modal } from "../../../shared/ui";
 import { useToast } from "../../../app/providers/toast-context";
 import { toApiErrorMessage } from "../../../shared/api/errorMapper";
-import {
-  extractStudentPhotoPreviewUrl,
-  extractStudentPhotoUrl,
-} from "../../../shared/utils/studentPhoto";
+import { extractStudentPhotoPreviewUrl } from "../../../shared/utils/studentPhoto";
 import { ProfileDraftProvider } from "../../student/context/ProfileDraftContext";
 import type { ProfilePhotoUploadResult } from "../../student/context/ProfileDraftContext";
-import { validateStudentProfileData } from "../../student/validation/studentProfileSchema";
+import { validateMenteeProfileData } from "../validation/menteeProfileValidation";
 import Step1Personal from "../../student/components/wizard/Step1Personal";
 import Step3AcademicBefore from "../../student/components/wizard/Step3AcademicBefore";
 import Step5ProjectsInternships from "../../student/components/wizard/Step5ProjectsInternships";
 import Step7SWOC from "../../student/components/wizard/Step7SWOC";
 import { useUpdateMenteeProfile, useUploadMenteePhoto } from "../hooks";
 import type { MenteePayload } from "../api/types";
+import {
+  buildDraftFromMentee,
+  buildTargetedSavePayload,
+  buildSectionStyles,
+  cloneData,
+  isRecord,
+  patchDraft,
+  sectionCounts,
+  type SectionId,
+} from "../utils/menteeProfileEditor";
 
 interface FacultyMenteeEditModalProps {
   uid: string;
@@ -47,20 +53,6 @@ interface FacultyMenteeEditModalProps {
   onClose: () => void;
 }
 
-type SectionId =
-  | "personal"
-  | "parents"
-  | "emergency"
-  | "past-education"
-  | "academics"
-  | "projects"
-  | "internships"
-  | "participation"
-  | "organization"
-  | "skill-programs"
-  | "career"
-  | "skills"
-  | "swoc";
 
 const SECTIONS: Array<{
   id: SectionId;
@@ -175,367 +167,7 @@ const SECTIONS: Array<{
     },
   ];
 
-// ── Section-id → DOM anchor mapping for CSS visibility ───────────────────────
-// Each section id maps to the anchor ids that should be VISIBLE when it is active.
-// All other anchors are hidden via CSS.
-const SECTION_ANCHOR_MAP: Record<SectionId, string[]> = {
-  personal: [
-    "profile-section-personal",
-    "profile-section-location",
-    "profile-section-photo",
-  ],
-  parents: ["profile-section-parents"],
-  emergency: ["profile-section-emergency"],
-  "past-education": ["profile-section-past-education-root"],
-  academics: [
-    "profile-section-past-education-root",
-    "profile-section-academics",
-  ],
-  projects: ["profile-section-projects"],
-  internships: [
-    "profile-section-projects",
-    "profile-section-internships",
-    "profile-section-cocurricular-participation",
-  ],
-  participation: ["profile-section-projects", "profile-section-participation"],
-  organization: ["profile-section-projects", "profile-section-organization"],
-  "skill-programs": [
-    "profile-section-projects",
-    "profile-section-skill-programs",
-  ],
-  career: ["profile-section-career", "profile-section-career-fields"],
-  skills: ["profile-section-skills"],
-  swoc: ["profile-section-swoc"],
-};
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function cloneData(value: unknown): unknown {
-  try {
-    return structuredClone(value);
-  } catch {
-    return JSON.parse(JSON.stringify(value ?? null));
-  }
-}
-
-function normalizePersonalInfoForDraft(raw: unknown): Record<string, unknown> {
-  const pi = isRecord(raw) ? { ...raw } : {};
-  const photoUrl =
-    extractStudentPhotoUrl({ personal_info: pi }) ??
-    pi.photoUrl ??
-    pi.photo_url ??
-    null;
-  const preview =
-    extractStudentPhotoPreviewUrl({ personal_info: pi }) ??
-    pi.photoPreviewUrl ??
-    pi.photo_preview_url ??
-    null;
-  if (photoUrl) {
-    pi.photoUrl = photoUrl;
-    pi.photo_url = photoUrl;
-  }
-  if (preview) {
-    pi.photoPreviewUrl = preview;
-    pi.photo_preview_url = preview;
-  }
-  if (typeof pi.dob === "string" && pi.dob.includes("T")) {
-    pi.dob = pi.dob.split("T")[0];
-  }
-  return pi;
-}
-
-function buildDraftFromMentee(mentee: MenteePayload): Record<string, unknown> {
-  const projects = Array.isArray(mentee.projects)
-    ? (cloneData(mentee.projects) as unknown[])
-    : [];
-  while (projects.length < 3) projects.push({});
-
-  const internships = Array.isArray(mentee.internships)
-    ? (cloneData(mentee.internships) as unknown[])
-    : [];
-  const organizations = Array.isArray(mentee.cocurricular_organizations)
-    ? (cloneData(mentee.cocurricular_organizations) as unknown[])
-    : [];
-  const skillPrograms = Array.isArray(mentee.skill_programs)
-    ? (cloneData(mentee.skill_programs) as unknown[])
-    : [];
-
-  const hasUbaProject = Boolean(
-    (projects[2] as Record<string, unknown> | undefined)?.title ||
-    (projects[2] as Record<string, unknown> | undefined)?.description ||
-    (projects[2] as Record<string, unknown> | undefined)?.domain,
-  );
-  const hasInternshipExperience = internships.some((item) => {
-    const row = (item ?? {}) as Record<string, unknown>;
-    return Boolean(
-      row.company_name ||
-      row.designation ||
-      row.domain ||
-      row.description ||
-      row.internship_type ||
-      row.paid_unpaid ||
-      row.start_date ||
-      row.end_date ||
-      row.title,
-    );
-  });
-  const hasOrganizedActivities = organizations.some((item) => {
-    const row = (item ?? {}) as Record<string, unknown>;
-    return Boolean(row.name || row.date || row.level || row.remark);
-  });
-  const hasSkillPrograms = skillPrograms.some((item) => {
-    const row = (item ?? {}) as Record<string, unknown>;
-    return Boolean(
-      row.course_title ||
-      row.platform ||
-      row.duration_hours ||
-      row.date_from ||
-      row.date_to,
-    );
-  });
-
-  return {
-    id: mentee.id,
-    uid: mentee.uid,
-    full_name: mentee.full_name || "",
-    first_name: mentee.first_name,
-    middle_name: mentee.middle_name,
-    last_name: mentee.last_name,
-    semester: mentee.semester ?? null,
-    section: mentee.section || "",
-    year_of_admission: mentee.year_of_admission ?? null,
-    is_profile_locked: Boolean(mentee.is_profile_locked),
-    profile_locked_at: mentee.profile_locked_at ?? null,
-    profile_locked_by: mentee.profile_locked_by ?? null,
-    admission_type: mentee.admission_type || "",
-    personal_info: normalizePersonalInfoForDraft(mentee.personal_info),
-    past_education_records: cloneData(mentee.past_education_records || []),
-    post_admission_records: cloneData(mentee.post_admission_records || []),
-    projects,
-    internships: hasInternshipExperience ? internships : [],
-    cocurricular_participations: cloneData(
-      mentee.cocurricular_participations || [{}],
-    ),
-    cocurricular_organizations: hasOrganizedActivities ? organizations : [],
-    skill_programs: hasSkillPrograms ? skillPrograms : [],
-    career_objective: cloneData(mentee.career_objective || {}),
-    skills: cloneData(mentee.skills || {}),
-    swoc: cloneData(mentee.swoc || {}),
-    hasUbaProject,
-    hasInternshipExperience,
-    hasOrganizedActivities,
-    hasSkillPrograms,
-  };
-}
-
-function buildSavePayload(
-  data: Record<string, unknown>,
-): Record<string, unknown> {
-  const personalInfo = isRecord(data.personal_info)
-    ? { ...data.personal_info }
-    : {};
-  delete personalInfo.photoUrl;
-  delete personalInfo.photo_url;
-  delete personalInfo.photo_public_id;
-  delete personalInfo.photoPreviewUrl;
-  delete personalInfo.photo_preview_url;
-
-  return {
-    full_name: data.full_name,
-    semester: data.semester,
-    section: data.section,
-    year_of_admission: data.year_of_admission,
-    admission_type: data.admission_type,
-    personal_info: personalInfo,
-    past_education_records: data.past_education_records || [],
-    post_admission_records: data.post_admission_records || [],
-    projects: data.projects || [],
-    internships: data.internships || [],
-    cocurricular_participations: data.cocurricular_participations || [],
-    cocurricular_organizations: data.cocurricular_organizations || [],
-    skill_programs: data.skill_programs || [],
-    career_objective: data.career_objective || {},
-    skills: data.skills || {},
-    swoc: data.swoc || {},
-  };
-}
-
-function patchDraft(
-  prev: Record<string, unknown>,
-  patch: Record<string, unknown>,
-): Record<string, unknown> {
-  const next: Record<string, unknown> = { ...prev };
-  for (const [key, value] of Object.entries(patch)) {
-    if (isRecord(value)) {
-      next[key] = {
-        ...((isRecord(prev[key]) ? prev[key] : {}) as Record<string, unknown>),
-        ...value,
-      };
-    } else {
-      next[key] = value;
-    }
-  }
-  return next;
-}
-
-function sectionCounts(data: Record<string, unknown>) {
-  const asArray = (value: unknown) => (Array.isArray(value) ? value : []);
-  return {
-    projects: asArray(data.projects).filter((item) => {
-      const row = (item ?? {}) as Record<string, unknown>;
-      return Boolean(row.title || row.domain || row.description);
-    }).length,
-    internships: asArray(data.internships).filter((item) => {
-      const row = (item ?? {}) as Record<string, unknown>;
-      return Boolean(row.company_name || row.title || row.domain);
-    }).length,
-    participation: asArray(data.cocurricular_participations).filter((item) => {
-      const row = (item ?? {}) as Record<string, unknown>;
-      return Boolean(row.name || row.date || row.level || row.awards);
-    }).length,
-    organization: asArray(data.cocurricular_organizations).filter((item) => {
-      const row = (item ?? {}) as Record<string, unknown>;
-      return Boolean(row.name || row.date || row.level || row.remark);
-    }).length,
-    "skill-programs": asArray(data.skill_programs).filter((item) => {
-      const row = (item ?? {}) as Record<string, unknown>;
-      return Boolean(row.course_title || row.platform);
-    }).length,
-    academics: asArray(data.post_admission_records).filter((item) => {
-      const row = (item ?? {}) as Record<string, unknown>;
-      return row.semester != null || row.sgpa != null;
-    }).length,
-  };
-}
-
-// ── Build an inline <style> block that hides/shows sections based on active section ──
-function buildSectionStyles(activeSection: SectionId): string {
-  // First hide ALL known section anchors
-  const allAnchors = Object.values(SECTION_ANCHOR_MAP).flat();
-  const hideRules =
-    allAnchors.map((anchor) => `#${anchor}`).join(", ") +
-    " { display: none !important; }";
-
-  // Then show only the anchors for the active section
-  const visibleAnchors = SECTION_ANCHOR_MAP[activeSection];
-  const showRules =
-    visibleAnchors.map((anchor) => `#${anchor}`).join(", ") +
-    " { display: block !important; }";
-
-  return `${hideRules}\n${showRules}`;
-}
-
-type ProfileDraftMap = Record<string, unknown>;
-
-function PreviewPanel({ data }: { data: ProfileDraftMap }) {
-  const pi = isRecord(data.personal_info) ? data.personal_info : {};
-  const swoc = isRecord(data.swoc) ? data.swoc : {};
-  const co = isRecord(data.career_objective) ? data.career_objective : {};
-  const skills = isRecord(data.skills) ? data.skills : {};
-  const projects = Array.isArray(data.projects) ? data.projects : [];
-  const internships = Array.isArray(data.internships) ? data.internships : [];
-
-  const row = (label: string, value: unknown) => (
-    <div key={label} className="faculty-profile-editor__preview-row">
-      <dt>{label}</dt>
-      <dd>
-        {value == null || String(value).trim() === "" ? "N/A" : String(value)}
-      </dd>
-    </div>
-  );
-
-  return (
-    <div className="faculty-profile-editor__preview">
-      <p className="faculty-profile-editor__preview-note">
-        Read-only preview of the current draft. Nothing is saved until you click
-        Save Profile Changes.
-      </p>
-      <section>
-        <h4>Personal</h4>
-        <dl>
-          {row("Full Name", data.full_name)}
-          {row("UID", data.uid)}
-          {row("Semester", data.semester)}
-          {row("Section", data.section)}
-          {row("Year of Admission", data.year_of_admission)}
-          {row("Mobile", pi.mobile_no)}
-          {row("Personal Email", pi.personal_email)}
-          {row("College Email", pi.college_email)}
-          {row("Gender", pi.gender)}
-          {row("DOB", pi.dob)}
-          {row("Blood Group", pi.blood_group)}
-          {row("Category", pi.category)}
-          {row("MIS UID", pi.mis_uid)}
-          {row("Aadhaar", pi.aadhar_number)}
-          {row("LinkedIn", pi.linked_in_id)}
-          {row("GitHub", pi.github_id)}
-          {row("Permanent Address", pi.permanent_address)}
-          {row("Present Address", pi.present_address)}
-        </dl>
-      </section>
-      <section>
-        <h4>Parents & Emergency</h4>
-        <dl>
-          {row("Father's Name", pi.father_name)}
-          {row("Mother's Name", pi.mother_name)}
-          {row("Guardian", pi.guardian_name)}
-          {row("Emergency Contact", pi.emergency_contact_name)}
-          {row("Emergency Mobile", pi.emergency_contact_number)}
-        </dl>
-      </section>
-      <section>
-        <h4>Projects ({projects.length})</h4>
-        <ul>
-          {projects.map((item, index) => {
-            const p = (item ?? {}) as Record<string, unknown>;
-            return (
-              <li key={`preview-project-${index}`}>
-                {String(p.title || `Project ${index + 1}`)} —{" "}
-                {String(p.domain || "N/A")}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-      <section>
-        <h4>Internships ({internships.length})</h4>
-        <ul>
-          {internships.map((item, index) => {
-            const intern = (item ?? {}) as Record<string, unknown>;
-            return (
-              <li key={`preview-internship-${index}`}>
-                {String(
-                  intern.company_name ||
-                  intern.title ||
-                  `Internship ${index + 1}`,
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-      <section>
-        <h4>Career & Skills</h4>
-        <dl>
-          {row("Career Goal", co.career_goal)}
-          {row("Programming Languages", skills.programming_languages)}
-          {row("Domains", skills.domains_of_interest)}
-        </dl>
-      </section>
-      <section>
-        <h4>SWOC</h4>
-        <dl>
-          {row("Strengths", swoc.strengths)}
-          {row("Weaknesses", swoc.weaknesses)}
-          {row("Opportunities", swoc.opportunities)}
-          {row("Challenges", swoc.challenges)}
-        </dl>
-      </section>
-    </div>
-  );
-}
 
 function FacultyMenteeEditForm({
   uid,
@@ -550,15 +182,19 @@ function FacultyMenteeEditForm({
   const updateMutation = useUpdateMenteeProfile(uid);
   const uploadMutation = useUploadMenteePhoto(uid, mentee.id);
 
+  // Build the initial draft once and derive the baseline signature from the
+  // same value so both are guaranteed to be in sync on first render.
   const [draft, setDraft] = useState(() => buildDraftFromMentee(mentee));
-  const [baselineSignature, setBaselineSignature] = useState(() =>
-    JSON.stringify(buildDraftFromMentee(mentee)),
+  const [baselineDraft, setBaselineDraft] = useState(() =>
+    buildDraftFromMentee(mentee),
+  );
+  const [baselineSignature, setBaselineSignature] = useState(
+    () => JSON.stringify(buildDraftFromMentee(mentee)),
   );
   const [activeSection, setActiveSection] = useState<SectionId>("personal");
   const [formError, setFormError] = useState("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
 
   const isDirty = JSON.stringify(draft) !== baselineSignature;
@@ -683,10 +319,6 @@ function FacultyMenteeEditForm({
   useEffect(() => {
     const onKeydown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (previewOpen) {
-        setPreviewOpen(false);
-        return;
-      }
       if (discardOpen) {
         setDiscardOpen(false);
         return;
@@ -700,14 +332,20 @@ function FacultyMenteeEditForm({
     };
     window.addEventListener("keydown", onKeydown);
     return () => window.removeEventListener("keydown", onKeydown);
-  }, [discardOpen, previewOpen, isDirty, updateMutation.isPending, onClose]);
+  }, [discardOpen, isDirty, updateMutation.isPending, onClose]);
 
   const handleSubmit = async (event?: FormEvent) => {
     event?.preventDefault();
     setFormError("");
     setValidationErrors([]);
-    const payload = buildSavePayload(draft);
-    const validation = validateStudentProfileData(payload);
+
+    const payload = buildTargetedSavePayload(draft, baselineDraft);
+    if (Object.keys(payload).length === 0) {
+      onClose();
+      return;
+    }
+
+    const validation = validateMenteeProfileData(payload, draft);
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
       setFormError(
@@ -717,6 +355,7 @@ function FacultyMenteeEditForm({
     }
     try {
       await updateMutation.mutateAsync(payload);
+      setBaselineDraft(cloneData(draft));
       setBaselineSignature(JSON.stringify(draft));
       toast.success("Profile updated successfully.");
       onClose();
@@ -798,8 +437,8 @@ function FacultyMenteeEditForm({
                 </div>
                 <div
                   className={`faculty-profile-editor__lock ${draft.is_profile_locked
-                      ? "faculty-profile-editor__lock--locked"
-                      : "faculty-profile-editor__lock--open"
+                    ? "faculty-profile-editor__lock--locked"
+                    : "faculty-profile-editor__lock--open"
                     }`}
                 >
                   <Lock size={14} aria-hidden="true" />
@@ -938,15 +577,6 @@ function FacultyMenteeEditForm({
               Cancel
             </button>
             <button
-              type="button"
-              className="button button--soft"
-              onClick={() => setPreviewOpen(true)}
-              disabled={updateMutation.isPending}
-            >
-              <Eye size={16} style={{ marginRight: 6 }} aria-hidden="true" />
-              Preview
-            </button>
-            <button
               type="submit"
               form="faculty-mentee-profile-form"
               className="button button--primary"
@@ -992,25 +622,6 @@ function FacultyMenteeEditForm({
         </p>
       </Modal>
 
-      {/* Read-only preview modal */}
-      <Modal
-        open={previewOpen}
-        title="Preview Profile"
-        subtitle="Read-only review of the current draft"
-        onClose={() => setPreviewOpen(false)}
-        size="xl"
-        footer={
-          <button
-            type="button"
-            className="button button--soft"
-            onClick={() => setPreviewOpen(false)}
-          >
-            Close Preview
-          </button>
-        }
-      >
-        <PreviewPanel data={draft} />
-      </Modal>
     </ProfileDraftProvider>
   );
 }

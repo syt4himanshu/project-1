@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { toApiErrorMessage } from '../../../shared/api/errorMapper'
 import { Modal, QueryState } from '../../../shared/ui'
 import { PhotoAvatar } from '../../../shared/components/PhotoAvatar'
@@ -9,7 +9,7 @@ import { AIRemarksAssistant } from '../components/AIRemarksAssistant'
 import { FacultyMenteeEditModal } from '../components/FacultyMenteeEditModal'
 import { useToast } from '../../../app/providers/toast-context'
 import '../components/AIRemarksAssistant.css'
-import { CheckCircle, Edit3, Lock, Sparkles, Unlock } from 'lucide-react'
+import { CheckCircle, Edit3, Lock, Sparkles, Unlock, ArrowLeft } from 'lucide-react'
 
 function formatDate(value: string): string {
   const date = new Date(value)
@@ -32,6 +32,7 @@ function initials(name: string): string {
 export function FacultyMenteeDetailPage() {
   const params = useParams<{ uid: string }>()
   const uid = params.uid ? decodeURIComponent(params.uid) : ''
+  const navigate = useNavigate()
 
   const toast = useToast()
   const menteeQuery = useMentee(uid)
@@ -170,6 +171,16 @@ export function FacultyMenteeDetailPage() {
 
   return (
     <div className="faculty-mentoring-page">
+      <div className="faculty-mentoring-page__topbar">
+        <button
+          type="button"
+          className="button button--soft"
+          onClick={() => navigate('/faculty/dashboard')}
+        >
+          <ArrowLeft size={16} style={{ marginRight: '6px' }} />
+          Go to Dashboard
+        </button>
+      </div>
       <header className="faculty-mentoring-page__banner">
         <h1>Faculty Mentoring Portal</h1>
         <p>Manage student mentoring records and provide guidance</p>

@@ -15,6 +15,7 @@ const {
   parseDate,
   validatePastEducationPayload,
   validatePostAdmissionRecords,
+  serializeModel,
 } = require('./helpers');
 const { encodeStudentProfilePayload } = require('./profileCodec');
 const { ensureStudentPersonalInfo } = require('./studentPersonalInfo');
@@ -75,9 +76,15 @@ const applyStudentProfileUpdate = async (student, rawData = {}, tx) => {
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'post_admission_records')) {
+    // Derive admission_type from the student's existing past education records
+    // (mirrors profileCodec decodeStudentProfilePayload) so the validator enforces
+    // the correct semester range: diploma → starts at 3, HSC → starts at 1.
+    const existingPastRecords = (student.past_education_records || []).map(serializeModel);
+    const admissionType = existingPastRecords.some((r) => r && r.exam_name === 'DIPLOMA') ? 'diploma' : 'hsc';
     const paValidation = validatePostAdmissionRecords(
       Number(student.semester || 0),
       data.post_admission_records || [],
+      admissionType,
     );
     if (!paValidation.valid) {
       return { ok: false, status: 400, error: paValidation.error };

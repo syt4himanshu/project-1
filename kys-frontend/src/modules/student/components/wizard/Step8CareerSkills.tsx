@@ -29,7 +29,7 @@ export default function Step8CareerSkills() {
 
     return (
         <div className="space-y-5">
-            <section id="profile-section-career-fields" className={sectionCardCls}>
+            <section id="profile-section-career" className={sectionCardCls}>
                 <div className="space-y-4">
                     {field('Career Goal *', (() => {
                         const goalOptions = ['Placement', 'Higher Studies', 'Entrepreneurship', 'Government Jobs and Exams']

@@ -1,6 +1,10 @@
 import { useState, useRef } from "react";
 import { useStudentProfileDraft } from "../../hooks/useStudentProfileWizard";
 import { field, input, inputCls, sectionCardCls, select } from "./shared";
+import {
+  getAcademicSemesterRange,
+  getInitialActiveSem,
+} from "../../utils/semesterRange";
 
 const BOARDS = ["CBSE", "State Board", "ICSE", "Other"];
 const ENTRANCE_EXAMS = ["MHT-CET", "JEE", "Other"];
@@ -17,10 +21,10 @@ export default function Step3AcademicBefore() {
   const derivedAdmissionType = records.some((r) => r.exam_name === "DIPLOMA")
     ? "diploma"
     : records.some(
-        (r) => r.exam_name === "HSSC" || r.exam_name === "ENTRANCE_EXAM",
-      )
-    ? "hsc"
-    : "";
+      (r) => r.exam_name === "HSSC" || r.exam_name === "ENTRANCE_EXAM",
+    )
+      ? "hsc"
+      : "";
   const admissionType = (data.admission_type as string) || derivedAdmissionType;
 
   const getRecord = (exam: string) =>
@@ -195,13 +199,17 @@ export default function Step3AcademicBefore() {
   const postAdmissionRecords =
     (data.post_admission_records as Record<string, unknown>[]) || [];
 
-  // Initialize activeSem to the number of existing post-admission records
-  // that already contain semester & sgpa values so existing semesters are visible.
-  const existingSemCount = postAdmissionRecords.filter(
-    (r) => r.semester != null && r.sgpa != null,
-  ).length;
+  // Semester range is admission-type-dependent:
+  //   HSC     → [1 .. currentSem-1]
+  //   Diploma → [3 .. currentSem-1]  (semesters 1 & 2 are pre-B.Tech diploma years)
+  const semesters = getAcademicSemesterRange(admissionType, currentSem);
+
+  // activeSem is a 1-based index into the `semesters` array (not a semester number).
+  // It controls how many cards are currently expanded.  We pre-expand every
+  // card that already has a record with both semester and sgpa so returning
+  // students see their existing data immediately.
   const [activeSem, setActiveSem] = useState<number>(() =>
-    Math.max(existingSemCount, 1),
+    getInitialActiveSem(semesters, postAdmissionRecords),
   );
 
   const getPostAdmissionRecord = (sem: number) =>
@@ -220,197 +228,202 @@ export default function Step3AcademicBefore() {
     });
   };
 
-  const semesters = Array.from(
-    { length: Math.max(currentSem - 1, 0) },
-    (_, i) => i + 1,
-  );
-
   return (
-    <div id="profile-section-past-education-root" className="space-y-5">
-      {renderEducationSection(
-        "SSC (X) Details",
-        "SSC",
-        "Board",
-        "Select Board",
-      )}
+    <div className="space-y-5">
+      <div id="profile-section-past-education-root" className="space-y-5">
+        {renderEducationSection(
+          "SSC (X) Details",
+          "SSC",
+          "Board",
+          "Select Board",
+        )}
 
-      <section className={sectionCardCls}>
-        <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-2xl font-semibold text-[#223b60]">
-          What did you do after 10th?
-        </h3>
-        <div className="grid grid-cols-1 gap-4 sm:max-w-md">
-          {field(
-            "Admission Type *",
-            <div className="space-y-1">
-              <select
-                value={admissionType}
-                onChange={(e) => setAdmissionType(e.target.value)}
-                className={`${inputCls} ${
-                  getValidation("Admission Type (after 10th)")
+        <section className={sectionCardCls}>
+          <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-2xl font-semibold text-[#223b60]">
+            What did you do after 10th?
+          </h3>
+          <div className="grid grid-cols-1 gap-4 sm:max-w-md">
+            {field(
+              "Admission Type *",
+              <div className="space-y-1">
+                <select
+                  value={admissionType}
+                  onChange={(e) => setAdmissionType(e.target.value)}
+                  className={`${inputCls} ${getValidation("Admission Type (after 10th)")
                     ? "border-[#ef4444] focus:border-[#dc2626] focus:ring-[#ef4444]/20"
                     : ""
-                }`}
-              >
-                <option value="">Select Admission Type</option>
-                <option value="hsc">12th (HSC)</option>
-                <option value="diploma">Diploma (Direct Second Year)</option>
-              </select>
-              {getValidation("Admission Type (after 10th)") && (
-                <p className="text-xs font-medium text-[#dc2626]">
-                  {getValidation("Admission Type (after 10th)")?.error}
-                </p>
-              )}
-            </div>,
-          )}
-        </div>
-      </section>
+                    }`}
+                >
+                  <option value="">Select Admission Type</option>
+                  <option value="hsc">12th (HSC)</option>
+                  <option value="diploma">Diploma (Direct Second Year)</option>
+                </select>
+                {getValidation("Admission Type (after 10th)") && (
+                  <p className="text-xs font-medium text-[#dc2626]">
+                    {getValidation("Admission Type (after 10th)")?.error}
+                  </p>
+                )}
+              </div>,
+            )}
+          </div>
+        </section>
 
-      {admissionType === "hsc" && (
-        <>
-          {renderEducationSection(
-            "HSC (XII) Details",
-            "HSSC",
-            "Board",
-            "Select Board",
-          )}
+        {admissionType === "hsc" && (
+          <>
+            {renderEducationSection(
+              "HSC (XII) Details",
+              "HSSC",
+              "Board",
+              "Select Board",
+            )}
 
-          <section className={sectionCardCls}>
-            <h3 className="mb-4 border-b-2 border-[#df981e] pb-2 text-3xl font-semibold text-[#223b60]">
-              Entrance Exam & Admission Details
-            </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
-              {field(
-                "Entrance Exam Type *",
-                (() => {
-                  const isCustomExam =
-                    entrance.exam_type &&
-                    !ENTRANCE_EXAMS.includes(entrance.exam_type as string) &&
-                    entrance.exam_type !== "Other";
-                  const displayExam = isCustomExam
-                    ? "Other"
-                    : (entrance.exam_type as string) || "";
-                  const showExamInput = displayExam === "Other";
-                  return (
-                    <div className="flex flex-col gap-4">
-                      {select(
-                        ENTRANCE_EXAMS,
-                        displayExam,
-                        (v) => upd("ENTRANCE_EXAM", "exam_type", v),
-                        "Select Exam",
-                        !showExamInput
-                          ? getValidation("Entrance Exam Type")
-                          : undefined,
-                      )}
-                      {showExamInput &&
-                        input(
-                          "text",
-                          isCustomExam ? (entrance.exam_type as string) : "",
+            <section className={sectionCardCls}>
+              <h3 className="mb-4 border-b-2 border-[#df981e] pb-2 text-3xl font-semibold text-[#223b60]">
+                Entrance Exam & Admission Details
+              </h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+                {field(
+                  "Entrance Exam Type *",
+                  (() => {
+                    const isCustomExam =
+                      entrance.exam_type &&
+                      !ENTRANCE_EXAMS.includes(entrance.exam_type as string) &&
+                      entrance.exam_type !== "Other";
+                    const displayExam = isCustomExam
+                      ? "Other"
+                      : (entrance.exam_type as string) || "";
+                    const showExamInput = displayExam === "Other";
+                    return (
+                      <div className="flex flex-col gap-4">
+                        {select(
+                          ENTRANCE_EXAMS,
+                          displayExam,
                           (v) => upd("ENTRANCE_EXAM", "exam_type", v),
-                          "Enter Exam Type",
-                          getValidation("Entrance Exam Type"),
+                          "Select Exam",
+                          !showExamInput
+                            ? getValidation("Entrance Exam Type")
+                            : undefined,
                         )}
-                    </div>
-                  );
-                })(),
-              )}
-              {field(
-                "Percentile *",
-                input(
-                  "text",
-                  entrance.percentage != null
-                    ? String(entrance.percentage)
-                    : "",
-                  (v) => handlePercentageChange("ENTRANCE_EXAM", v),
-                  "Score / Percentile",
-                  getValidation("Entrance Percentile"),
-                ),
-              )}
-              {field(
-                "Year of Passing *",
-                select(
-                  YEAR_OPTIONS,
-                  String(entrance.year_of_passing || ""),
-                  (v) =>
-                    upd(
-                      "ENTRANCE_EXAM",
-                      "year_of_passing",
-                      v === "" ? null : Number(v),
-                    ),
-                  "Select Year",
-                  getValidation("Entrance Exam Year of Passing"),
-                ),
-              )}
-            </div>
-          </section>
+                        {showExamInput &&
+                          input(
+                            "text",
+                            isCustomExam ? (entrance.exam_type as string) : "",
+                            (v) => upd("ENTRANCE_EXAM", "exam_type", v),
+                            "Enter Exam Type",
+                            getValidation("Entrance Exam Type"),
+                          )}
+                      </div>
+                    );
+                  })(),
+                )}
+                {field(
+                  "Percentile *",
+                  input(
+                    "text",
+                    entrance.percentage != null
+                      ? String(entrance.percentage)
+                      : "",
+                    (v) => handlePercentageChange("ENTRANCE_EXAM", v),
+                    "Score / Percentile",
+                    getValidation("Entrance Percentile"),
+                  ),
+                )}
+                {field(
+                  "Year of Passing *",
+                  select(
+                    YEAR_OPTIONS,
+                    String(entrance.year_of_passing || ""),
+                    (v) =>
+                      upd(
+                        "ENTRANCE_EXAM",
+                        "year_of_passing",
+                        v === "" ? null : Number(v),
+                      ),
+                    "Select Year",
+                    getValidation("Entrance Exam Year of Passing"),
+                  ),
+                )}
+              </div>
+            </section>
 
-          <section className={sectionCardCls}>
-            <h3 className="mb-4 border-b-2 border-[#10b981] pb-2 text-3xl font-semibold text-[#223b60]">
-              Other Programs
-            </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
-              {field(
-                "Program Title",
-                input(
-                  "text",
-                  (getRecord("EXTRA_PROGRAM").exam_type as string) || "",
-                  (v) => upd("EXTRA_PROGRAM", "exam_type", v),
-                  "Title of the Program",
-                ),
-              )}
-              {field(
-                "Score/Percentage (Numeric)",
-                input(
-                  "number",
-                  getRecord("EXTRA_PROGRAM").percentage != null
-                    ? String(getRecord("EXTRA_PROGRAM").percentage)
-                    : "",
-                  (v) => handlePercentageChange("EXTRA_PROGRAM", v),
-                  "e.g. 85.5",
-                ),
-              )}
-              {field(
-                "Year of Passing",
-                select(
-                  YEAR_OPTIONS,
-                  String(getRecord("EXTRA_PROGRAM").year_of_passing || ""),
-                  (v) =>
-                    upd(
-                      "EXTRA_PROGRAM",
-                      "year_of_passing",
-                      v === "" ? null : Number(v),
-                    ),
-                  "Select Year",
-                ),
-              )}
-            </div>
-          </section>
-        </>
-      )}
-
-      {admissionType === "diploma" &&
-        renderEducationSection(
-          "Diploma Details",
-          "DIPLOMA",
-          "Diploma Board",
-          "Enter Diploma Board",
-          true,
+            <section className={sectionCardCls}>
+              <h3 className="mb-4 border-b-2 border-[#10b981] pb-2 text-3xl font-semibold text-[#223b60]">
+                Other Programs
+              </h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+                {field(
+                  "Program Title",
+                  input(
+                    "text",
+                    (getRecord("EXTRA_PROGRAM").exam_type as string) || "",
+                    (v) => upd("EXTRA_PROGRAM", "exam_type", v),
+                    "Title of the Program",
+                  ),
+                )}
+                {field(
+                  "Score/Percentage (Numeric)",
+                  input(
+                    "number",
+                    getRecord("EXTRA_PROGRAM").percentage != null
+                      ? String(getRecord("EXTRA_PROGRAM").percentage)
+                      : "",
+                    (v) => handlePercentageChange("EXTRA_PROGRAM", v),
+                    "e.g. 85.5",
+                  ),
+                )}
+                {field(
+                  "Year of Passing",
+                  select(
+                    YEAR_OPTIONS,
+                    String(getRecord("EXTRA_PROGRAM").year_of_passing || ""),
+                    (v) =>
+                      upd(
+                        "EXTRA_PROGRAM",
+                        "year_of_passing",
+                        v === "" ? null : Number(v),
+                      ),
+                    "Select Year",
+                  ),
+                )}
+              </div>
+            </section>
+          </>
         )}
+
+        {admissionType === "diploma" &&
+          renderEducationSection(
+            "Diploma Details",
+            "DIPLOMA",
+            "Diploma Board",
+            "Enter Diploma Board",
+            true,
+          )}
+      </div>
 
       <section id="profile-section-academics" className={sectionCardCls}>
         <h3 className="mb-4 border-b-2 border-[#3b8ed9] pb-2 text-3xl font-semibold text-[#223b60]">
           Academic Information - After Admission
         </h3>
+        {admissionType === "diploma" && (
+          <p className="mb-4 text-sm text-[#6e7e95]">
+            Direct second-year admission: academic records start from Semester 3.
+          </p>
+        )}
         {semesters.length === 0 ? (
           <p className="text-sm text-[#6e7e95]">
             No records needed for Semester 1 students.
           </p>
         ) : (
           <div className="space-y-5">
-            {semesters.slice(0, activeSem).map((sem) => {
+            {semesters.slice(0, activeSem).map((sem, idx) => {
               const rec = getPostAdmissionRecord(sem) as Record<
                 string,
                 unknown
               >;
+              // activeSem is 1-based; the "active" (last visible) card is at index activeSem-1
+              const isLastVisible = idx === activeSem - 1;
+              // The actual semester number of the next card (if any)
+              const nextSem = semesters[activeSem]; // activeSem === next index (0-based)
               return (
                 <section
                   key={sem}
@@ -495,7 +508,7 @@ export default function Step3AcademicBefore() {
                       )}
                     </div>
                   </div>
-                  {sem === activeSem && (
+                  {isLastVisible && (
                     <div className="mt-3">
                       {activeSem < semesters.length ? (
                         <button
@@ -504,9 +517,8 @@ export default function Step3AcademicBefore() {
                             setActiveSem((prev) => prev + 1);
                             setTimeout(
                               () =>
-                                semCardRefs.current[
-                                  activeSem + 1
-                                ]?.scrollIntoView({
+                                nextSem !== undefined &&
+                                semCardRefs.current[nextSem]?.scrollIntoView({
                                   behavior: "smooth",
                                   block: "start",
                                 }),
@@ -515,7 +527,7 @@ export default function Step3AcademicBefore() {
                           }}
                           className="rounded-xl border border-[#3b8ed9] bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-[#3b8ed9] transition hover:bg-[#f0f6ff] dark:hover:bg-slate-700"
                         >
-                          Add Semester {activeSem + 1} →
+                          Add Semester {nextSem} →
                         </button>
                       ) : (
                         <p className="text-sm font-medium text-[#12996c]">

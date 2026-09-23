@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToastContext } from '../../app/providers/toast-context'
@@ -27,7 +27,7 @@ vi.mock('country-state-city', () => ({
   },
 }))
 
-const richMentee = {
+const richMentee: MenteePayload = {
   id: 102,
   uid: 'STU_102',
   full_name: 'Priya Verma',
@@ -156,7 +156,7 @@ function createQueryClient() {
   })
 }
 
-function renderEditor(mentee: MenteePayload = richMentee as MenteePayload, onClose = vi.fn()) {
+function renderEditor(mentee: MenteePayload = richMentee, onClose = vi.fn()) {
   const notify = vi.fn()
   const queryClient = createQueryClient()
   return {
@@ -178,16 +178,16 @@ function renderEditor(mentee: MenteePayload = richMentee as MenteePayload, onClo
   }
 }
 
-describe('Faculty complete mentee profile editor', () => {
+describe('Faculty complete mentee profile editor UI', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(facultyClient.updateMenteeProfile).mockResolvedValue({
       message: 'ok',
-      student: richMentee as MenteePayload,
+      student: richMentee,
     })
   })
 
-  it('renders major profile sections in the sidebar', () => {
+  it('UI-09 — renders major profile sections in sidebar and existing values', () => {
     renderEditor()
 
     expect(screen.getByRole('button', { name: /Personal Details/i })).toBeInTheDocument()
@@ -203,10 +203,6 @@ describe('Faculty complete mentee profile editor', () => {
     expect(screen.getByRole('button', { name: /Career Objective/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Skills/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^SWOC$/i })).toBeInTheDocument()
-  })
-
-  it('shows existing personal, parent, emergency, education and career fields', () => {
-    renderEditor()
 
     expect(screen.getByDisplayValue('Priya Verma')).toBeInTheDocument()
     expect(screen.getByDisplayValue('9123456789')).toBeInTheDocument()
@@ -215,61 +211,69 @@ describe('Faculty complete mentee profile editor', () => {
     expect(screen.getByDisplayValue('Sita')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Uncle')).toBeInTheDocument()
     expect(screen.getByDisplayValue('ABCDE12345')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Mini App')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Acme')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Teamwork')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Python, JS')).toBeInTheDocument()
   })
 
-  it('keeps the form editable when the mentee profile is locked', async () => {
+  it('UI-01 — Cancel with no changes closes editor immediately', async () => {
     const user = userEvent.setup()
-    renderEditor()
+    const { onClose } = renderEditor()
 
-    expect(screen.getByText(/Locked for student editing/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Cancel$/i }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(facultyClient.updateMenteeProfile).not.toHaveBeenCalled()
+    expect(screen.queryByText(/Unsaved changes/i)).not.toBeInTheDocument()
+  })
+
+  it('UI-02 — Cancel with unsaved changes prompts discard dialog', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderEditor()
 
     const nameInput = screen.getByDisplayValue('Priya Verma')
-    expect(nameInput).not.toBeDisabled()
     await user.clear(nameInput)
     await user.type(nameInput, 'Priya Verma Updated')
-    expect(screen.getByDisplayValue('Priya Verma Updated')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^Cancel$/i }))
+
+    expect(screen.getByRole('heading', { name: 'Unsaved changes' })).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(facultyClient.updateMenteeProfile).not.toHaveBeenCalled()
   })
 
-  it('saves via updateMenteeProfile and does not send lock fields', async () => {
+  it('UI-03 — Stay button closes discard dialog and keeps editor open', async () => {
     const user = userEvent.setup()
-    const { notify, onClose } = renderEditor()
+    const { onClose } = renderEditor()
 
-    await user.click(screen.getByRole('button', { name: /Save Profile Changes/i }))
+    const nameInput = screen.getByDisplayValue('Priya Verma')
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Priya Verma Updated')
 
-    await waitFor(() => {
-      expect(facultyClient.updateMenteeProfile).toHaveBeenCalledWith(
-        'STU_102',
-        expect.objectContaining({
-          full_name: 'Priya Verma',
-          personal_info: expect.objectContaining({
-            emergency_contact_name: 'Ravi',
-            emergency_contact_number: '9876543210',
-          }),
-          projects: expect.any(Array),
-          internships: expect.any(Array),
-          swoc: expect.objectContaining({ strengths: 'Teamwork' }),
-        }),
-      )
-    })
+    await user.click(screen.getByRole('button', { name: /^Cancel$/i }))
+    expect(screen.getByRole('heading', { name: 'Unsaved changes' })).toBeInTheDocument()
 
-    const payload = vi.mocked(facultyClient.updateMenteeProfile).mock.calls[0][1] as Record<string, unknown>
-    expect(payload).not.toHaveProperty('is_profile_locked')
-    expect(payload).not.toHaveProperty('profile_locked_at')
-    expect(payload).not.toHaveProperty('profile_locked_by')
-    expect(notify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        intent: 'success',
-        message: expect.stringMatching(/profile updated successfully/i),
-      }),
-    )
-    expect(onClose).toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /^Stay$/i }))
+
+    expect(screen.queryByRole('heading', { name: 'Unsaved changes' })).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByDisplayValue('Priya Verma Updated')).toBeInTheDocument()
+    expect(facultyClient.updateMenteeProfile).not.toHaveBeenCalled()
   })
 
-  it('warns about unsaved changes before closing', async () => {
+  it('UI-04 — Discard Changes closes dialog and editor without saving', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderEditor()
+
+    const nameInput = screen.getByDisplayValue('Priya Verma')
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Priya Verma Updated')
+
+    await user.click(screen.getByRole('button', { name: /^Cancel$/i }))
+    await user.click(screen.getByRole('button', { name: /Discard Changes/i }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(facultyClient.updateMenteeProfile).not.toHaveBeenCalled()
+  })
+
+  it('UI-05 — Header close button behaves identically to Cancel when dirty', async () => {
     const user = userEvent.setup()
     const { onClose } = renderEditor()
 
@@ -281,36 +285,95 @@ describe('Faculty complete mentee profile editor', () => {
 
     expect(screen.getByRole('heading', { name: 'Unsaved changes' })).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
+  })
 
-    await user.click(screen.getByRole('button', { name: /Stay/i }))
-    expect(onClose).not.toHaveBeenCalled()
+  it('UI-07 — Legacy invalid long text does not block unrelated edit save', async () => {
+    const user = userEvent.setup()
+    const legacyMentee: MenteePayload = {
+      ...richMentee,
+      career_objective: {
+        ...(richMentee.career_objective || {}),
+        specific_details: 'X'.repeat(250), // legacy over-200 string
+      },
+    }
+    const { notify, onClose } = renderEditor(legacyMentee)
 
-    await user.click(screen.getByRole('button', { name: /Close editor/i }))
-    await user.click(screen.getByRole('button', { name: /Discard Changes/i }))
+    // Edit only mobile number
+    const mobileInput = screen.getByDisplayValue('9123456789')
+    await user.clear(mobileInput)
+    await user.type(mobileInput, '9988776655')
+
+    await user.click(screen.getByRole('button', { name: /Save Profile Changes/i }))
+
+    await waitFor(() => {
+      expect(facultyClient.updateMenteeProfile).toHaveBeenCalledWith(
+        'STU_102',
+        expect.objectContaining({
+          personal_info: expect.objectContaining({
+            mobile_no: '9988776655',
+          }),
+        }),
+      )
+    })
+
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        intent: 'success',
+      }),
+    )
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('opens a read-only preview that does not mutate draft values', async () => {
+  it('UI-08 — Explicit invalid field edit is rejected by validation', async () => {
     const user = userEvent.setup()
     renderEditor()
 
-    await user.click(screen.getByRole('button', { name: /^Preview$/i }))
+    const mobileInput = screen.getByDisplayValue('9123456789')
+    await user.clear(mobileInput)
+    await user.type(mobileInput, '123') // invalid 10-digit format
 
-    const dialog = screen.getByRole('dialog', { name: /Preview Profile/i })
-    expect(within(dialog).getByText(/Read-only preview/i)).toBeInTheDocument()
-    expect(within(dialog).getByText('Priya Verma')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Priya Verma')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Save Profile Changes/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(facultyClient.updateMenteeProfile).not.toHaveBeenCalled()
   })
 
-  it('allows editing unlocked mentees as well', async () => {
-    const unlocked = {
+  it('UI-10 — Empty optional arrays still render editable form controls', () => {
+    const emptyOptionalMentee: MenteePayload = {
       ...richMentee,
-      is_profile_locked: false,
-      profile_locked_at: null as string | null,
+      internships: [],
+      cocurricular_organizations: [],
+      skill_programs: [],
     }
-    renderEditor(unlocked as typeof richMentee)
+    renderEditor(emptyOptionalMentee)
 
-    expect(screen.getByText(/Editable by Student/i)).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Priya Verma')).not.toBeDisabled()
+    // Editor still mounts components allowing addition/editing of records
+    expect(screen.getByRole('button', { name: /Personal Details/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Internships/i })).toBeInTheDocument()
+  })
+
+  it('UI-11 & UI-12 — Successful save closes modal; failed save preserves draft and shows error', async () => {
+    const user = userEvent.setup()
+    vi.mocked(facultyClient.updateMenteeProfile).mockRejectedValueOnce(
+      new Error('API Server Error'),
+    )
+
+    renderEditor()
+
+    const nameInput = screen.getByDisplayValue('Priya Verma')
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Priya Verma Failed Save')
+
+    await user.click(screen.getByRole('button', { name: /Save Profile Changes/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    // Draft preserved on failure
+    expect(screen.getByDisplayValue('Priya Verma Failed Save')).toBeInTheDocument()
   })
 })

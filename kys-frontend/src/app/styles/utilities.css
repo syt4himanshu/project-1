@@ -5621,6 +5621,11 @@ body.faculty-chatbot-mode .faculty-chat__form-footer .table-actions {
   gap: 0.9rem;
 }
 
+.faculty-mentoring-page__topbar {
+  display: flex;
+  align-items: center;
+}
+
 .faculty-mentoring-page__banner {
   border-radius: 14px;
   background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
