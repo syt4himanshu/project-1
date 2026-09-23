@@ -87,6 +87,8 @@ const studentProfileSchema = Joi.object({
     guardian_name: Joi.string().trim().max(120).allow('', null),
     guardian_mobile: phoneNumber,
     guardian_email: optionalEmail,
+    emergency_contact_name: Joi.string().trim().max(120).allow('', null),
+    emergency_contact_number: phoneNumber,
   }).unknown(true),
 
   past_education_records: Joi.array().items(Joi.object({
@@ -315,6 +317,7 @@ const step0Schema = Joi.object({
       .allow('', null)
       .pattern(/^(?:\s*[a-zA-Z0-9]){10}\s*$/)
       .messages({ 'string.pattern.base': 'must be a 10-character alphanumeric DIGIPIN' }),
+    emergency_contact_number: phoneNumber,
   }).unknown(true),
 }).unknown(true)
 

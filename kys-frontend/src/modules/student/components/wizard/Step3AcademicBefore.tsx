@@ -439,16 +439,15 @@ export default function Step3AcademicBefore() {
                       ),
                     )}
 
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">
-                        Session & Year of Passing
-                      </label>
+                    {field(
+                      "Session & Year of Passing *",
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {select(
                           ["Summer", "Winter"],
                           (rec.season as string) || "",
                           (v) => updPostAdmission(sem, "season", v),
                           "Session",
+                          getValidation(`Semester ${sem} Session`)
                         )}
                         {select(
                           YEAR_OPTIONS,
@@ -460,9 +459,10 @@ export default function Step3AcademicBefore() {
                               v === "" ? null : Number(v),
                             ),
                           "Select Year",
+                          getValidation(`Semester ${sem} Year of Passing`)
                         )}
                       </div>
-                    </div>
+                    )}
 
                     {field(
                       "College Rank",

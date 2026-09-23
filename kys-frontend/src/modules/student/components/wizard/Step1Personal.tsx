@@ -443,6 +443,40 @@ export default function Step1Personal() {
 
         <div className="mt-5 rounded-2xl border border-[#d6deea] bg-[#f7f9fc] p-4 sm:p-5">
           <h3 className="mb-4 border-b border-[#c9d6ea] pb-2 text-2xl font-semibold text-[#223b60]">
+            Emergency Contact Details
+          </h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+            {field(
+              "Emergency Contact Name *",
+              input(
+                "text",
+                (pi.emergency_contact_name as string) || "",
+                (v) => upd("emergency_contact_name", v),
+                "Enter contact name",
+                getValidation(
+                  "Emergency Contact Name",
+                  "personal_info.emergency_contact_name",
+                ),
+              ),
+            )}
+            {field(
+              "Emergency Contact Number *",
+              input(
+                "tel",
+                (pi.emergency_contact_number as string) || "",
+                (v) => upd("emergency_contact_number", v),
+                "e.g. 9876543210",
+                getValidation(
+                  "Emergency Contact Number",
+                  "personal_info.emergency_contact_number",
+                ),
+              ),
+            )}
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-[#d6deea] bg-[#f7f9fc] p-4 sm:p-5">
+          <h3 className="mb-4 border-b border-[#c9d6ea] pb-2 text-2xl font-semibold text-[#223b60]">
             Local Guardian Details
           </h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">

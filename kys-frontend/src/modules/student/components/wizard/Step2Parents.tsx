@@ -23,6 +23,14 @@ export default function Step2Parents() {
             </section>
 
             <section className={sectionCardCls}>
+                <h3 className="mb-4 border-b border-[#c9d6ea] pb-2 text-2xl font-semibold text-[#223b60]">Emergency Contact Details</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                    {field('Emergency Contact Name *', input('text', (pi.emergency_contact_name as string) || '', v => upd('emergency_contact_name', v), 'Enter contact name', getFieldValidation('personal_info.emergency_contact_name')))}
+                    {field('Emergency Contact Number *', input('tel', (pi.emergency_contact_number as string) || '', v => upd('emergency_contact_number', v), 'e.g. 9876543210', getFieldValidation('personal_info.emergency_contact_number')))}
+                </div>
+            </section>
+
+            <section className={sectionCardCls}>
                 <h3 className="mb-4 border-b border-[#c9d6ea] pb-2 text-2xl font-semibold text-[#223b60]">Local Guardian Details</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                     {field('Local Guardian Name', input('text', (pi.guardian_name as string) || '', v => upd('guardian_name', v), 'Enter guardian name'))}

@@ -81,6 +81,8 @@ export default function Step9ReviewSubmit() {
                         <Row label="Mother's Mobile" value={pi.mother_mobile_no} />
                         <Row label="Mother's Email" value={pi.mother_email} />
                         <Row label="Mother's Occupation" value={pi.mother_occupation} />
+                        <Row label='Emergency Contact Name' value={pi.emergency_contact_name} />
+                        <Row label='Emergency Contact Mobile' value={pi.emergency_contact_number} />
                         <Row label='Local Guardian Name' value={pi.guardian_name} />
                         <Row label='Local Guardian Mobile' value={pi.guardian_mobile} />
                         <Row label='Local Guardian Email' value={pi.guardian_email} />

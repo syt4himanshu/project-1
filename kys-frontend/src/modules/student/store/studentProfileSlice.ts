@@ -159,6 +159,8 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
     if (isBlank(pi.mother_name)) missing.push("Mother's Name")
     if (isBlank(pi.mother_mobile_no)) missing.push("Mother's WhatsApp Mobile No.")
     if (isBlank(pi.mother_occupation)) missing.push("Mother's Occupation")
+    if (isBlank(pi.emergency_contact_name)) missing.push('Emergency Contact Name')
+    if (isBlank(pi.emergency_contact_number)) missing.push('Emergency Contact Number')
     // Photo is required for new submissions. Existing saved photos on any known field satisfy this.
     if (!hasStudentPhoto(data)) missing.push('Profile Photo')
     return missing
@@ -207,6 +209,12 @@ function getMissingRequiredFields(step: number, data: Record<string, unknown>) {
       const rec = postAdmissionRecords.find((r) => Number(r.semester) === sem) || {}
       if (isBlank(rec.sgpa)) {
         missing.push(`Semester ${sem} SGPA`)
+      }
+      if (isBlank(rec.season)) {
+        missing.push(`Semester ${sem} Session`)
+      }
+      if (isBlank(rec.year_of_passing)) {
+        missing.push(`Semester ${sem} Year of Passing`)
       }
     }
 

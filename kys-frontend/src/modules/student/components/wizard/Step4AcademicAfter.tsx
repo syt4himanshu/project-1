@@ -38,13 +38,13 @@ export default function Step4AcademicAfter() {
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                             {field('SGPA', input('number', String(rec.sgpa || ''), v => upd(sem, 'sgpa', v === '' ? null : Number(v)), 'e.g. 8.86'))}
 
-                            <div>
-                                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f6f86]">Session & Year of Passing</label>
+                            {field(
+                                'Session & Year of Passing *',
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     {select(['Summer', 'Winter'], (rec.season as string) || '', v => upd(sem, 'season', v), 'Session')}
                                     {input('number', String(rec.year_of_passing || ''), v => upd(sem, 'year_of_passing', v === '' ? null : Number(v)), 'Year e.g. 2023')}
                                 </div>
-                            </div>
+                            )}
 
                             {field('College Rank', input('text', (rec.college_rank as string) || '', v => upd(sem, 'college_rank', v), 'Rank (if any)'))}
                             {field('Academic Awards', input('text', (rec.academic_awards as string) || '', v => upd(sem, 'academic_awards', v), 'Awards received (if any)'))}
