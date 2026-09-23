@@ -55,18 +55,7 @@ function unpackExamName(value) {
 
 function encodePastEducationRecords(records = []) {
   return cloneArray(records).map((record) => {
-    const examName = record.exam_name || '';
-    const packed = {
-      ...record,
-      exam_name: packExamName(examName, {
-        board: record.board,
-        exam_type: record.exam_type,
-      }),
-    };
-
-    delete packed.board;
-    delete packed.exam_type;
-    return packed;
+    return { ...record };
   });
 }
 
@@ -76,29 +65,15 @@ function decodePastEducationRecords(records = []) {
     return {
       ...record,
       exam_name: unpacked.base,
-      board: unpacked.meta.board ?? '',
-      exam_type: unpacked.meta.exam_type ?? '',
+      board: record.board || unpacked.meta.board || '',
+      exam_type: record.exam_type || unpacked.meta.exam_type || '',
     };
   });
 }
 
 function encodePostAdmissionRecords(records = []) {
   return cloneArray(records).map((record) => {
-    const packed = {
-      ...record,
-      backlog_subjects: packText(record.backlog_subjects, {
-        season: record.season,
-        year_of_passing: record.year_of_passing,
-        college_rank: record.college_rank,
-        academic_awards: record.academic_awards,
-      }),
-    };
-
-    delete packed.season;
-    delete packed.year_of_passing;
-    delete packed.college_rank;
-    delete packed.academic_awards;
-    return packed;
+    return { ...record };
   });
 }
 
@@ -108,25 +83,19 @@ function decodePostAdmissionRecords(records = []) {
     return {
       ...record,
       backlog_subjects: unpacked.base,
-      season: unpacked.meta.season ?? '',
-      year_of_passing: unpacked.meta.year_of_passing ?? null,
-      college_rank: unpacked.meta.college_rank ?? '',
-      academic_awards: unpacked.meta.academic_awards ?? '',
+      season: record.season || unpacked.meta.season || '',
+      year_of_passing: record.year_of_passing !== null && record.year_of_passing !== undefined ? record.year_of_passing : (unpacked.meta.year_of_passing ?? null),
+      college_rank: record.college_rank || unpacked.meta.college_rank || '',
+      academic_awards: record.academic_awards || unpacked.meta.academic_awards || '',
     };
   });
 }
 
 function encodeInternships(records = []) {
   return cloneArray(records).map((record) => {
-    const packed = {
-      ...record,
-      company_name: packText(record.company_name, { designation: record.designation }),
-      domain: packText(record.domain, { description: record.description }),
-    };
-
-    delete packed.designation;
-    delete packed.description;
-    return packed;
+    // No longer packing designation and description into company_name and domain
+    // because they now have dedicated columns in the database.
+    return { ...record };
   });
 }
 
@@ -137,27 +106,15 @@ function decodeInternships(records = []) {
     return {
       ...record,
       company_name: company.base,
-      designation: company.meta.designation ?? '',
+      designation: record.designation || company.meta.designation || '',
       domain: domain.base,
-      description: domain.meta.description ?? '',
+      description: record.description || domain.meta.description || '',
     };
   });
 }
 
 function encodeCareerObjective(record = {}) {
-  const packed = {
-    ...record,
-    campus_placement_reasons: packText(record.campus_placement_reasons, {
-      non_technical_areas: record.non_technical_areas,
-      student_mentor_interest: record.student_mentor_interest,
-      expectations_from_institute: record.expectations_from_institute,
-    }),
-  };
-
-  delete packed.non_technical_areas;
-  delete packed.student_mentor_interest;
-  delete packed.expectations_from_institute;
-  return packed;
+  return { ...record };
 }
 
 function decodeCareerObjective(record) {
@@ -166,9 +123,9 @@ function decodeCareerObjective(record) {
   return {
     ...record,
     campus_placement_reasons: unpacked.base,
-    non_technical_areas: unpacked.meta.non_technical_areas ?? '',
-    student_mentor_interest: unpacked.meta.student_mentor_interest ?? '',
-    expectations_from_institute: unpacked.meta.expectations_from_institute ?? '',
+    non_technical_areas: record.non_technical_areas || unpacked.meta.non_technical_areas || '',
+    student_mentor_interest: record.student_mentor_interest || unpacked.meta.student_mentor_interest || '',
+    expectations_from_institute: record.expectations_from_institute || unpacked.meta.expectations_from_institute || '',
   };
 }
 
