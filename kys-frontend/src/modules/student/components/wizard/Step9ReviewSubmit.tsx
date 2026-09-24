@@ -116,8 +116,15 @@ export default function Step9ReviewSubmit() {
                 <div className="mt-5">
                     <SectionHeading title='Academic Information (After Admission)' />
                     <TwoColGrid>
-                        {post.map((rec, idx) => (
-                            <Row key={idx} label={`Semester ${rec.semester || idx + 1}`} value={`SGPA: ${valueOrNA(rec.sgpa)} | Backlogs: ${valueOrNA(rec.backlog_subjects)}`} />
+                        {post
+                          .filter(rec => {
+                            const sem = Number(rec.semester);
+                            const startSemester = (data.admission_type || (past.some(r => r.exam_name === 'DIPLOMA') ? 'diploma' : 'hsc')) === 'diploma' ? 3 : 1;
+                            return sem >= startSemester && sem < Number(data.semester || 8);
+                          })
+                          .sort((a, b) => Number(a.semester) - Number(b.semester))
+                          .map((rec) => (
+                            <Row key={`sem-${rec.semester}`} label={`Semester ${rec.semester}`} value={`SGPA: ${valueOrNA(rec.sgpa)} | Backlogs: ${valueOrNA(rec.backlog_subjects)}`} />
                         ))}
                     </TwoColGrid>
                 </div>

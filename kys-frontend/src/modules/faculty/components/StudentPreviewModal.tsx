@@ -797,7 +797,7 @@ export function StudentPreviewModal({
             <img src="/logo.png" alt="Logo" className="print-logo" />
             <div className="print-header-text">
               <h1 className="print-dept">
-                Department of Computer Science Engineering
+                Department of Computer Science and Engineering
               </h1>
               <p className="print-form-name">
                 STUDENT MENTORING AND CAREER COUNSELLING FORM - KYS

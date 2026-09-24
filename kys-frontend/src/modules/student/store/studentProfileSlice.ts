@@ -279,6 +279,16 @@ function getPayloadForStep(step: number, data: Record<string, unknown>) {
         return true
       })
     }
+    if ('post_admission_records' in data) {
+      const currentSem = Number(data.semester || 8)
+      const admissionType = String(
+        data.admission_type || 
+        ((data.past_education_records as any[] || []).some(r => r.exam_name === 'DIPLOMA') ? 'diploma' : 'hsc')
+      )
+      const validSemesters = getAcademicSemesterRange(admissionType, currentSem)
+      const postRecords = (data.post_admission_records as Record<string, unknown>[]) || []
+      payload.post_admission_records = postRecords.filter(r => validSemesters.includes(Number(r.semester)))
+    }
     return payload
   }
 
@@ -516,6 +526,16 @@ export const submitStudentProfile = createAsyncThunk<
           }
           return true
         })
+      }
+      if (finalData.post_admission_records) {
+        const currentSem = Number(finalData.semester || 8)
+        const admissionType = String(
+          finalData.admission_type || 
+          ((finalData.past_education_records as any[] || []).some(r => r.exam_name === 'DIPLOMA') ? 'diploma' : 'hsc')
+        )
+        const validSemesters = getAcademicSemesterRange(admissionType, currentSem)
+        const postRecords = (finalData.post_admission_records as Record<string, unknown>[]) || []
+        finalData.post_admission_records = postRecords.filter(r => validSemesters.includes(Number(r.semester)))
       }
       await updateProfile(finalData)
       clearDraft(state.draftKey)

@@ -128,7 +128,7 @@ export default function ProfileWizard() {
                       <img src="/logo.png" alt="Logo" className="h-16 sm:h-30 object-contain self-center object-center" />
                       <div>
                         <h1 className="font-serif text-2xl font-bold text-[#0f172a] sm:text-3xl">
-                          Department of Computer Science Engineering
+                          Department of Computer Science and Engineering
                         </h1>
                         <h2 className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-[#1f355f] sm:text-sm">
                           Student Mentoring and Career Counselling Form - KYS
