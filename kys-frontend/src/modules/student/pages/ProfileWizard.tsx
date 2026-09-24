@@ -250,11 +250,11 @@ export default function ProfileWizard() {
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center justify-between gap-3 sm:order-2 sm:ml-auto sm:justify-end">
+                        <div className="flex flex-wrap items-center justify-center gap-3 sm:order-2 sm:ml-auto sm:justify-end">
                             <button
                                 onClick={handlePrevious}
                                 disabled={step === 0}
-                                className="min-w-0 flex-0 rounded-xl border border-[#d0d8e6] bg-[var(--panel)] px-4 py-2.5 text-sm font-semibold text-[#5f6f86] transition hover:bg-[var(--bg-soft)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-5"
+                                className="rounded-xl border border-[#d0d8e6] bg-[var(--panel)] px-4 py-2.5 text-sm font-semibold text-[#5f6f86] transition hover:bg-[var(--bg-soft)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-5"
                             >
                                 Previous
                             </button>
@@ -263,14 +263,14 @@ export default function ProfileWizard() {
                                 <button
                                     onClick={next}
                                     disabled={!isLocked && saving}
-                                    className="min-w-0 flex-0 rounded-xl bg-[#1f355f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(23,42,73,0.9)] transition hover:bg-[#172c4f] sm:flex-none sm:px-5"
+                                    className="rounded-xl bg-[#1f355f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(23,42,73,0.9)] transition hover:bg-[#172c4f] sm:px-5"
                                 >
                                     {saving ? 'Saving...' : 'Next'}
                                 </button>
                             ) : isLocked ? (
                                 <button
                                     onClick={() => navigate('/student/dashboard')}
-                                    className="min-w-0 flex-0 rounded-xl bg-[#1f355f] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#172c4f] sm:flex-none sm:px-5"
+                                    className="rounded-xl bg-[#1f355f] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#172c4f] sm:px-5"
                                 >
                                     Back to Dashboard
                                 </button>
@@ -278,7 +278,7 @@ export default function ProfileWizard() {
                                 <button
                                     onClick={handleSubmit}
                                     disabled={saving || !canSubmit}
-                                    className="min-w-0 flex-0 rounded-xl bg-[#1f355f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(23,42,73,0.9)] transition hover:bg-[#172c4f] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:px-5"
+                                    className="rounded-xl bg-[#1f355f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(23,42,73,0.9)] transition hover:bg-[#172c4f] disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
                                 >
                                     {saving ? 'Saving...' : 'Submit'}
                                 </button>
@@ -292,7 +292,7 @@ export default function ProfileWizard() {
                                             await clearForm()
                                         }
                                     }}
-                                    className="min-w-0 flex-0 rounded-xl border border-[#f0c8c8] bg-[#fff5f5] px-4 py-2.5 text-sm font-semibold text-[#b42318] transition hover:bg-[#ffeaea] sm:flex-none sm:px-5"
+                                    className="rounded-xl border border-[#f0c8c8] bg-[#fff5f5] px-4 py-2.5 text-sm font-semibold text-[#b42318] transition hover:bg-[#ffeaea] sm:px-5"
                                 >
                                     Clear Form
                                 </button>
