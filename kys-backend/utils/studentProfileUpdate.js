@@ -79,8 +79,10 @@ const applyStudentProfileUpdate = async (student, rawData = {}, tx) => {
     // Derive admission_type from the student's existing past education records
     // (mirrors profileCodec decodeStudentProfilePayload) so the validator enforces
     // the correct semester range: diploma → starts at 3, HSC → starts at 1.
-    const existingPastRecords = (student.past_education_records || []).map(serializeModel);
-    const admissionType = existingPastRecords.some((r) => r && r.exam_name === 'DIPLOMA') ? 'diploma' : 'hsc';
+    const pastRecords = Object.prototype.hasOwnProperty.call(data, 'past_education_records')
+      ? data.past_education_records
+      : (student.past_education_records || []).map(serializeModel);
+    const admissionType = pastRecords.some((r) => r && r.exam_name === 'DIPLOMA') ? 'diploma' : 'hsc';
     const paValidation = validatePostAdmissionRecords(
       Number(student.semester || 0),
       data.post_admission_records || [],

@@ -241,8 +241,7 @@ const putStudentsMe = async (req, res, next) => {
       // Derive admission_type from the student's existing past education records
       // (same logic as decodeStudentProfilePayload) so the validator knows whether
       // to enforce the diploma semester range (starting at 3) or HSC (starting at 1).
-      const existingPastRecords = (student.past_education_records || []).map(serializeModel);
-      const admissionType = existingPastRecords.some((r) => r.exam_name === 'DIPLOMA') ? 'diploma' : 'hsc';
+      const admissionType = pastEducationPayload.some((r) => r.exam_name === 'DIPLOMA') ? 'diploma' : 'hsc';
       const paValidation = validatePostAdmissionRecords(Number(student.semester || 0), postAdmissionPayload, admissionType);
       if (!paValidation.valid) {
         await tx.rollback();
